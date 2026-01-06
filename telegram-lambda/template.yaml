@@ -184,8 +184,8 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: telegram-lambda-response-router
-      CodeUri: router/
-      Handler: response_router.lambda_handler
+      CodeUri: .
+      Handler: router.response_router.lambda_handler
       Description: Routes completed AI responses back to users via appropriate channels
       Environment:
         Variables:
