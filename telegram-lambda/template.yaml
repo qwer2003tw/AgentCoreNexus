@@ -71,12 +71,12 @@ Resources:
         Variables:
           TELEGRAM_SECRETS_ARN: !Ref TelegramSecrets
           SQS_QUEUE_URL: !Ref TelegramInboundQueue
-          ALLOWLIST_TABLE_NAME: !Ref AllowlistTable
+          ALLOWLIST_TABLE_NAME: telegram-allowlist
           STACK_NAME: !Ref AWS::StackName
           EVENT_BUS_NAME: !Ref UniversalEventBus
       Policies:
         - DynamoDBReadPolicy:
-            TableName: !Ref AllowlistTable
+            TableName: telegram-allowlist
         - SQSSendMessagePolicy:
             QueueName: !GetAtt TelegramInboundQueue.QueueName
         - Statement:
@@ -154,30 +154,8 @@ Resources:
         - Key: auto-delete
           Value: "no"
 
-  # DynamoDB Table - Allowlist
-  AllowlistTable:
-    Type: AWS::DynamoDB::Table
-    DeletionPolicy: Retain
-    Properties:
-      TableName: telegram-allowlist
-      BillingMode: PAY_PER_REQUEST
-      AttributeDefinitions:
-        - AttributeName: chat_id
-          AttributeType: N
-      KeySchema:
-        - AttributeName: chat_id
-          KeyType: HASH
-      PointInTimeRecoverySpecification:
-        PointInTimeRecoveryEnabled: true
-      SSESpecification:
-        SSEEnabled: true
-      Tags:
-        - Key: Service
-          Value: telegram-lambda
-        - Key: Component
-          Value: allowlist
-        - Key: auto-delete
-          Value: "no"
+  # Note: telegram-allowlist DynamoDB table already exists from previous deployment
+  # Using existing table instead of creating new one
 
   # Lambda Function - Response Router
   ResponseRouterFunction:
@@ -439,8 +417,6 @@ Resources:
       TreatMissingData: notBreaching
 
   # EventBridge Rule - Route message.received to Agent Processor
-  # Note: This rule is defined but the target Processor Lambda should be deployed separately
-  # from telegram-agentcore-bot project. This is a placeholder for documentation.
   MessageReceivedRule:
     Type: AWS::Events::Rule
     Properties:
@@ -453,8 +429,18 @@ Resources:
         detail-type:
           - message.received
       State: ENABLED
-      # Targets will be added when Processor Lambda is deployed
-      # Target ARN should be the Agent Processor Lambda from telegram-agentcore-bot
+      Targets:
+        - Arn: !ImportValue telegram-unified-bot-ProcessorArn
+          Id: AgentProcessor
+
+  # Permission for EventBridge to invoke Processor
+  ProcessorEventPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !ImportValue telegram-unified-bot-ProcessorName
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt MessageReceivedRule.Arn
 
   # EventBridge Rule - Route message.completed to Response Router
   MessageCompletedRule:
@@ -502,8 +488,8 @@ Outputs:
       Name: !Sub '${AWS::StackName}-QueueArn'
 
   AllowlistTableName:
-    Description: DynamoDB Allowlist Table Name
-    Value: !Ref AllowlistTable
+    Description: DynamoDB Allowlist Table Name (existing table)
+    Value: telegram-allowlist
     Export:
       Name: !Sub '${AWS::StackName}-AllowlistTableName'
 

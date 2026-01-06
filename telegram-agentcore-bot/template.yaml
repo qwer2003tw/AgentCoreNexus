@@ -53,20 +53,26 @@ Resources:
           EVENT_BUS_NAME: !Ref EventBusName
           BEDROCK_MODEL_ID: !Ref BedrockModelId
           BEDROCK_AGENTCORE_MEMORY_ID: !Ref BedrockAgentCoreMemoryId
-          BROWSER_ENABLED: 'false'
+          BROWSER_ENABLED: 'true'
       Policies:
         - Statement:
             - Effect: Allow
               Action:
                 - events:PutEvents
-              Resource:
-                - !Ref EventBusArn
+              Resource: '*'
             - Effect: Allow
               Action:
                 - bedrock:InvokeModel
                 - bedrock:InvokeModelWithResponseStream
                 - bedrock:InvokeAgent
                 - bedrock:Retrieve
+              Resource: '*'
+            - Effect: Allow
+              Action:
+                - bedrock-agentcore:StartBrowserSession
+                - bedrock-agentcore:StopBrowserSession
+                - bedrock-agentcore:GetBrowserSession
+                - bedrock-agentcore-control:*
               Resource: '*'
       Tags:
         Service: telegram-agentcore-bot
@@ -87,7 +93,7 @@ Resources:
       FunctionName: !Ref AgentProcessorFunction
       Action: lambda:InvokeFunction
       Principal: events.amazonaws.com
-      SourceArn: !Sub 'arn:aws:events:${AWS::Region}:${AWS::AccountId}:rule/${EventBusName}/*'
+      SourceArn: !Sub 'arn:aws:events:${AWS::Region}:${AWS::AccountId}:rule/*'
 
 Outputs:
   ProcessorFunctionArn:

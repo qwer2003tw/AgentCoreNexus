@@ -130,15 +130,15 @@ class InfoCommandHandler(CommandHandler):
             # 取得 Lambda 函數名稱（從環境變數）
             function_name = os.environ.get('AWS_LAMBDA_FUNCTION_NAME', 'telegram-lambda-receiver')
             
-            # 格式化輸出（轉義特殊字符）
+            # 格式化輸出（純文字，不需要轉義）
             info_lines = [
                 "📊 系統資訊",
                 "",
-                f"🚀 最後部署時間：{escape_markdown_v2(time_str)}",
-                f"📦 Stack 名稱：{escape_markdown_v2(stack_name)}",
-                f"🌍 Region：{escape_markdown_v2(self.region)}",
-                f"✅ Stack 狀態：{escape_markdown_v2(stack_status)}",
-                f"⚙️ Lambda 函數：{escape_markdown_v2(function_name)}",
+                f"🚀 最後部署時間：{time_str}",
+                f"📦 Stack 名稱：{stack_name}",
+                f"🌍 Region：{self.region}",
+                f"✅ Stack 狀態：{stack_status}",
+                f"⚙️ Lambda 函數：{function_name}",
             ]
             
             return "\n".join(info_lines)

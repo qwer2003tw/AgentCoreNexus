@@ -170,3 +170,139 @@ def remove_from_allowlist(chat_id: int) -> bool:
     except ClientError as e:
         logger.error(f"Failed to remove from allowlist: {str(e)}", exc_info=True)
         return False
+
+
+def get_user_info(chat_id: int) -> Optional[dict]:
+    """
+    獲取用戶詳細信息
+    
+    Args:
+        chat_id: Telegram chat ID
+        
+    Returns:
+        dict: 用戶信息，或 None 如果不存在
+    """
+    try:
+        response = table.get_item(Key={'chat_id': chat_id})
+        return response.get('Item')
+    except ClientError as e:
+        logger.error(f"Failed to get user info: {str(e)}", exc_info=True)
+        return None
+
+
+def list_all_users(limit: int = 50) -> list:
+    """
+    列出所有用戶
+    
+    Args:
+        limit: 最大返回數量
+        
+    Returns:
+        list: 用戶列表
+    """
+    try:
+        response = table.scan(Limit=limit)
+        items = response.get('Items', [])
+        
+        # 按 chat_id 排序（群組在前，負數）
+        items.sort(key=lambda x: x.get('chat_id', 0))
+        
+        return items
+    except ClientError as e:
+        logger.error(f"Failed to list users: {str(e)}", exc_info=True)
+        return []
+
+
+def update_user_enabled(chat_id: int, enabled: bool) -> bool:
+    """
+    啟用/禁用用戶
+    
+    Args:
+        chat_id: Telegram chat ID
+        enabled: True 啟用，False 禁用
+        
+    Returns:
+        bool: True 如果成功
+    """
+    try:
+        table.update_item(
+            Key={'chat_id': chat_id},
+            UpdateExpression='SET enabled = :enabled',
+            ExpressionAttributeValues={':enabled': enabled}
+        )
+        logger.info(
+            f"User {'enabled' if enabled else 'disabled'}",
+            extra={
+                'chat_id': chat_id,
+                'enabled': enabled,
+                'event_type': 'user_status_updated'
+            }
+        )
+        return True
+    except ClientError as e:
+        logger.error(f"Failed to update user status: {str(e)}", exc_info=True)
+        return False
+
+
+def update_user_role(chat_id: int, role: str) -> bool:
+    """
+    更新用戶角色
+    
+    Args:
+        chat_id: Telegram chat ID
+        role: 新角色 ('admin' 或 'user')
+        
+    Returns:
+        bool: True 如果成功
+    """
+    try:
+        table.update_item(
+            Key={'chat_id': chat_id},
+            UpdateExpression='SET #role = :role',
+            ExpressionAttributeNames={'#role': 'role'},
+            ExpressionAttributeValues={':role': role}
+        )
+        logger.info(
+            f"User role updated to {role}",
+            extra={
+                'chat_id': chat_id,
+                'role': role,
+                'event_type': 'user_role_updated'
+            }
+        )
+        return True
+    except ClientError as e:
+        logger.error(f"Failed to update user role: {str(e)}", exc_info=True)
+        return False
+
+
+def get_stats() -> dict:
+    """
+    獲取統計信息
+    
+    Returns:
+        dict: 統計數據
+    """
+    try:
+        # 掃描整個表（注意：大表可能需要分頁）
+        response = table.scan()
+        items = response.get('Items', [])
+        
+        total_users = len(items)
+        enabled_users = sum(1 for item in items if item.get('enabled', False))
+        admin_count = sum(1 for item in items if item.get('role') == 'admin')
+        group_count = sum(1 for item in items if item.get('chat_id', 0) < 0)
+        private_count = total_users - group_count
+        
+        return {
+            'total_users': total_users,
+            'enabled_users': enabled_users,
+            'disabled_users': total_users - enabled_users,
+            'admin_count': admin_count,
+            'user_count': total_users - admin_count,
+            'group_count': group_count,
+            'private_count': private_count
+        }
+    except ClientError as e:
+        logger.error(f"Failed to get stats: {str(e)}", exc_info=True)
+        return {}
