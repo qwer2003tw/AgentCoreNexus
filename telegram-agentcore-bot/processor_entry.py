@@ -9,11 +9,12 @@ import boto3
 from agents.conversation_agent import ConversationAgent
 from services.memory_service import MemoryService
 from utils.logger import get_logger
+from tools import AVAILABLE_TOOLS
 
 logger = get_logger(__name__)
 
 # 初始化服務
-conversation_agent = ConversationAgent()
+conversation_agent = ConversationAgent(tools=AVAILABLE_TOOLS)
 memory_service = MemoryService()
 
 # EventBridge 客戶端
@@ -203,16 +204,19 @@ def process_normalized_message(normalized: Dict[str, Any]) -> Dict[str, Any]:
         # 目前只處理文字訊息
         if message_type == 'text' and text:
             # 使用 ConversationAgent 處理
-            response = conversation_agent.process_message(text)
+            response_dict = conversation_agent.process_message(text)
+            
+            # 提取回應字串
+            response_text = response_dict.get('response', '') if isinstance(response_dict, dict) else str(response_dict)
             
             logger.info(
                 "Message processed successfully",
-                extra={'user_id': user_id}
+                extra={'user_id': user_id, 'response_length': len(response_text)}
             )
             
             return {
                 'success': True,
-                'response': response,
+                'response': response_text,
                 'user_id': user_id,
                 'session_id': session_id
             }
@@ -253,11 +257,14 @@ def publish_completion_event(original_message: Dict[str, Any], result: Dict[str,
         evb = get_eventbridge_client()
         
         completion_event = {
-            'original': original_message,
-            'response': result.get('response', ''),
+            'messageId': original_message.get('messageId', 'unknown'),
             'channel': original_message.get('channel', {}).get('type', 'unknown'),
-            'user_id': result.get('user_id', 'unknown'),
-            'session_id': result.get('session_id', 'unknown')
+            'user': original_message.get('user', {}),
+            'response': result.get('response', ''),
+            'metadata': {
+                'session_id': result.get('session_id', 'unknown'),
+                'original_message_id': original_message.get('messageId', 'unknown')
+            }
         }
         
         response = evb.put_events(

@@ -64,13 +64,14 @@ _command_router = None
 def detect_channel(event: Dict[str, Any]) -> str:
     """
     檢測訊息來源通道
-    
+
     Args:
         event: API Gateway event
-        
+
     Returns:
         通道類型: 'telegram', 'discord', 'slack', 'web'
     """
+    # 優先檢查 path
     path = (event.get('path') or "").lower()
     if 'telegram' in path:
         return 'telegram'
@@ -78,6 +79,22 @@ def detect_channel(event: Dict[str, Any]) -> str:
         return 'discord'
     if 'slack' in path:
         return 'slack'
+    
+    # 檢查 Telegram 特定標識
+    try:
+        body = json.loads(event.get('body', '{}'))
+        # Telegram webhooks 包含 update_id
+        if 'update_id' in body:
+            return 'telegram'
+    except:
+        pass
+    
+    # 檢查 headers（Telegram secret token）
+    headers = event.get('headers', {})
+    if ('X-Telegram-Bot-Api-Secret-Token' in headers or 
+        'x-telegram-bot-api-secret-token' in headers):
+        return 'telegram'
+    
     return 'web'
 
 def normalize_message(raw_data: Dict[str, Any], channel: str, event: Dict[str, Any]) -> Dict[str, Any]:

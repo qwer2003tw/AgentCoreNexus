@@ -11,12 +11,12 @@ class TelegramFormatter:
     # Telegram 訊息長度限制
     MAX_MESSAGE_LENGTH = 4096
     
-    def __init__(self, parse_mode: str = 'Markdown'):
+    def __init__(self, parse_mode: Optional[str] = None):
         """
         初始化格式化器
         
         Args:
-            parse_mode: 解析模式 ('Markdown', 'HTML', 或 None)
+            parse_mode: 解析模式 ('Markdown', 'HTML', 或 None 表示純文字)
         """
         self.parse_mode = parse_mode
     
@@ -219,11 +219,11 @@ class TelegramFormatter:
         
         return truncated
     
-    def get_parse_mode(self) -> str:
+    def get_parse_mode(self) -> Optional[str]:
         """
         取得當前的解析模式
         
         Returns:
-            str: 解析模式
+            Optional[str]: 解析模式
         """
         return self.parse_mode

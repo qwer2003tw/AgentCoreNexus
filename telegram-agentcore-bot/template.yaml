@@ -36,7 +36,6 @@ Globals:
     Environment:
       Variables:
         LOG_LEVEL: INFO
-        AWS_REGION: !Ref AWS::Region
 
 Resources:
   # Agent Processor Lambda Function
@@ -65,6 +64,7 @@ Resources:
             - Effect: Allow
               Action:
                 - bedrock:InvokeModel
+                - bedrock:InvokeModelWithResponseStream
                 - bedrock:InvokeAgent
                 - bedrock:Retrieve
               Resource: '*'

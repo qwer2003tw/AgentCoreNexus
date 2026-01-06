@@ -17,12 +17,23 @@ import sys
 # Add src directory to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-from delivery import TelegramDelivery, DeliveryResult
-from formatters import TelegramFormatter
+from router.delivery import TelegramDelivery, DeliveryResult
+from router.formatters import TelegramFormatter
 from utils.logger import get_logger
-from utils.metrics import publish_metric
 
 logger = get_logger(__name__)
+
+# Simple metric publishing function (can be enhanced later)
+def publish_metric(metric_name: str, value: float, unit: str) -> None:
+    """Publish a CloudWatch metric (simplified implementation)"""
+    logger.info(
+        f"Metric: {metric_name} = {value} {unit}",
+        extra={
+            'metric_name': metric_name,
+            'value': value,
+            'unit': unit
+        }
+    )
 
 # Delivery implementations by channel
 DELIVERY_MAP = {

@@ -6,9 +6,9 @@ import os
 from typing import Optional, Dict, Any
 
 # Add parent directory to path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'src'))
 
-from .base import MessageDelivery, DeliveryResult
+from router.delivery.base import MessageDelivery, DeliveryResult
 from telegram_client import send_message
 from utils.logger import get_logger
 
@@ -37,21 +37,25 @@ class TelegramDelivery(MessageDelivery):
         傳送訊息到 Telegram
         
         Args:
-            user_id: Telegram chat_id (字串格式)
+            user_id: Telegram chat_id (字串格式，可能包含 "tg:" 前綴)
             message: 要傳送的訊息內容
             context: 額外的上下文資訊 (可包含 parse_mode 等)
             
         Returns:
             DeliveryResult: 傳送結果
         """
+        # 移除 "tg:" 前綴（如果存在）
+        clean_user_id = user_id.replace('tg:', '') if user_id.startswith('tg:') else user_id
+        
         # 驗證 user_id
-        if not self.validate_user_id(user_id):
+        if not self.validate_user_id(clean_user_id):
             error_msg = f"Invalid user_id: {user_id}"
             logger.error(
                 error_msg,
                 extra={
                     'event_type': 'telegram_delivery_invalid_user_id',
-                    'user_id': user_id
+                    'user_id': user_id,
+                    'clean_user_id': clean_user_id
                 }
             )
             return DeliveryResult(
@@ -63,14 +67,15 @@ class TelegramDelivery(MessageDelivery):
         
         # 轉換 user_id 為整數 (Telegram chat_id)
         try:
-            chat_id = int(user_id)
+            chat_id = int(clean_user_id)
         except ValueError:
             error_msg = f"user_id must be numeric for Telegram: {user_id}"
             logger.error(
                 error_msg,
                 extra={
                     'event_type': 'telegram_delivery_invalid_chat_id',
-                    'user_id': user_id
+                    'user_id': user_id,
+                    'clean_user_id': clean_user_id
                 }
             )
             return DeliveryResult(
@@ -80,8 +85,9 @@ class TelegramDelivery(MessageDelivery):
                 error=error_msg
             )
         
-        # 取得 parse_mode (預設 Markdown)
-        parse_mode = 'Markdown'
+        # 取得 parse_mode (預設 None，避免特殊字符問題)
+        # 可以通過 context 覆蓋為 'Markdown' 或 'HTML'
+        parse_mode = None
         if context and 'parse_mode' in context:
             parse_mode = context['parse_mode']
         

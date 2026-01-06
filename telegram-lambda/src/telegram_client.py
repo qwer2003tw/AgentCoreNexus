@@ -39,14 +39,14 @@ def get_bot_token() -> str:
     return token
 
 
-def send_message(chat_id: int, text: str, parse_mode: str = 'Markdown') -> bool:
+def send_message(chat_id: int, text: str, parse_mode: Optional[str] = None) -> bool:
     """
     發送訊息到 Telegram (同步包裝)
     
     Args:
         chat_id: Telegram chat ID
         text: 訊息內容
-        parse_mode: 解析模式 (Markdown, HTML, 或 None)
+        parse_mode: 解析模式 ('Markdown', 'HTML', 或 None 表示純文字)
         
     Returns:
         bool: True 如果成功發送
@@ -69,7 +69,7 @@ def send_message(chat_id: int, text: str, parse_mode: str = 'Markdown') -> bool:
 async def _send_message_async(
     chat_id: int,
     text: str,
-    parse_mode: str = 'Markdown'
+    parse_mode: Optional[str] = None
 ) -> bool:
     """
     異步發送訊息到 Telegram
@@ -77,7 +77,7 @@ async def _send_message_async(
     Args:
         chat_id: Telegram chat ID
         text: 訊息內容
-        parse_mode: 解析模式
+        parse_mode: 解析模式 ('Markdown', 'HTML', 或 None 表示純文字)
         
     Returns:
         bool: True 如果成功發送
