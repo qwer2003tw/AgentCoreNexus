@@ -179,11 +179,48 @@ Resources:
         - Key: auto-delete
           Value: "no"
 
+  # Lambda Function - Response Router
+  ResponseRouterFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: telegram-lambda-response-router
+      CodeUri: router/
+      Handler: response_router.lambda_handler
+      Description: Routes completed AI responses back to users via appropriate channels
+      Environment:
+        Variables:
+          TELEGRAM_SECRETS_ARN: !Ref TelegramSecrets
+          STACK_NAME: !Ref AWS::StackName
+          EVENT_BUS_NAME: !Ref UniversalEventBus
+      Policies:
+        - Statement:
+          - Effect: Allow
+            Action:
+              - secretsmanager:GetSecretValue
+            Resource:
+              - !Ref TelegramSecrets
+          - Effect: Allow
+            Action:
+              - events:PutEvents
+            Resource:
+              - !GetAtt UniversalEventBus.Arn
+      Tags:
+        Service: telegram-lambda
+        Component: response-router
+        auto-delete: "no"
+
   # CloudWatch Log Group
   TelegramReceiverLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub '/aws/lambda/${TelegramReceiverFunction}'
+      RetentionInDays: 14
+
+  # CloudWatch Log Group for Response Router
+  ResponseRouterLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${ResponseRouterFunction}'
       RetentionInDays: 14
 
   # CloudWatch Dashboard
@@ -419,6 +456,32 @@ Resources:
       # Targets will be added when Processor Lambda is deployed
       # Target ARN should be the Agent Processor Lambda from telegram-agentcore-bot
 
+  # EventBridge Rule - Route message.completed to Response Router
+  MessageCompletedRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub '${AWS::StackName}-message-completed'
+      Description: Route message.completed events to Response Router
+      EventBusName: !Ref UniversalEventBus
+      EventPattern:
+        source:
+          - agent-processor
+        detail-type:
+          - message.completed
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt ResponseRouterFunction.Arn
+          Id: ResponseRouterTarget
+
+  # Permission for EventBridge to invoke Response Router
+  ResponseRouterEventPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref ResponseRouterFunction
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt MessageCompletedRule.Arn
+
 Outputs:
   WebhookUrl:
     Description: Telegram Webhook URL (Use this to register with Telegram)
@@ -485,3 +548,17 @@ Outputs:
     Value: !GetAtt UniversalEventBus.Arn
     Export:
       Name: !Sub '${AWS::StackName}-EventBusArn'
+
+  ResponseRouterFunctionArn:
+    Description: Response Router Lambda Function ARN
+    Value: !GetAtt ResponseRouterFunction.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-ResponseRouterArn'
+
+  ResponseRouterFunctionName:
+    Description: Response Router Lambda Function Name
+    Value: !Ref ResponseRouterFunction
+
+  MessageCompletedRuleArn:
+    Description: EventBridge Rule ARN for message.completed events
+    Value: !GetAtt MessageCompletedRule.Arn
