@@ -1,0 +1,7 @@
+strands-agents
+strands-agents-tools
+bedrock-agentcore
+boto3
+pytz
+playwright
+nest-asyncio

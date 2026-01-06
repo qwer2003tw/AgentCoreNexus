@@ -1,0 +1,113 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  telegram-agentcore-bot
+  
+  AgentCore Processor for multi-channel message processing
+
+Parameters:
+  EventBusName:
+    Type: String
+    Description: EventBridge Event Bus Name (from telegram-lambda stack)
+    Default: ''
+
+  EventBusArn:
+    Type: String
+    Description: EventBridge Event Bus ARN (from telegram-lambda stack)
+    Default: ''
+
+  BedrockModelId:
+    Type: String
+    Description: Bedrock Model ID for AgentCore
+    Default: 'anthropic.claude-3-5-sonnet-20241022-v2:0'
+
+  BedrockAgentCoreMemoryId:
+    Type: String
+    Description: Optional Bedrock AgentCore Memory ID
+    Default: ''
+
+Globals:
+  Function:
+    Timeout: 300
+    MemorySize: 512
+    Runtime: python3.11
+    Architectures:
+      - x86_64
+    Environment:
+      Variables:
+        LOG_LEVEL: INFO
+        AWS_REGION: !Ref AWS::Region
+
+Resources:
+  # Agent Processor Lambda Function
+  AgentProcessorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-processor'
+      CodeUri: .
+      Handler: processor_entry.handler
+      Description: Process messages from EventBridge using AgentCore
+      Timeout: 300
+      MemorySize: 1024
+      Environment:
+        Variables:
+          EVENT_BUS_NAME: !Ref EventBusName
+          BEDROCK_MODEL_ID: !Ref BedrockModelId
+          BEDROCK_AGENTCORE_MEMORY_ID: !Ref BedrockAgentCoreMemoryId
+          BROWSER_ENABLED: 'false'
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - events:PutEvents
+              Resource:
+                - !Ref EventBusArn
+            - Effect: Allow
+              Action:
+                - bedrock:InvokeModel
+                - bedrock:InvokeAgent
+                - bedrock:Retrieve
+              Resource: '*'
+      Tags:
+        Service: telegram-agentcore-bot
+        Component: processor
+        auto-delete: "no"
+
+  # CloudWatch Log Group
+  ProcessorLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${AgentProcessorFunction}'
+      RetentionInDays: 14
+
+  # EventBridge Permission for Lambda
+  ProcessorEventBridgePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref AgentProcessorFunction
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !Sub 'arn:aws:events:${AWS::Region}:${AWS::AccountId}:rule/${EventBusName}/*'
+
+Outputs:
+  ProcessorFunctionArn:
+    Description: Agent Processor Lambda ARN
+    Value: !GetAtt AgentProcessorFunction.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-ProcessorArn'
+
+  ProcessorFunctionName:
+    Description: Agent Processor Lambda Function Name
+    Value: !Ref AgentProcessorFunction
+    Export:
+      Name: !Sub '${AWS::StackName}-ProcessorName'
+
+  ProcessorLogGroup:
+    Description: CloudWatch Log Group for Processor
+    Value: !Ref ProcessorLogGroup
+
+  DeploymentInstructions:
+    Description: Instructions for connecting to EventBridge
+    Value: !Sub |
+      After deploying this stack, update the telegram-lambda MessageReceivedRule with this target:
+      aws events put-targets --rule ${EventBusName}-message-received --event-bus-name ${EventBusName} --targets "Id"="AgentProcessor","Arn"="${AgentProcessorFunction.Arn}"

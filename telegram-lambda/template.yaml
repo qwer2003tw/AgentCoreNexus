@@ -1,0 +1,487 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  telegram-lambda
+  
+  Telegram Webhook Receiver with Allowlist validation and SQS forwarding
+
+# Parameters for sensitive data
+Parameters:
+  TelegramBotToken:
+    Type: String
+    NoEcho: true
+    Description: Telegram Bot Token (will be stored in Secrets Manager)
+    Default: ''
+
+# Global configuration for all functions
+Globals:
+  Function:
+    Timeout: 30
+    MemorySize: 256
+    Runtime: python3.11
+    Architectures:
+      - x86_64
+    Environment:
+      Variables:
+        LOG_LEVEL: INFO
+
+Resources:
+  # EventBridge - Universal Event Bus for multi-channel messaging
+  UniversalEventBus:
+    Type: AWS::Events::EventBus
+    Properties:
+      Name: !Sub '${AWS::StackName}-events'
+      Tags:
+        - Key: Service
+          Value: telegram-lambda
+        - Key: Component
+          Value: eventbridge
+        - Key: Purpose
+          Value: multi-channel-messaging
+
+  # Secrets Manager - Combined Telegram Secrets
+  TelegramSecrets:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub '${AWS::StackName}-secrets'
+      Description: Telegram Bot Token and Webhook Secret Token (webhook token auto-generated, 64 chars, A-Z/a-z/0-9 only)
+      GenerateSecretString:
+        SecretStringTemplate: !Sub '{"bot_token": "${TelegramBotToken}"}'
+        GenerateStringKey: 'webhook_secret_token'
+        PasswordLength: 64
+        ExcludeCharacters: '!@#$%^&*()_+-=[]{}|;:,.<>?/~`"''\ '
+        RequireEachIncludedType: false
+      Tags:
+        - Key: Service
+          Value: telegram-lambda
+        - Key: Component
+          Value: secrets
+        - Key: auto-delete
+          Value: "no"
+
+  # Lambda Function - Telegram Webhook Receiver
+  TelegramReceiverFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: telegram-lambda-receiver
+      CodeUri: src/
+      Handler: handler.lambda_handler
+      Description: Receives Telegram webhooks, validates allowlist, and forwards to SQS
+      Environment:
+        Variables:
+          TELEGRAM_SECRETS_ARN: !Ref TelegramSecrets
+          SQS_QUEUE_URL: !Ref TelegramInboundQueue
+          ALLOWLIST_TABLE_NAME: !Ref AllowlistTable
+          STACK_NAME: !Ref AWS::StackName
+          EVENT_BUS_NAME: !Ref UniversalEventBus
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref AllowlistTable
+        - SQSSendMessagePolicy:
+            QueueName: !GetAtt TelegramInboundQueue.QueueName
+        - Statement:
+            - Effect: Allow
+              Action:
+                - secretsmanager:GetSecretValue
+              Resource:
+                - !Ref TelegramSecrets
+            - Effect: Allow
+              Action:
+                - cloudformation:DescribeStacks
+              Resource:
+                - !Sub 'arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/${AWS::StackName}/*'
+            - Effect: Allow
+              Action:
+                - events:PutEvents
+              Resource:
+                - !GetAtt UniversalEventBus.Arn
+      Events:
+        WebhookApi:
+          Type: Api
+          Properties:
+            Path: /webhook
+            Method: POST
+            RestApiId: !Ref TelegramApi
+      Tags:
+        Service: telegram-lambda
+        Component: receiver
+        auto-delete: "no"
+
+  # API Gateway
+  TelegramApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: telegram-webhook-api
+      StageName: Prod
+      Description: API Gateway for Telegram webhook
+      EndpointConfiguration:
+        Type: REGIONAL
+      Tags:
+        Service: telegram-lambda
+        Component: api-gateway
+        auto-delete: "no"
+
+  # SQS Queue - Telegram Inbound Messages
+  TelegramInboundQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: telegram-inbound
+      VisibilityTimeout: 300
+      MessageRetentionPeriod: 1209600  # 14 days
+      ReceiveMessageWaitTimeSeconds: 20  # Long polling
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt TelegramDLQ.Arn
+        maxReceiveCount: 3
+      Tags:
+        - Key: Service
+          Value: telegram-lambda
+        - Key: Component
+          Value: sqs-queue
+        - Key: auto-delete
+          Value: "no"
+
+  # Dead Letter Queue
+  TelegramDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: telegram-inbound-dlq
+      MessageRetentionPeriod: 1209600  # 14 days
+      Tags:
+        - Key: Service
+          Value: telegram-lambda
+        - Key: Component
+          Value: dlq
+        - Key: auto-delete
+          Value: "no"
+
+  # DynamoDB Table - Allowlist
+  AllowlistTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    Properties:
+      TableName: telegram-allowlist
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: chat_id
+          AttributeType: N
+      KeySchema:
+        - AttributeName: chat_id
+          KeyType: HASH
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      SSESpecification:
+        SSEEnabled: true
+      Tags:
+        - Key: Service
+          Value: telegram-lambda
+        - Key: Component
+          Value: allowlist
+        - Key: auto-delete
+          Value: "no"
+
+  # CloudWatch Log Group
+  TelegramReceiverLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${TelegramReceiverFunction}'
+      RetentionInDays: 14
+
+  # CloudWatch Dashboard
+  TelegramMonitoringDashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: telegram-lambda-monitoring
+      DashboardBody: !Sub |
+        {
+          "widgets": [
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 0,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "metrics": [
+                  [ "TelegramLambda", "InvalidTokenAttempts", { "stat": "Sum", "label": "Invalid Token Attempts" } ],
+                  [ ".", "AllowlistDenied", { "stat": "Sum", "label": "Allowlist Denied" } ]
+                ],
+                "view": "timeSeries",
+                "stacked": false,
+                "region": "${AWS::Region}",
+                "title": "Security Events",
+                "period": 300,
+                "yAxis": {
+                  "left": {
+                    "label": "Count",
+                    "showUnits": false
+                  }
+                }
+              }
+            },
+            {
+              "type": "metric",
+              "x": 12,
+              "y": 0,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "metrics": [
+                  [ "TelegramLambda", "MessagesReceived", { "stat": "Sum", "label": "Messages Received" } ],
+                  [ ".", "MessagesProcessed", { "stat": "Sum", "label": "Messages Processed" } ],
+                  [ ".", "SQSSendSuccess", { "stat": "Sum", "label": "SQS Success" } ],
+                  [ ".", "SQSSendFailure", { "stat": "Sum", "label": "SQS Failure" } ]
+                ],
+                "view": "timeSeries",
+                "stacked": false,
+                "region": "${AWS::Region}",
+                "title": "Message Processing Flow",
+                "period": 300,
+                "yAxis": {
+                  "left": {
+                    "label": "Count",
+                    "showUnits": false
+                  }
+                }
+              }
+            },
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 6,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "metrics": [
+                  [ "TelegramLambda", "TotalDuration", { "stat": "Average", "label": "Avg Duration" } ],
+                  [ "...", { "stat": "Maximum", "label": "Max Duration" } ],
+                  [ ".", "SQSSendDuration", { "stat": "Average", "label": "Avg SQS Duration" } ]
+                ],
+                "view": "timeSeries",
+                "stacked": false,
+                "region": "${AWS::Region}",
+                "title": "Performance Metrics",
+                "period": 300,
+                "yAxis": {
+                  "left": {
+                    "label": "Milliseconds",
+                    "showUnits": false
+                  }
+                }
+              }
+            },
+            {
+              "type": "metric",
+              "x": 12,
+              "y": 6,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "metrics": [
+                  [ "TelegramLambda", "LambdaError", { "stat": "Sum", "label": "Lambda Errors" } ],
+                  [ "AWS/Lambda", "Errors", "FunctionName", "${TelegramReceiverFunction}", { "stat": "Sum", "label": "AWS Lambda Errors" } ],
+                  [ ".", "Throttles", "FunctionName", "${TelegramReceiverFunction}", { "stat": "Sum", "label": "Throttles" } ]
+                ],
+                "view": "timeSeries",
+                "stacked": false,
+                "region": "${AWS::Region}",
+                "title": "Error Metrics",
+                "period": 300,
+                "yAxis": {
+                  "left": {
+                    "label": "Count",
+                    "showUnits": false
+                  }
+                }
+              }
+            },
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 12,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "metrics": [
+                  [ "TelegramLambda", "TokenValidationSuccess", { "stat": "Sum", "label": "Token Validation Success" } ],
+                  [ ".", "AllowlistApproved", { "stat": "Sum", "label": "Allowlist Approved" } ],
+                  [ ".", "DebugCommandReceived", { "stat": "Sum", "label": "Debug Commands" } ],
+                  [ ".", "InvalidPayload", { "stat": "Sum", "label": "Invalid Payload" } ],
+                  [ ".", "WebhookParsingFallback", { "stat": "Sum", "label": "Parsing Fallback" } ]
+                ],
+                "view": "timeSeries",
+                "stacked": false,
+                "region": "${AWS::Region}",
+                "title": "Feature Usage & Error Handling",
+                "period": 300,
+                "yAxis": {
+                  "left": {
+                    "label": "Count",
+                    "showUnits": false
+                  }
+                }
+              }
+            },
+            {
+              "type": "metric",
+              "x": 12,
+              "y": 12,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "metrics": [
+                  [ "TelegramLambda", "MessageTypeText", { "stat": "Sum", "label": "Text" } ],
+                  [ ".", "MessageTypePhoto", { "stat": "Sum", "label": "Photo" } ],
+                  [ ".", "MessageTypeDocument", { "stat": "Sum", "label": "Document" } ],
+                  [ ".", "MessageTypeVideo", { "stat": "Sum", "label": "Video" } ],
+                  [ ".", "MessageTypeAudio", { "stat": "Sum", "label": "Audio" } ],
+                  [ ".", "MessageTypeOther", { "stat": "Sum", "label": "Other" } ]
+                ],
+                "view": "timeSeries",
+                "stacked": true,
+                "region": "${AWS::Region}",
+                "title": "Message Types Distribution",
+                "period": 300,
+                "yAxis": {
+                  "left": {
+                    "label": "Count",
+                    "showUnits": false
+                  }
+                }
+              }
+            },
+            {
+              "type": "log",
+              "x": 0,
+              "y": 18,
+              "width": 24,
+              "height": 6,
+              "properties": {
+                "query": "SOURCE '/aws/lambda/${TelegramReceiverFunction}'\n| fields @timestamp, event_type, chat_id, username, @message\n| filter event_type in ['invalid_token', 'unauthorized']\n| sort @timestamp desc\n| limit 20",
+                "region": "${AWS::Region}",
+                "stacked": false,
+                "title": "Recent Security Events",
+                "view": "table"
+              }
+            }
+          ]
+        }
+
+  # CloudWatch Alarms
+  TelegramReceiverErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: telegram-lambda-receiver-errors
+      AlarmDescription: Alert when Lambda function has errors
+      MetricName: Errors
+      Namespace: AWS/Lambda
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 5
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref TelegramReceiverFunction
+      TreatMissingData: notBreaching
+
+  SQSQueueDepthAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: telegram-sqs-queue-depth
+      AlarmDescription: Alert when SQS queue has too many messages
+      MetricName: ApproximateNumberOfMessagesVisible
+      Namespace: AWS/SQS
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 100
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: QueueName
+          Value: !GetAtt TelegramInboundQueue.QueueName
+      TreatMissingData: notBreaching
+
+  # EventBridge Rule - Route message.received to Agent Processor
+  # Note: This rule is defined but the target Processor Lambda should be deployed separately
+  # from telegram-agentcore-bot project. This is a placeholder for documentation.
+  MessageReceivedRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub '${AWS::StackName}-message-received'
+      Description: Route message.received events to Agent Processor
+      EventBusName: !Ref UniversalEventBus
+      EventPattern:
+        source:
+          - universal-adapter
+        detail-type:
+          - message.received
+      State: ENABLED
+      # Targets will be added when Processor Lambda is deployed
+      # Target ARN should be the Agent Processor Lambda from telegram-agentcore-bot
+
+Outputs:
+  WebhookUrl:
+    Description: Telegram Webhook URL (Use this to register with Telegram)
+    Value: !Sub 'https://${TelegramApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/webhook'
+    Export:
+      Name: !Sub '${AWS::StackName}-WebhookUrl'
+
+  QueueUrl:
+    Description: SQS Queue URL for telegram-processor Lambda
+    Value: !Ref TelegramInboundQueue
+    Export:
+      Name: !Sub '${AWS::StackName}-QueueUrl'
+
+  QueueArn:
+    Description: SQS Queue ARN
+    Value: !GetAtt TelegramInboundQueue.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-QueueArn'
+
+  AllowlistTableName:
+    Description: DynamoDB Allowlist Table Name
+    Value: !Ref AllowlistTable
+    Export:
+      Name: !Sub '${AWS::StackName}-AllowlistTableName'
+
+  LambdaFunctionArn:
+    Description: Lambda Function ARN
+    Value: !GetAtt TelegramReceiverFunction.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-FunctionArn'
+
+  ApiGatewayId:
+    Description: API Gateway ID
+    Value: !Ref TelegramApi
+    Export:
+      Name: !Sub '${AWS::StackName}-ApiGatewayId'
+
+  TelegramSecretsArn:
+    Description: ARN of Telegram Secrets in Secrets Manager (contains both bot_token and webhook_secret_token)
+    Value: !Ref TelegramSecrets
+    Export:
+      Name: !Sub '${AWS::StackName}-SecretsArn'
+
+  TelegramSecretsName:
+    Description: Name of Telegram Secrets (for CLI commands)
+    Value: !Sub '${AWS::StackName}-secrets'
+
+  GetBotTokenCommand:
+    Description: Run this command to retrieve the bot token
+    Value: !Sub 'aws secretsmanager get-secret-value --secret-id ${AWS::StackName}-secrets --region ${AWS::Region} --query SecretString --output text | jq -r .bot_token'
+
+  GetWebhookSecretTokenCommand:
+    Description: Run this command to retrieve the webhook secret token
+    Value: !Sub 'aws secretsmanager get-secret-value --secret-id ${AWS::StackName}-secrets --region ${AWS::Region} --query SecretString --output text | jq -r .webhook_secret_token'
+
+  EventBusName:
+    Description: EventBridge Event Bus Name for multi-channel messaging
+    Value: !Ref UniversalEventBus
+    Export:
+      Name: !Sub '${AWS::StackName}-EventBusName'
+
+  EventBusArn:
+    Description: EventBridge Event Bus ARN
+    Value: !GetAtt UniversalEventBus.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-EventBusArn'

@@ -1,0 +1,44 @@
+default_agent: telegram_agent
+agents:
+  telegram_agent:
+    name: telegram_agent
+    entrypoint: /path/to/your/telegram_agent.py
+    platform: linux/arm64
+    container_runtime: none
+    source_path: /path/to/your/project
+    aws:
+      execution_role: arn:aws:iam::<YOUR_ACCOUNT_ID>:role/<YOUR_ROLE_NAME>
+      execution_role_auto_create: false
+      account: '<YOUR_AWS_ACCOUNT_ID>'
+      region: us-west-2
+      ecr_repository: <YOUR_ACCOUNT_ID>.dkr.ecr.us-west-2.amazonaws.com/bedrock-agentcore-telegram_agent
+      ecr_auto_create: false
+      network_configuration:
+        network_mode: PUBLIC
+        network_mode_config: null
+      protocol_configuration:
+        server_protocol: HTTP
+      observability:
+        enabled: true
+      lifecycle_configuration:
+        idle_runtime_session_timeout: null
+        max_lifetime: null
+    bedrock_agentcore:
+      agent_id: <YOUR_AGENT_ID>
+      agent_arn: arn:aws:bedrock-agentcore:us-west-2:<YOUR_ACCOUNT_ID>:runtime/<YOUR_AGENT_ID>
+      agent_session_id: <YOUR_SESSION_ID>
+    codebuild:
+      project_name: bedrock-agentcore-telegram_agent-builder
+      execution_role: arn:aws:iam::<YOUR_ACCOUNT_ID>:role/<YOUR_CODEBUILD_ROLE_NAME>
+      source_bucket: bedrock-agentcore-codebuild-sources-<YOUR_ACCOUNT_ID>-us-west-2
+    memory:
+      mode: NO_MEMORY
+      memory_id: null
+      memory_arn: null
+      memory_name: null
+      event_expiry_days: 30
+      first_invoke_memory_check_done: false
+      was_created_by_toolkit: false
+    authorizer_configuration: null
+    request_header_configuration: null
+    oauth_configuration: null

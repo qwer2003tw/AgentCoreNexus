@@ -1,0 +1,51 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Environment variables
+.env
+
+# Testing artifacts (keep test files, ignore cache)
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+*.cover
+.hypothesis/
+.mypy_cache/
+.ruff_cache/
+
+# Development temporary files
+*.log
+*.bak
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Bedrock AgentCore configuration (contains AWS credentials)
+.bedrock_agentcore.yaml
+.bedrock_agentcore/
+
+# Screenshots and temporary images
+screenshots/
+
+# IDE settings (optional - uncomment to ignore)
+# .vscode/
+# .idea/

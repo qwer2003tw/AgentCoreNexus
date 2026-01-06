@@ -1,0 +1,3 @@
+ - 如果要使用 sam deploy，務必改為使用 ./deploy.sh
+ - 執行到 sam deploy 時要加上參數 --no-confirm-changeset
+ - 使用 AWS CLI 時不要分頁 --no-paginate
