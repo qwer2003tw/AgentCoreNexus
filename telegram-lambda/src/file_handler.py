@@ -7,7 +7,7 @@ import boto3
 import requests
 from typing import Dict, Any, Optional, Tuple
 from utils.logger import get_logger
-from secrets_manager import get_secret_value
+from secrets_manager import get_telegram_secrets
 
 logger = get_logger(__name__)
 
@@ -32,9 +32,9 @@ def get_bot_token() -> str:
         Bot token 字串
     """
     try:
-        secret = get_secret_value()
-        if secret:
-            return secret.get('bot_token', '')
+        secrets = get_telegram_secrets()
+        if secrets:
+            return secrets.get('bot_token', '')
         return ''
     except Exception as e:
         logger.error(f"Failed to get bot token: {str(e)}", exc_info=True)
