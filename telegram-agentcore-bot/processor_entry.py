@@ -169,7 +169,7 @@ def process_file_attachments(attachments: list, user_id: str) -> Optional[str]:
                 f"📁 Processing file: {filename}",
                 extra={
                     'user_id': user_id,
-                    'filename': filename,
+                    'file_name': filename,
                     'task': task,
                     's3_url': s3_url
                 }
