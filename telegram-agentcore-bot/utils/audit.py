@@ -202,3 +202,45 @@ class MemoryAuditLogger:
             user_id=user_id,
             details=details
         )
+
+
+def audit_log(
+    user_id: str,
+    action: str,
+    resource: str,
+    details: Optional[Dict[str, Any]] = None
+):
+    """
+    通用審計日誌函數
+    用於記錄各種操作（檔案處理、API 調用等）
+    
+    Args:
+        user_id: 用戶 ID
+        action: 操作類型（如 FILE_PROCESS_START, FILE_PROCESS_SUCCESS）
+        resource: 資源名稱（如檔案名稱）
+        details: 額外資訊
+    
+    Examples:
+        >>> audit_log(
+        ...     user_id='tg:316743844',
+        ...     action='FILE_PROCESS_START',
+        ...     resource='data.csv',
+        ...     details={'task': 'analyze', 's3_url': 's3://...'}
+        ... )
+    """
+    # 雜湊 user_id 保護隱私
+    user_id_hash = hashlib.sha256(user_id.encode()).hexdigest()[:8]
+    
+    audit_entry = {
+        'event_type': 'audit_log',
+        'action': action,
+        'resource': resource,
+        'user_id_hash': user_id_hash,
+        'timestamp': datetime.utcnow().isoformat() + 'Z',
+        'details': details or {}
+    }
+    
+    logger.info(
+        f"Audit: {action} on {resource}",
+        extra=audit_entry
+    )
