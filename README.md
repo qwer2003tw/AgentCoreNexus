@@ -159,6 +159,7 @@ sam build && sam deploy --guided
 - **語言**: Python 3.11
 - **框架**: AWS SAM (Serverless Application Model)
 - **測試**: pytest, unittest
+- **代碼質量**: Ruff (Linter + Formatter)
 - **架構**: Event-Driven, Microservices, Serverless
 
 ## 📖 文件
@@ -205,6 +206,28 @@ sam build && sam deploy --guided
 - 新功能必須包含測試
 - 測試覆蓋率目標: >85%
 - 所有 PR 必須通過測試
+
+### 代碼質量
+
+本專案使用 [Ruff](https://github.com/astral-sh/ruff) 確保代碼品質：
+
+```bash
+# 檢查代碼
+ruff check .
+
+# 自動修復
+ruff check . --fix
+
+# 格式化
+ruff format .
+```
+
+詳細說明請參閱 [代碼質量指南](docs/CODE_QUALITY.md)
+
+**代碼改善成果**（2026-01-07）:
+- telegram-lambda: 1369 → 5 問題（改善 99.6%）
+- telegram-agentcore-bot: 874 → 12 問題（改善 98.6%）
+- **總計**: 2243 → 17 問題（**改善 99.2%**）
 
 ## 📞 支援與貢獻
 

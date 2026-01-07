@@ -2,6 +2,7 @@
 系統提示詞管理
 集中管理所有提示詞，方便維護和更新
 """
+
 import os
 
 # 主要系統提示詞
@@ -29,7 +30,7 @@ SYSTEM_PROMPT = os.getenv(
 3. 提供替代建議（如下載到本地查看）
 
 如果啟用了記憶功能，你會記住用戶的偏好和對話歷史。
-保持回應簡潔明瞭。"""
+保持回應簡潔明瞭。""",
 )
 
 # 錯誤訊息模板
@@ -42,7 +43,7 @@ ERROR_MESSAGES = {
     "invalid_url": "未找到有效的 URL，請提供完整網址",
     "content_extraction_failed": "無法提取頁面內容，可能是動態載入頁面或需要特殊權限",
     "pdf_limitation": "PDF 檔案可能無法完整提取文字內容，建議下載到本地查看",
-    "empty_response": "處理完成，但回應內容為空。請嘗試重新描述您的需求。"
+    "empty_response": "處理完成，但回應內容為空。請嘗試重新描述您的需求。",
 }
 
 # 工具描述
@@ -51,7 +52,7 @@ TOOL_DESCRIPTIONS = {
     "calculator": "執行簡單數學計算（安全版本）",
     "user_info": "取得用戶資訊",
     "current_time": "取得目前台北時間",
-    "browse_website": "瀏覽網站並提取內容"
+    "browse_website": "瀏覽網站並提取內容",
 }
 
 # 瀏覽器相關提示
@@ -60,17 +61,18 @@ BROWSER_PROMPTS = {
     "navigation_success": "成功訪問網站",
     "navigation_failed": "無法訪問網站",
     "content_truncated": "[內容已截斷，完整內容請直接訪問網站]",
-    "pdf_warning": "注意：這是 PDF 檔案，可能無法完整提取文字內容"
+    "pdf_warning": "注意：這是 PDF 檔案，可能無法完整提取文字內容",
 }
+
 
 def get_error_message(error_type: str, **kwargs) -> str:
     """
     取得格式化的錯誤訊息
-    
+
     Args:
         error_type: 錯誤類型
         **kwargs: 格式化參數
-    
+
     Returns:
         格式化後的錯誤訊息
     """
@@ -80,13 +82,14 @@ def get_error_message(error_type: str, **kwargs) -> str:
     except:
         return template
 
+
 def get_browser_prompt(prompt_type: str) -> str:
     """
     取得瀏覽器相關提示
-    
+
     Args:
         prompt_type: 提示類型
-    
+
     Returns:
         對應的提示訊息
     """

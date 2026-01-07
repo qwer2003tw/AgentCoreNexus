@@ -10,10 +10,13 @@
 .clinerules/
 ├── README.md                      # 本說明文件
 ├── DOCUMENTATION_WORKFLOW.md      # 文檔管理規範
+├── PLAN_MODE_METHODOLOGY.md       # Plan Mode 工作方法論
+├── CODE_QUALITY_WORKFLOW.md       # 代碼質量檢查工作流（強制）⭐
 │
 ├── deployment/                    # 專案部署文檔（專案專屬知識）
 │   ├── aws-lambda-telegram-bot-deployment-issues.md
 │   ├── development-and-debugging-guide.md
+│   ├── lambda-development-best-practices.md
 │   └── telegram-bot-quick-reference.md
 │
 └── agents/                        # Agent 行為規則（通用能力）
@@ -46,7 +49,10 @@
 
 ### 2. 工作流規範文件
 - **用途**：定義專案的工作流程和協作規範
-- **例如**：DOCUMENTATION_WORKFLOW.md
+- **例如**：
+  - `DOCUMENTATION_WORKFLOW.md` - 文檔管理工作流
+  - `CODE_QUALITY_WORKFLOW.md` - 代碼質量檢查工作流（⭐ 強制性）
+  - `PLAN_MODE_METHODOLOGY.md` - Plan Mode 方法論
 - **特點**：適用於所有 agents 的通用規範
 
 ### 3. 專案專屬知識（deployment/）
@@ -153,6 +159,8 @@ rm -rf dev-in-progress/clinerules-cleanup
 
 ### 核心規範
 - [DOCUMENTATION_WORKFLOW.md](./DOCUMENTATION_WORKFLOW.md) - 文檔管理工作流規範
+- [CODE_QUALITY_WORKFLOW.md](./CODE_QUALITY_WORKFLOW.md) - 代碼質量檢查工作流（⭐ 強制性）
+- [PLAN_MODE_METHODOLOGY.md](./PLAN_MODE_METHODOLOGY.md) - Plan Mode 方法論
 - [dev-reports/README.md](../dev-reports/README.md) - 報告使用說明
 - [dev-in-progress/README.md](../dev-in-progress/README.md) - 協作開發說明
 

@@ -1,0 +1,67 @@
+[tool.ruff]
+# 專案配置
+target-version = "py311"
+line-length = 100  # 稍微寬鬆，適合 Lambda 代碼
+exclude = [
+    ".git",
+    ".aws-sam",
+    ".venv",
+    "venv",
+    "__pycache__",
+    "*.egg-info",
+    ".pytest_cache",
+    "build",
+    "dist",
+]
+
+[tool.ruff.lint]
+# 漸進式規則集（從基礎開始）
+select = [
+    "E",     # pycodestyle errors
+    "F",     # pyflakes
+    "I",     # isort (import sorting)
+    "N",     # pep8-naming
+    "UP",    # pyupgrade (modern Python syntax)
+    "W",     # pycodestyle warnings
+    "B",     # flake8-bugbear (bug detection)
+    "C4",    # flake8-comprehensions
+    "SIM",   # flake8-simplify
+]
+
+# Lambda 特定例外和常見例外
+ignore = [
+    "E501",    # line-too-long (由 formatter 處理)
+    "PLW0603", # global-statement (Lambda 連接池模式)
+    "E722",    # bare-except (某些場景下的最外層錯誤處理合理)
+    "SIM108",  # if-else-block-instead-of-if-exp (可讀性優先)
+    "SIM102",  # collapsible-if (可讀性優先)
+    "SIM117",  # multiple-with-statements (測試代碼可讀性)
+]
+
+[tool.ruff.lint.per-file-ignores]
+# 測試文件特殊規則
+"tests/*" = ["E501", "S101", "PLR2004", "N802", "N806", "B017"]
+"*/tests/*" = ["E501", "S101", "PLR2004", "N802", "N806", "B017"]
+# 腳本可以有更寬鬆的規則
+"scripts/*" = ["T201"]
+"*/scripts/*" = ["T201"]
+# 配置文件
+"**/conftest.py" = ["E402"]
+
+[tool.ruff.lint.isort]
+# Import 排序配置
+known-first-party = ["agents", "services", "tools", "utils", "config"]
+section-order = [
+    "future",
+    "standard-library",
+    "third-party",
+    "first-party",
+    "local-folder",
+]
+
+[tool.ruff.format]
+# 格式化配置
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"
+skip-magic-trailing-comma = false
