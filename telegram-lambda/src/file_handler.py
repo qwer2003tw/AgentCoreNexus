@@ -200,14 +200,17 @@ def process_file_attachment(
         }
     )
     
+    # 判斷是否為圖片
+    attachment_type = _detect_attachment_type(filename, mime_type)
+    
     # 基礎附件資訊
     attachment = {
-        "type": "document",
+        "type": attachment_type,
         "file_id": file_id,
         "file_name": filename,
         "mime_type": mime_type or "application/octet-stream",
         "file_size": file_size or 0,
-        "task": caption if caption else "摘要此檔案的內容"
+        "task": caption if caption else ("請描述這張圖片的內容。" if attachment_type == "photo" else "摘要此檔案的內容")
     }
     
     # 1. 下載檔案
@@ -260,6 +263,37 @@ def process_file_attachment(
     )
     
     return attachment
+
+
+def _detect_attachment_type(filename: str, mime_type: Optional[str] = None) -> str:
+    """
+    根據檔案名稱和 MIME 類型判斷附件類型
+    
+    Args:
+        filename: 檔案名稱
+        mime_type: MIME 類型（可選）
+    
+    Returns:
+        附件類型：'photo' 或 'document'
+    """
+    import os
+    
+    # 支援的圖片副檔名
+    image_extensions = {'.jpg', '.jpeg', '.png', '.gif', '.webp'}
+    
+    # 支援的圖片 MIME 類型
+    image_mime_types = {'image/jpeg', 'image/png', 'image/gif', 'image/webp'}
+    
+    # 檢查副檔名
+    ext = os.path.splitext(filename)[1].lower()
+    if ext in image_extensions:
+        return 'photo'
+    
+    # 檢查 MIME 類型
+    if mime_type and mime_type in image_mime_types:
+        return 'photo'
+    
+    return 'document'
 
 
 def validate_file_size(file_size: int, max_size: int = 20 * 1024 * 1024) -> Tuple[bool, str]:
