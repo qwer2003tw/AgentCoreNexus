@@ -109,3 +109,8 @@ telegram-agentcore-bot/screenshots/*.jpg
 tmp/
 temp/
 *.tmp
+
+# Development in progress - ignore personal drafts
+*.draft
+*.wip
+*~

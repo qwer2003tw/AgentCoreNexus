@@ -27,6 +27,11 @@ class Settings:
         self.BROWSER_TIMEOUT = int(os.getenv("BROWSER_TIMEOUT", "30000"))
         self.BROWSER_ENABLED = os.getenv("BROWSER_ENABLED", "true").lower() == "true"
         
+        # 檔案處理配置
+        self.FILE_ENABLED = os.getenv("FILE_ENABLED", "false").lower() == "true"
+        self.FILE_STORAGE_BUCKET = os.getenv("FILE_STORAGE_BUCKET", "")
+        self.FILE_SESSION_TIMEOUT = int(os.getenv("FILE_SESSION_TIMEOUT", "300"))  # 5 分鐘
+        
         # Agent 配置
         self.AGENT_NAME = os.getenv("AGENT_NAME", "Telegram Agent")
         self.DEFAULT_SESSION_ID = os.getenv("DEFAULT_SESSION_ID", "default")

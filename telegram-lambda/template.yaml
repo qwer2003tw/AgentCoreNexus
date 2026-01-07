@@ -5,13 +5,29 @@ Description: >
   
   Telegram Webhook Receiver with Allowlist validation and SQS forwarding
 
-# Parameters for sensitive data
+# Parameters for sensitive data and environment configuration
 Parameters:
   TelegramBotToken:
     Type: String
     NoEcho: true
     Description: Telegram Bot Token (will be stored in Secrets Manager)
     Default: ''
+  
+  Environment:
+    Type: String
+    Default: prod
+    AllowedValues:
+      - dev
+      - staging
+      - prod
+    Description: Environment name for resource isolation
+  
+  FileRetentionDays:
+    Type: Number
+    Default: 30
+    MinValue: 1
+    MaxValue: 365
+    Description: Number of days to retain files in S3 before automatic deletion
 
 # Global configuration for all functions
 Globals:
@@ -26,6 +42,40 @@ Globals:
         LOG_LEVEL: INFO
 
 Resources:
+  # ==================== S3 Bucket for File Storage ====================
+  FileStorageBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub 'telegram-bot-files-${AWS::AccountId}-${Environment}'
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      VersioningConfiguration:
+        Status: Enabled
+      LifecycleConfiguration:
+        Rules:
+          - Id: DeleteOldFiles
+            Status: Enabled
+            ExpirationInDays: !Ref FileRetentionDays
+          - Id: DeleteOldVersions
+            Status: Enabled
+            NoncurrentVersionExpirationInDays: 7
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Service
+          Value: telegram-lambda
+        - Key: Component
+          Value: file-storage
+        - Key: Purpose
+          Value: telegram-file-uploads
+
   # EventBridge - Universal Event Bus for multi-channel messaging
   UniversalEventBus:
     Type: AWS::Events::EventBus
@@ -74,6 +124,8 @@ Resources:
           ALLOWLIST_TABLE_NAME: telegram-allowlist
           STACK_NAME: !Ref AWS::StackName
           EVENT_BUS_NAME: !Ref UniversalEventBus
+          FILE_STORAGE_BUCKET: !Ref FileStorageBucket
+          ENVIRONMENT: !Ref Environment
       Policies:
         - DynamoDBReadPolicy:
             TableName: telegram-allowlist
@@ -95,6 +147,11 @@ Resources:
                 - events:PutEvents
               Resource:
                 - !GetAtt UniversalEventBus.Arn
+            - Effect: Allow
+              Action:
+                - s3:PutObject
+                - s3:GetObject
+              Resource: !Sub '${FileStorageBucket.Arn}/*'
       Events:
         WebhookApi:
           Type: Api
@@ -548,3 +605,15 @@ Outputs:
   MessageCompletedRuleArn:
     Description: EventBridge Rule ARN for message.completed events
     Value: !GetAtt MessageCompletedRule.Arn
+
+  FileStorageBucketName:
+    Description: S3 Bucket name for file storage
+    Value: !Ref FileStorageBucket
+    Export:
+      Name: !Sub '${AWS::StackName}-FileStorageBucket'
+
+  FileStorageBucketArn:
+    Description: ARN of the file storage bucket
+    Value: !GetAtt FileStorageBucket.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-FileStorageBucketArn'

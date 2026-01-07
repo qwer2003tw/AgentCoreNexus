@@ -10,13 +10,15 @@ import datetime
 from typing import Dict, Any, Optional
 import boto3
 from telegram import Update
-from allowlist import check_allowed
+from allowlist import check_allowed, check_file_permission
 from sqs_client import send_to_queue
 from secrets_manager import get_telegram_secret_token
 from commands.router import CommandRouter
+from file_handler import process_file_attachment
 from commands.handlers.debug_handler import DebugCommandHandler
 from commands.handlers.info_handler import InfoCommandHandler
 from commands.handlers.admin_handler import AdminCommandHandler
+from commands.handlers.new_handler import NewCommandHandler
 from utils.logger import get_logger
 from utils.response import create_response
 from utils.metrics import (
@@ -115,23 +117,117 @@ def normalize_message(raw_data: Dict[str, Any], channel: str, event: Dict[str, A
         chat = msg.get('chat') or {}
         text = msg.get('text', '')
         caption = msg.get('caption', '')
+        chat_id = chat.get('id')
+        message_id = msg.get('message_id')
+        
+        # 檢查是否有檔案權限（用於處理附件）
+        has_file_permission = check_file_permission(chat_id) if chat_id else False
         
         # 判斷訊息類型
         message_type = 'text'
         attachments = []
+        
         if msg.get('photo'):
             message_type = 'image'
-            attachments.append({'type': 'photo', 'file_id': msg['photo'][-1].get('file_id')})
+            photo = msg['photo'][-1]  # 最高解析度
+            
+            if has_file_permission:
+                # 有權限：下載並上傳到 S3
+                attachment = process_file_attachment(
+                    file_id=photo.get('file_id'),
+                    filename='photo.jpg',
+                    chat_id=chat_id,
+                    message_id=message_id,
+                    mime_type='image/jpeg',
+                    file_size=photo.get('file_size'),
+                    caption=caption
+                )
+            else:
+                # 無權限：只保留基本資訊
+                attachment = {
+                    'type': 'photo',
+                    'file_id': photo.get('file_id'),
+                    'permission_denied': True
+                }
+            
+            attachments.append(attachment)
+            
         elif msg.get('document'):
             message_type = 'file'
-            attachments.append({'type': 'document', 'file_id': msg['document'].get('file_id')})
+            doc = msg['document']
+            
+            if has_file_permission:
+                # 有權限：下載並上傳到 S3
+                attachment = process_file_attachment(
+                    file_id=doc.get('file_id'),
+                    filename=doc.get('file_name', 'unknown'),
+                    chat_id=chat_id,
+                    message_id=message_id,
+                    mime_type=doc.get('mime_type'),
+                    file_size=doc.get('file_size'),
+                    caption=caption
+                )
+            else:
+                # 無權限：只保留基本資訊
+                attachment = {
+                    'type': 'document',
+                    'file_id': doc.get('file_id'),
+                    'file_name': doc.get('file_name'),
+                    'permission_denied': True
+                }
+            
+            attachments.append(attachment)
+            
         elif msg.get('video'):
             message_type = 'video'
-            attachments.append({'type': 'video', 'file_id': msg['video'].get('file_id')})
+            video = msg['video']
+            
+            if has_file_permission:
+                # 有權限：下載並上傳到 S3
+                attachment = process_file_attachment(
+                    file_id=video.get('file_id'),
+                    filename='video.mp4',
+                    chat_id=chat_id,
+                    message_id=message_id,
+                    mime_type=video.get('mime_type', 'video/mp4'),
+                    file_size=video.get('file_size'),
+                    caption=caption
+                )
+            else:
+                # 無權限：只保留基本資訊
+                attachment = {
+                    'type': 'video',
+                    'file_id': video.get('file_id'),
+                    'permission_denied': True
+                }
+            
+            attachments.append(attachment)
+            
         elif msg.get('audio') or msg.get('voice'):
             message_type = 'audio'
-            file_id = msg.get('audio', {}).get('file_id') or msg.get('voice', {}).get('file_id')
-            attachments.append({'type': 'audio', 'file_id': file_id})
+            audio_data = msg.get('audio') or msg.get('voice', {})
+            file_id = audio_data.get('file_id')
+            
+            if has_file_permission and file_id:
+                # 有權限：下載並上傳到 S3
+                attachment = process_file_attachment(
+                    file_id=file_id,
+                    filename='audio.mp3',
+                    chat_id=chat_id,
+                    message_id=message_id,
+                    mime_type=audio_data.get('mime_type', 'audio/mpeg'),
+                    file_size=audio_data.get('file_size'),
+                    caption=caption
+                )
+            else:
+                # 無權限：只保留基本資訊
+                attachment = {
+                    'type': 'audio',
+                    'file_id': file_id,
+                    'permission_denied': True
+                }
+            
+            attachments.append(attachment)
         
         return {
             "messageId": str(uuid.uuid4()),
@@ -265,6 +361,7 @@ def get_command_router() -> CommandRouter:
         _command_router.register(DebugCommandHandler())
         _command_router.register(InfoCommandHandler())
         _command_router.register(AdminCommandHandler())
+        _command_router.register(NewCommandHandler())
         logger.info("Command router initialized with handlers")
     return _command_router
 

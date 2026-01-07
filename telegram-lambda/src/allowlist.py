@@ -306,3 +306,124 @@ def get_stats() -> dict:
     except ClientError as e:
         logger.error(f"Failed to get stats: {str(e)}", exc_info=True)
         return {}
+
+
+def check_file_permission(chat_id: int) -> bool:
+    """
+    檢查用戶是否有檔案讀取權限
+    
+    Args:
+        chat_id: Telegram chat ID
+        
+    Returns:
+        bool: True 如果有權限
+    """
+    try:
+        response = table.get_item(Key={'chat_id': chat_id})
+        
+        if 'Item' not in response:
+            logger.info(
+                "User not in allowlist, no file permission",
+                extra={
+                    'chat_id': chat_id,
+                    'event_type': 'file_permission_denied_not_in_allowlist'
+                }
+            )
+            return False
+        
+        item = response['Item']
+        
+        # 檢查是否啟用
+        if not item.get('enabled', False):
+            logger.info(
+                "User disabled, no file permission",
+                extra={
+                    'chat_id': chat_id,
+                    'event_type': 'file_permission_denied_disabled'
+                }
+            )
+            return False
+        
+        # 檢查權限（如果 permissions 欄位不存在，預設為 False）
+        permissions = item.get('permissions', {})
+        has_permission = permissions.get('file_reader', False)
+        
+        logger.info(
+            f"File permission check: {has_permission}",
+            extra={
+                'chat_id': chat_id,
+                'has_permission': has_permission,
+                'event_type': 'file_permission_check'
+            }
+        )
+        
+        return has_permission
+        
+    except ClientError as e:
+        logger.error(
+            f"DynamoDB error during permission check: {str(e)}",
+            extra={
+                'chat_id': chat_id,
+                'event_type': 'file_permission_check_error'
+            },
+            exc_info=True
+        )
+        return False
+    except Exception as e:
+        logger.error(
+            f"Unexpected error in permission check: {str(e)}",
+            extra={
+                'chat_id': chat_id,
+                'event_type': 'file_permission_check_error'
+            },
+            exc_info=True
+        )
+        return False
+
+
+def update_file_permission(chat_id: int, enabled: bool) -> bool:
+    """
+    更新用戶的檔案讀取權限（管理員指令使用）
+    
+    Args:
+        chat_id: Telegram chat ID
+        enabled: True 啟用，False 禁用
+        
+    Returns:
+        bool: True 如果成功
+    """
+    try:
+        table.update_item(
+            Key={'chat_id': chat_id},
+            UpdateExpression='SET permissions.file_reader = :enabled',
+            ExpressionAttributeValues={':enabled': enabled}
+        )
+        logger.info(
+            f"File permission updated",
+            extra={
+                'chat_id': chat_id,
+                'enabled': enabled,
+                'event_type': 'file_permission_updated'
+            }
+        )
+        return True
+    except ClientError as e:
+        logger.error(
+            f"Failed to update file permission: {str(e)}", 
+            extra={
+                'chat_id': chat_id,
+                'event_type': 'file_permission_update_failed'
+            },
+            exc_info=True
+        )
+        return False
+    except Exception as e:
+        logger.error(
+            f"Unexpected error updating file permission: {str(e)}",
+            extra={
+                'chat_id': chat_id,
+                'event_type': 'file_permission_update_failed'
+            },
+            exc_info=True
+        )
+        return False

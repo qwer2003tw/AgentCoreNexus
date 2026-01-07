@@ -163,10 +163,25 @@ sam build && sam deploy --guided
 
 ## 📖 文件
 
-- **[架構設計指南](AgentCore_Nexus_Integration_Guide.md)**: 完整的技術架構與實作細節
-- **[部署指南](telegram-lambda/DEPLOYMENT_GUIDE_EventBridge.md)**: AWS 部署步驟與驗證
-- **[telegram-lambda 文件](telegram-lambda/docs/)**: Adapter 組件文件
-- **[telegram-agentcore-bot 文件](telegram-agentcore-bot/)**: Processor 組件文件
+### 核心文檔
+- **[文檔索引](docs/README.md)** - 完整文檔目錄
+- **[架構設計指南](docs/architecture-guide.md)** - 系統架構與技術細節
+- **[部署指南](docs/deployment-guide.md)** - AWS 部署步驟
+- **[管理員命令](docs/admin-commands.md)** - 管理功能說明
+- **[瀏覽器實現](docs/browser-implementation.md)** - Browser Sandbox 使用
+
+### 組件文檔
+- **[telegram-lambda 文件](telegram-lambda/docs/)** - Webhook 接收器文檔
+- **[telegram-agentcore-bot](telegram-agentcore-bot/)** - AI 處理器文檔
+
+### 開發報告
+- **[dev-reports](dev-reports/)** - 已完成功能的開發報告歸檔
+  - [2026-01 Browser Sandbox](dev-reports/2026-01-browser-sandbox/REPORT.md)
+  - [2026-01 Memory 功能](dev-reports/2026-01-memory-feature/REPORT.md)
+  - [2026-01 系統升級](dev-reports/2026-01-system-upgrade/REPORT.md)
+
+### 開發中
+- **[dev-in-progress](dev-in-progress/)** - 正在開發的功能（多平台 agents 協作）
 
 ## 🛠️ 開發指引
 

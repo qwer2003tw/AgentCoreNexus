@@ -26,6 +26,11 @@ Parameters:
     Description: Optional Bedrock AgentCore Memory ID
     Default: ''
 
+  ReceiverStackName:
+    Type: String
+    Description: Name of the telegram-lambda-receiver stack for importing S3 bucket
+    Default: 'telegram-lambda-receiver'
+
 Globals:
   Function:
     Timeout: 300
@@ -54,12 +59,18 @@ Resources:
           BEDROCK_MODEL_ID: !Ref BedrockModelId
           BEDROCK_AGENTCORE_MEMORY_ID: !Ref BedrockAgentCoreMemoryId
           BROWSER_ENABLED: 'true'
+          FILE_ENABLED: 'true'
+          FILE_STORAGE_BUCKET: !ImportValue 
+            Fn::Sub: '${ReceiverStackName}-FileStorageBucket'
       Policies:
         - Statement:
+            # EventBridge
             - Effect: Allow
               Action:
                 - events:PutEvents
               Resource: '*'
+            
+            # Bedrock AI
             - Effect: Allow
               Action:
                 - bedrock:InvokeModel
@@ -67,6 +78,8 @@ Resources:
                 - bedrock:InvokeAgent
                 - bedrock:Retrieve
               Resource: '*'
+            
+            # Browser Sandbox
             - Effect: Allow
               Action:
                 - bedrock-agentcore:StartBrowserSession
@@ -74,6 +87,43 @@ Resources:
                 - bedrock-agentcore:GetBrowserSession
                 - bedrock-agentcore-control:*
               Resource: '*'
+            
+            # Code Interpreter (File Processing)
+            - Effect: Allow
+              Action:
+                - bedrock-agentcore:StartCodeInterpreterSession
+                - bedrock-agentcore:StopCodeInterpreterSession
+                - bedrock-agentcore:InvokeCodeInterpreter
+              Resource: '*'
+            
+            # Memory
+            - Effect: Allow
+              Action:
+                - bedrock-agentcore:ListEvents
+                - bedrock-agentcore:GetEvent
+                - bedrock-agentcore:PutEvent
+                - bedrock-agentcore:CreateEvent
+                - bedrock-agentcore:DeleteEvent
+                - bedrock-agentcore:GetMemory
+                - bedrock-agentcore:UpdateMemory
+                - bedrock-agentcore:CreateMemory
+                - bedrock-agentcore:ListMemories
+                - bedrock-agentcore:ListSessions
+                - bedrock-agentcore:GetSession
+                - bedrock-agentcore:CreateSession
+                - bedrock-agentcore:ListMemoryRecords
+                - bedrock-agentcore:GetMemoryRecord
+                - bedrock-agentcore:RetrieveMemoryRecords
+              Resource: '*'
+            
+            # S3 File Storage (Read Only)
+            - Effect: Allow
+              Action:
+                - s3:GetObject
+              Resource: !Sub
+                - '${BucketArn}/*'
+                - BucketArn: !ImportValue 
+                    Fn::Sub: '${ReceiverStackName}-FileStorageBucketArn'
       Tags:
         Service: telegram-agentcore-bot
         Component: processor
