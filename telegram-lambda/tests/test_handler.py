@@ -462,9 +462,12 @@ class TestLambdaHandler:
         body = json.loads(response["body"])
         assert body["status"] == "command_handled"
 
+    @patch("src.handler.send_to_queue")
     @patch("src.handler.check_allowed")
     @patch("src.commands.handlers.debug_handler.telegram_client.send_debug_info")
-    def test_debug_command_send_failure(self, mock_send_debug, mock_check_allowed, mock_context):
+    def test_debug_command_send_failure(
+        self, mock_send_debug, mock_check_allowed, mock_send_to_queue, mock_context
+    ):
         """測試 debug 指令發送失敗"""
         event = {
             "headers": {},
@@ -490,14 +493,15 @@ class TestLambdaHandler:
         # 設定 mock 返回失敗
         mock_send_debug.return_value = False
         mock_check_allowed.return_value = True
+        mock_send_to_queue.return_value = False  # SQS 也失敗
 
         # 執行
         response = lambda_handler(event, mock_context)
 
-        # 驗證（指令處理器返回 False，但 Lambda 仍然返回 200）
+        # 驗證：當 debug 發送失敗，會繼續正常流程，如果 SQS 也失敗則返回 sqs_failed
         assert response["statusCode"] == 200
         body = json.loads(response["body"])
-        assert body["status"] == "command_handled"
+        assert body["status"] == "sqs_failed"
 
     @patch("src.handler.send_to_queue")
     @patch("src.handler.check_allowed")

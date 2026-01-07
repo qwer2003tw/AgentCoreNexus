@@ -39,7 +39,7 @@ class TestCheckPermission:
         result = check_permission(123, "test_user", Permission.NONE)
         assert result is True
 
-    @patch("auth.permissions.is_admin")
+    @patch("auth.admin_list.is_admin")
     def test_admin_has_all_permissions(self, mock_is_admin):
         """測試 admin 擁有所有權限"""
         mock_is_admin.return_value = True
@@ -48,7 +48,7 @@ class TestCheckPermission:
         assert check_permission(123, "admin", Permission.ALLOWLIST) is True
         assert check_permission(123, "admin", Permission.ADMIN) is True
 
-    @patch("auth.permissions.is_admin")
+    @patch("auth.admin_list.is_admin")
     @patch("auth.permissions.check_allowed")
     def test_allowlist_permission_check(self, mock_check_allowed, mock_is_admin):
         """測試 allowlist 權限檢查"""
@@ -59,7 +59,7 @@ class TestCheckPermission:
         assert result is True
         mock_check_allowed.assert_called_once_with(123, "user")
 
-    @patch("auth.permissions.is_admin")
+    @patch("auth.admin_list.is_admin")
     @patch("auth.permissions.check_allowed")
     def test_allowlist_permission_denied(self, mock_check_allowed, mock_is_admin):
         """測試 allowlist 權限拒絕"""
@@ -69,7 +69,7 @@ class TestCheckPermission:
         result = check_permission(123, "user", Permission.ALLOWLIST)
         assert result is False
 
-    @patch("auth.permissions.is_admin")
+    @patch("auth.admin_list.is_admin")
     def test_admin_permission_denied_for_non_admin(self, mock_is_admin):
         """測試非 admin 用戶無法通過 ADMIN 權限檢查"""
         mock_is_admin.return_value = False

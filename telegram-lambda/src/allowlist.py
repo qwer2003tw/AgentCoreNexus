@@ -346,10 +346,22 @@ def update_file_permission(chat_id: int, enabled: bool) -> bool:
         bool: True 如果成功
     """
     try:
+        # 讀取現有權限
+        response = table.get_item(Key={"chat_id": chat_id})
+        item = response.get("Item", {})
+
+        # 獲取或創建 permissions Map
+        permissions = item.get("permissions", {})
+        permissions["file_reader"] = enabled
+
+        # 更新整個 permissions Map
         table.update_item(
             Key={"chat_id": chat_id},
-            UpdateExpression="SET permissions.file_reader = :enabled",
-            ExpressionAttributeValues={":enabled": enabled},
+            UpdateExpression="SET #perms = :perms",
+            ExpressionAttributeNames={
+                "#perms": "permissions"  # permissions 是保留字
+            },
+            ExpressionAttributeValues={":perms": permissions},
         )
         logger.info(
             "File permission updated",
