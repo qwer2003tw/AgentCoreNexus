@@ -193,7 +193,7 @@ def process_file_attachment(
         extra={
             'event_type': 'file_processing_start',
             'file_id': file_id,
-            'filename': filename,
+            'file_name': filename,
             'chat_id': chat_id,
             'message_id': message_id,
             'file_size': file_size
