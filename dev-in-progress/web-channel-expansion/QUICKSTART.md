@@ -14,47 +14,50 @@
 
 ---
 
-## 🚀 一鍵部署腳本
+## 🚀 使用 Makefile 部署（推薦）
 
-### Step 1: 部署 Backend
+### Step 1: 部署 Web Channel Stack（含前端基礎設施）
 
 ```bash
-cd /home/ec2-user/Projects/AgentCoreNexus/dev-in-progress/web-channel-expansion
+cd /home/ec2-user/Projects/AgentCoreNexus
 
-# 運行部署腳本
-./scripts/deploy-backend.sh
+# 部署 Web 通道層（包含 S3 + CloudFront + 所有 Lambda）
+make deploy-web
 ```
 
-### Step 2: 部署 Frontend
+### Step 2: 建構並上傳前端
 
 ```bash
-# 運行部署腳本
-./scripts/deploy-frontend.sh
+# 快速更新前端（建構並上傳到 S3）
+make update-frontend
 ```
 
 ### Step 3: 創建首個用戶
 
 ```bash
 # 運行用戶創建腳本
-./scripts/create-admin-user.sh admin@example.com
+./dev-in-progress/web-channel-expansion/scripts/create-admin-user.sh admin@example.com
 ```
 
 ---
 
-## 📋 詳細步驟（如果腳本失敗）
+## 📋 或手動部署（詳細步驟）
 
-### Backend 部署
+---
+
+### Backend 部署（手動步驟）
 
 ```bash
-# 1. 進入基礎設施目錄
+cd /home/ec2-user/Projects/AgentCoreNexus
+cd dev-in-progress/web-channel-expansion
+
+# 1. 安裝 Lambda 依賴
+cd lambdas/websocket && pip3.11 install -r requirements.txt -t . && cd ../..
+cd lambdas/rest && pip3.11 install -r requirements.txt -t . && cd ../..
+cd lambdas/router && pip3.11 install -r requirements.txt -t . && cd ../..
+
+# 2. 建構和部署
 cd infrastructure
-
-# 2. 安裝 Lambda 依賴
-cd ../lambdas/websocket && pip3.11 install -r requirements.txt -t . && cd ../../infrastructure
-cd ../lambdas/rest && pip3.11 install -r requirements.txt -t . && cd ../../infrastructure  
-cd ../lambdas/router && pip3.11 install -r requirements.txt -t . && cd ../../infrastructure
-
-# 3. 部署
 sam build -t web-channel-template.yaml
 sam deploy \
   --template-file web-channel-template.yaml \
@@ -65,16 +68,28 @@ sam deploy \
   --parameter-overrides \
     Environment=dev \
     ExistingEventBusName=telegram-lambda-receiver-events \
-    ExistingProcessorFunctionName=telegram-unified-bot-processor \
   --no-confirm-changeset
+
+# 這會創建：
+# - 所有 Lambda 函數
+# - DynamoDB tables  
+# - API Gateway
+# - S3 bucket（前端）
+# - CloudFront distribution
 ```
 
-### Frontend 部署
+### Frontend 建構和上傳
 
 ```bash
-cd frontend
+cd ../frontend
 
-# 1. 獲取 API endpoints
+# 1. 獲取 API endpoints 和 bucket 名稱
+BUCKET_NAME=$(aws cloudformation describe-stacks \
+  --region us-west-2 \
+  --stack-name agentcore-web-channel \
+  --query 'Stacks[0].Outputs[?OutputKey==`FrontendBucketName`].OutputValue' \
+  --output text)
+
 REST_API=$(aws cloudformation describe-stacks \
   --region us-west-2 \
   --stack-name agentcore-web-channel \
@@ -95,13 +110,17 @@ echo "VITE_WS_ENDPOINT=$WS_API" >> .env
 npm install
 npm run build
 
-# 4. 部署到 S3（需要先創建 bucket）
-BUCKET_NAME="agentcore-web-$(date +%s)"
-aws s3 mb s3://$BUCKET_NAME --region us-west-2
-aws s3 website s3://$BUCKET_NAME --index-document index.html
-aws s3 sync dist/ s3://$BUCKET_NAME/
+# 4. 上傳到 S3（bucket 已由 SAM 創建）
+aws s3 sync dist/ s3://$BUCKET_NAME/ --delete
 
-echo "Frontend URL: http://$BUCKET_NAME.s3-website-us-west-2.amazonaws.com"
+# 5. 獲取前端 URL
+FRONTEND_URL=$(aws cloudformation describe-stacks \
+  --region us-west-2 \
+  --stack-name agentcore-web-channel \
+  --query 'Stacks[0].Outputs[?OutputKey==`FrontendUrl`].OutputValue' \
+  --output text)
+
+echo "Frontend URL: $FRONTEND_URL"
 ```
 
 ### 創建 Admin 用戶

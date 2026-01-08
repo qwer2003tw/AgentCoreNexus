@@ -1,9 +1,10 @@
 #!/bin/bash
-# Frontend 部署腳本
+# Frontend 快速更新腳本
+# 用於開發時快速測試前端修改（不重新部署 stack）
 
 set -e
 
-echo "🚀 開始部署 Web Channel Frontend..."
+echo "📦 快速更新前端..."
 
 # 定位到專案根目錄
 cd "$(dirname "$0")/.."
@@ -16,8 +17,27 @@ if ! aws cloudformation describe-stacks --region us-west-2 --stack-name agentcor
     exit 1
 fi
 
-# 2. 獲取 API endpoints
-echo "📡 獲取 API endpoints..."
+# 2. 獲取 Stack Outputs（S3 bucket、CloudFront、API endpoints）
+echo "📡 獲取 Stack Outputs..."
+
+BUCKET_NAME=$(aws cloudformation describe-stacks \
+  --region us-west-2 \
+  --stack-name agentcore-web-channel \
+  --query 'Stacks[0].Outputs[?OutputKey==`FrontendBucketName`].OutputValue' \
+  --output text)
+
+DISTRIBUTION_ID=$(aws cloudformation describe-stacks \
+  --region us-west-2 \
+  --stack-name agentcore-web-channel \
+  --query 'Stacks[0].Outputs[?OutputKey==`CloudFrontDistributionId`].OutputValue' \
+  --output text)
+
+FRONTEND_URL=$(aws cloudformation describe-stacks \
+  --region us-west-2 \
+  --stack-name agentcore-web-channel \
+  --query 'Stacks[0].Outputs[?OutputKey==`FrontendUrl`].OutputValue' \
+  --output text)
+
 REST_API=$(aws cloudformation describe-stacks \
   --region us-west-2 \
   --stack-name agentcore-web-channel \
@@ -30,8 +50,15 @@ WS_API=$(aws cloudformation describe-stacks \
   --query 'Stacks[0].Outputs[?OutputKey==`WebSocketApiEndpoint`].OutputValue' \
   --output text)
 
-echo "REST API: $REST_API"
-echo "WebSocket API: $WS_API"
+if [ -z "$BUCKET_NAME" ] || [ -z "$DISTRIBUTION_ID" ]; then
+    echo "❌ 無法從 Stack 讀取 S3 bucket 或 CloudFront distribution"
+    echo "請確認 Stack 已完整部署"
+    exit 1
+fi
+
+echo "S3 Bucket: $BUCKET_NAME"
+echo "CloudFront: $DISTRIBUTION_ID"
+echo "Frontend URL: $FRONTEND_URL"
 
 # 3. 配置環境變數
 echo "⚙️  配置環境變數..."
@@ -42,75 +69,54 @@ VITE_WS_ENDPOINT=$WS_API
 VITE_DEBUG=false
 EOF
 
-# 4. 安裝依賴
-echo "📦 安裝依賴..."
-npm install --quiet
+# 4. 安裝依賴（如果需要）
+echo "📦 檢查依賴..."
+if [ ! -d "node_modules" ]; then
+    echo "安裝依賴..."
+    npm install --quiet
+fi
 
 # 5. 建構
 echo "🔨 建構生產版本..."
 npm run build
 
-# 6. 創建 S3 bucket
-echo "🪣 創建 S3 bucket..."
-BUCKET_NAME="agentcore-web-frontend-$(date +%s)"
-
-aws s3 mb s3://$BUCKET_NAME --region us-west-2
-
-# 配置為靜態網站
-aws s3 website s3://$BUCKET_NAME \
-  --index-document index.html \
-  --error-document index.html
-
-# 設置公開讀取權限
-aws s3api put-bucket-policy --bucket $BUCKET_NAME --policy "$(cat <<EOF
-{
-  "Version": "2012-10-17",
-  "Statement": [{
-    "Sid": "PublicReadGetObject",
-    "Effect": "Allow",
-    "Principal": "*",
-    "Action": "s3:GetObject",
-    "Resource": "arn:aws:s3:::$BUCKET_NAME/*"
-  }]
-}
-EOF
-)"
-
-# 7. 上傳前端
+# 6. 上傳到 S3
 echo "📤 上傳到 S3..."
 aws s3 sync dist/ s3://$BUCKET_NAME/ --delete --quiet
 
-# 設置 cache control
+# 設置 cache control（除了 index.html）
 aws s3 cp dist/ s3://$BUCKET_NAME/ \
   --recursive \
   --cache-control "public, max-age=31536000" \
   --exclude "index.html" \
+  --exclude "*.map" \
   --quiet
 
 # index.html 不要 cache
 aws s3 cp dist/index.html s3://$BUCKET_NAME/ \
-  --cache-control "no-cache" \
+  --cache-control "no-cache, must-revalidate" \
   --quiet
 
-# 8. 保存配置
-cat > ../frontend-config.json << EOF
-{
-  "bucket_name": "$BUCKET_NAME",
-  "frontend_url": "http://$BUCKET_NAME.s3-website-us-west-2.amazonaws.com",
-  "rest_api": "$REST_API",
-  "ws_api": "$WS_API"
-}
-EOF
+echo "✅ 上傳完成"
+
+# 7. Invalidate CloudFront cache
+echo "🔄 清除 CloudFront cache..."
+INVALIDATION_ID=$(aws cloudfront create-invalidation \
+  --distribution-id $DISTRIBUTION_ID \
+  --paths "/*" \
+  --query 'Invalidation.Id' \
+  --output text)
+
+echo "Invalidation ID: $INVALIDATION_ID"
+echo "⏳ CloudFront cache 清除中（需要 1-2 分鐘生效）..."
 
 echo ""
-echo "✅ Frontend 部署完成！"
+echo "✅ 前端更新完成！"
 echo ""
 echo "📋 訪問資訊："
-echo "Frontend URL: http://$BUCKET_NAME.s3-website-us-west-2.amazonaws.com"
-echo "REST API: $REST_API"
-echo "WebSocket API: $WS_API"
+echo "Frontend URL: $FRONTEND_URL"
 echo ""
-echo "配置已保存到 frontend-config.json"
-echo ""
-echo "下一步："
-echo "運行 ./scripts/create-admin-user.sh <email> 創建管理員帳號"
+echo "💡 提示："
+echo "- CloudFront cache 清除需要 1-2 分鐘"
+echo "- 可以強制重新整理瀏覽器（Ctrl+Shift+R）"
+echo "- 或等待 CloudFront 自動更新"
