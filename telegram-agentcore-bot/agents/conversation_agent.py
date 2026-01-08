@@ -10,7 +10,10 @@ from strands.models import BedrockModel
 
 from config.prompts import SYSTEM_PROMPT
 from config.settings import settings
+from utils.context_analyzer import analyze_context_size, log_context_analysis
+from utils.error_messages import format_error_response
 from utils.logger import get_logger
+from utils.retry_handler import retry_with_fallback
 
 logger = get_logger(__name__)
 
@@ -60,7 +63,7 @@ class ConversationAgent:
 
     def process_message(self, message: str, images: list[dict] | None = None) -> dict[str, Any]:
         """
-        處理用戶訊息（支援圖片）
+        處理用戶訊息（支援圖片）- 帶重試和友善錯誤處理
 
         Args:
             message: 用戶訊息文字
@@ -69,39 +72,114 @@ class ConversationAgent:
         Returns:
             處理結果字典
         """
-        try:
-            # 驗證訊息
-            if not message and not images:
-                message = "你好，我需要協助"
+        # 驗證訊息
+        if not message and not images:
+            message = "你好，我需要協助"
 
-            message = message.strip() if message else ""
+        message = message.strip() if message else ""
 
-            # 記錄處理信息
-            if images:
-                logger.info(f"📥 處理多模態訊息: {len(images)} 張圖片 + 文字({len(message)} 字元)")
+        # 記錄處理信息
+        if images:
+            logger.info(f"📥 處理多模態訊息: {len(images)} 張圖片 + 文字({len(message)} 字元)")
+        else:
+            logger.info(f"📥 處理訊息: {message[:50]}...")
+
+        # 構建內容（支援多模態）
+        if images:
+            content = self._build_multimodal_content(message, images)
+            logger.info(f"🖼️ 構建多模態內容: {len(images)} 張圖片")
+        else:
+            content = message
+
+        # 分析 context 大小（用於診斷）
+        context_analysis = analyze_context_size(
+            messages=content,
+            memory_context=None,  # 無法直接獲取，在 processor_entry 層級分析
+            images=images,
+        )
+        log_context_analysis(context_analysis, operation="process_message")
+
+        # 使用重試機制執行 Agent
+        retry_context = {
+            "has_images": bool(images),
+            "message_length": len(message),
+            "images_count": len(images) if images else 0,
+        }
+
+        # 定義降級函數（無 Memory 重試）
+        def fallback_without_memory():
+            """降級策略：不使用 Memory 重新執行"""
+            if self.session_manager:
+                logger.info("🔄 降級：不使用 Memory 重新執行")
+                # 創建無 Memory 的臨時 agent
+                from strands.models import BedrockModel
+
+                temp_model = BedrockModel(
+                    model_id=settings.BEDROCK_MODEL_ID, region_name=settings.AWS_REGION
+                )
+                temp_agent = Agent(
+                    model=temp_model,
+                    session_manager=None,
+                    system_prompt=SYSTEM_PROMPT,
+                    tools=self.tools,
+                )
+                return temp_agent(content)
             else:
-                logger.info(f"📥 處理訊息: {message[:50]}...")
+                # 已經沒有 Memory，無法降級
+                raise Exception("Already without memory, cannot fallback further")
 
-            # 構建內容（支援多模態）
-            if images:
-                content = self._build_multimodal_content(message, images)
-                logger.info(f"🖼️ 構建多模態內容: {len(images)} 張圖片")
-            else:
-                content = message
+        # 執行帶重試的 Agent 調用
+        result_dict = retry_with_fallback(
+            func=lambda: self.agent(content),
+            fallback_func=fallback_without_memory if self.session_manager else None,
+            context=retry_context,
+        )
 
-            # 執行 Agent
-            result = self.agent(content)
-
+        # 處理執行結果
+        if result_dict["success"]:
             # 提取回應文字
-            response_text = self._extract_response(result)
+            agent_result = result_dict["result"]
+            response_text = self._extract_response(agent_result)
 
-            logger.info(f"📤 回應長度: {len(response_text)} 字元")
+            # 記錄成功信息
+            attempts = result_dict.get("attempts", 1)
+            used_fallback = result_dict.get("used_fallback", False)
+
+            extra_info = f"📤 回應長度: {len(response_text)} 字元"
+            if attempts > 1:
+                extra_info += f" (重試 {attempts} 次)"
+            if used_fallback:
+                extra_info += " (使用降級模式)"
+
+            logger.info(extra_info)
 
             return {"success": True, "response": response_text}
 
-        except Exception as e:
-            logger.error(f"❌ 訊息處理錯誤: {str(e)}", exc_info=True)
-            return {"success": False, "response": f"處理訊息時發生錯誤: {str(e)}", "error": str(e)}
+        else:
+            # 執行失敗，返回友善錯誤訊息
+            error = result_dict.get("error")
+            attempts = result_dict.get("attempts", 0)
+
+            logger.error(
+                f"❌ 訊息處理失敗（{attempts} 次嘗試）: {error}",
+                extra={"error_type": result_dict.get("error_type"), "context": retry_context},
+                exc_info=True,
+            )
+
+            # 生成用戶友善的錯誤訊息
+            error_context = {
+                "retry_count": attempts,
+                "has_memory": bool(self.session_manager),
+                "processing_image": bool(images),
+            }
+            friendly_message = format_error_response(error, error_context)
+
+            return {
+                "success": False,
+                "response": friendly_message,
+                "error": str(error),
+                "error_type": result_dict.get("error_type"),
+            }
 
     def _build_multimodal_content(self, text: str, images: list[dict]) -> list[dict]:
         """
