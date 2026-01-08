@@ -103,7 +103,7 @@ make info            # 顯示詳細資訊
 詳細部署指南請參閱：
 - `Makefile` - 統一部署管理
 - `docs/STACK_MANAGEMENT.md` - Multi-Stack 管理指南
-- `dev-in-progress/web-channel-expansion/QUICKSTART.md` - Web Channel 快速開始
+- `web-channel/QUICKSTART.md` - Web Channel 快速開始
 
 ## 📋 功能特性
 

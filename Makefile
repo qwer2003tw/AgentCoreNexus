@@ -80,15 +80,15 @@ deploy-processor:
 deploy-web:
 	@echo "🌐 部署 Web 通道層..."
 	@echo "📦 安裝 Lambda 依賴..."
-	@cd dev-in-progress/web-channel-expansion/lambdas/websocket && \
+	@cd web-channel/lambdas/websocket && \
 		pip3.11 install -r requirements.txt -t . --quiet
-	@cd dev-in-progress/web-channel-expansion/lambdas/rest && \
+	@cd web-channel/lambdas/rest && \
 		pip3.11 install -r requirements.txt -t . --quiet
-	@cd dev-in-progress/web-channel-expansion/lambdas/router && \
+	@cd web-channel/lambdas/router && \
 		pip3.11 install -r requirements.txt -t . --quiet
 	@echo "✅ 依賴安裝完成"
 	@echo "🔨 建構和部署..."
-	cd dev-in-progress/web-channel-expansion/infrastructure && \
+	cd web-channel/infrastructure && \
 	sam build -t web-channel-template.yaml && \
 	sam deploy \
 		--template-file web-channel-template.yaml \
@@ -111,7 +111,7 @@ deploy-web:
 # 快速更新前端（不重新部署 stack）
 update-frontend:
 	@echo "📦 快速更新前端..."
-	cd dev-in-progress/web-channel-expansion && \
+	cd web-channel && \
 	./scripts/deploy-frontend.sh
 
 # 檢查所有 stacks 狀態

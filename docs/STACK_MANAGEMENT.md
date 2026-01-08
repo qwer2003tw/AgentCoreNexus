@@ -410,7 +410,7 @@ git push --tags
 - 根目錄 `Makefile` - 統一部署指令
 - `telegram-lambda/template.yaml` - Telegram 層 template
 - `telegram-agentcore-bot/template.yaml` - Processor 層 template
-- `dev-in-progress/web-channel-expansion/infrastructure/web-channel-template.yaml` - Web 層 template
+- `web-channel/infrastructure/web-channel-template.yaml` - Web 層 template
 
 ---
 
