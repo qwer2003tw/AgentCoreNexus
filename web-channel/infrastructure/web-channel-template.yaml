@@ -60,7 +60,7 @@ Resources:
         - Key: Environment
           Value: !Ref Environment
         - Key: Purpose
-          Value: Web user authentication
+          Value: WebUserAuth
   
   UserBindingsTable:
     Type: AWS::DynamoDB::Table
@@ -98,7 +98,7 @@ Resources:
         - Key: Environment
           Value: !Ref Environment
         - Key: Purpose
-          Value: Cross-channel user bindings
+          Value: UserBindings
   
   ConversationHistoryTable:
     Type: AWS::DynamoDB::Table
@@ -137,7 +137,7 @@ Resources:
         - Key: Environment
           Value: !Ref Environment
         - Key: Purpose
-          Value: Conversation history (90 days TTL)
+          Value: ConversationHistory
   
   WebSocketConnectionsTable:
     Type: AWS::DynamoDB::Table
@@ -172,7 +172,7 @@ Resources:
         - Key: Environment
           Value: !Ref Environment
         - Key: Purpose
-          Value: Active WebSocket connections (2 hours TTL)
+          Value: WebSocketConnections
   
   BindingCodesTable:
     Type: AWS::DynamoDB::Table
@@ -203,7 +203,7 @@ Resources:
         - Key: Environment
           Value: !Ref Environment
         - Key: Purpose
-          Value: Temporary binding verification codes (10 min TTL)
+          Value: BindingCodes
   
   # ============================================================
   # Secrets Manager
