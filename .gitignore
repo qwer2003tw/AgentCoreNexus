@@ -114,3 +114,4 @@ temp/
 *.draft
 *.wip
 *~
+telegram-agentcore-bot/coverage.xml
