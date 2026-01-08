@@ -18,7 +18,7 @@ class WebSocketClient {
   private ws: WebSocket | null = null
   private token: string | null = null
   private reconnectAttempts = 0
-  private reconnectTimeout: NodeJS.Timeout | null = null
+  private reconnectTimeout: ReturnType<typeof setTimeout> | null = null
   private messageHandlers: Set<MessageHandler> = new Set()
   private connectionHandlers: Set<ConnectionHandler> = new Set()
   private intentionalClose = false

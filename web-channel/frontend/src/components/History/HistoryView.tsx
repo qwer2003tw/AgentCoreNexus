@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/services/api'
-import { Calendar, Filter, Download, Loader2 } from 'lucide-react'
+import { Calendar, Filter, Loader2 } from 'lucide-react'
 
 interface GroupedMessages {
   today: any[]

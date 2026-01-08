@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { api } from '@/services/api'
 import { Link2, Copy, CheckCircle, AlertCircle, Loader2, X } from 'lucide-react'

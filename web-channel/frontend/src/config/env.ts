@@ -5,8 +5,8 @@
 
 export const config = {
   // API endpoints (will be replaced with actual values after deployment)
-  apiEndpoint: import.meta.env.VITE_API_ENDPOINT || 'https://YOUR_API_ID.execute-api.us-west-2.amazonaws.com/prod',
-  wsEndpoint: import.meta.env.VITE_WS_ENDPOINT || 'wss://YOUR_WS_API_ID.execute-api.us-west-2.amazonaws.com/prod',
+  apiEndpoint: (import.meta as any).env?.VITE_API_ENDPOINT || 'https://YOUR_API_ID.execute-api.us-west-2.amazonaws.com/prod',
+  wsEndpoint: (import.meta as any).env?.VITE_WS_ENDPOINT || 'wss://YOUR_WS_API_ID.execute-api.us-west-2.amazonaws.com/prod',
   
   // App settings
   appName: 'AgentCore Chat',

@@ -43,7 +43,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       
       set({
         token: response.token,
-        user: response.user,
+        user: response.user as User,
         isLoading: false
       })
       
@@ -112,7 +112,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     
     try {
       const user = await api.getCurrentUser()
-      set({ user, isLoading: false })
+      set({ user: user as User, isLoading: false })
       
       // Connect WebSocket if not already connected
       if (!websocket.isConnected()) {
