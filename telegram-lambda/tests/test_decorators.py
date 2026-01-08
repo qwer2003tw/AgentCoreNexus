@@ -285,10 +285,10 @@ class TestDecoratorEdgeCases:
     @patch("commands.decorators.check_permission")
     @patch("commands.decorators.send_permission_denied")
     def test_multiple_decorators(self, mock_send, mock_check, mock_update, mock_event):
-        """測試多個裝飾器（只有最外層的生效）"""
+        """測試多個裝飾器（兩層都會執行）"""
         mock_check.return_value = True
 
-        # 注意：這裡只有最外層的裝飾器會生效
+        # 多重裝飾器：外層 admin，內層 allowlist
         @require_admin
         @require_allowlist
         class TestHandler(BaseTestHandler):
@@ -298,8 +298,11 @@ class TestDecoratorEdgeCases:
         result = handler.handle(mock_update, mock_event)
 
         assert result is True
-        # 應該檢查 ADMIN 權限（最外層）
-        assert mock_check.call_count >= 1
-        # 最後一次呼叫應該是檢查 ADMIN
-        last_call = mock_check.call_args_list[-1]
-        assert last_call[0][2] == Permission.ADMIN
+        # 兩個裝飾器都會檢查權限（外層先，內層後）
+        assert mock_check.call_count == 2
+        # 第一次呼叫是 ADMIN（外層）
+        first_call = mock_check.call_args_list[0]
+        assert first_call[0][2] == Permission.ADMIN
+        # 第二次呼叫是 ALLOWLIST（內層）
+        second_call = mock_check.call_args_list[1]
+        assert second_call[0][2] == Permission.ALLOWLIST

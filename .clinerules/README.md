@@ -12,6 +12,7 @@
 ├── DOCUMENTATION_WORKFLOW.md      # 文檔管理規範
 ├── PLAN_MODE_METHODOLOGY.md       # Plan Mode 工作方法論
 ├── CODE_QUALITY_WORKFLOW.md       # 代碼質量檢查工作流（強制）⭐
+├── TEST_EXECUTION_WORKFLOW.md     # 測試執行工作流（強制）⭐
 │
 ├── deployment/                    # 專案部署文檔（專案專屬知識）
 │   ├── aws-lambda-telegram-bot-deployment-issues.md
