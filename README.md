@@ -89,19 +89,21 @@ cd telegram-agentcore-bot
 python3 run_tests.py
 ```
 
-### AWS 部署
-
-詳細部署指南請參閱 `telegram-lambda/DEPLOYMENT_GUIDE_EventBridge.md`
+### AWS 部署（使用 Makefile）
 
 ```bash
-# 1. 部署 Adapter
-cd telegram-lambda
-sam build && sam deploy --guided
-
-# 2. 部署 Processor
-cd telegram-agentcore-bot
-sam build && sam deploy --guided
+# 使用 Makefile 統一管理 3 個 stacks
+make deploy-all      # 首次部署所有 stacks
+make deploy-web      # 部署 Web 通道層
+make update-frontend # 快速更新前端（開發用）
+make status          # 檢查所有 stacks 狀態
+make info            # 顯示詳細資訊
 ```
+
+詳細部署指南請參閱：
+- `Makefile` - 統一部署管理
+- `docs/STACK_MANAGEMENT.md` - Multi-Stack 管理指南
+- `dev-in-progress/web-channel-expansion/QUICKSTART.md` - Web Channel 快速開始
 
 ## 📋 功能特性
 
