@@ -106,8 +106,13 @@ export const useChatStore = create<ChatState>((set, get) => ({
         isLoadingConversations: false
       })
       
-      // Auto-select first conversation if none selected
-      if (!get().currentConversationId && allConversations.length > 0) {
+      // Auto-create first conversation if empty, or select first if available
+      if (allConversations.length === 0) {
+        // No conversations exist, create one
+        console.log('No conversations found, creating first conversation...')
+        await get().createNewConversation('First Chat')
+      } else if (!get().currentConversationId) {
+        // Conversations exist but none selected, select first
         get().switchConversation(allConversations[0].id)
       }
       
