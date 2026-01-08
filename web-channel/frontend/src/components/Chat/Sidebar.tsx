@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { useAuthStore } from '@/stores/authStore'
+import { useChatStore } from '@/stores/chatStore'
+import NewChatDialog from './NewChatDialog'
 import { 
   MessageSquare, 
   Settings, 
@@ -17,12 +19,21 @@ interface SidebarProps {
 
 export default function Sidebar({ onClose }: SidebarProps) {
   const { user, logout } = useAuthStore()
+  const { clearMessages, isSending } = useChatStore()
   const [activeTab, setActiveTab] = useState<'chat' | 'history' | 'settings'>('chat')
+  const [showNewChatDialog, setShowNewChatDialog] = useState(false)
   
   const isAdmin = user?.role === 'admin'
   
+  // 處理新對話確認
+  const handleNewChat = () => {
+    clearMessages()
+    setActiveTab('chat')
+  }
+  
   return (
-    <div className="h-full bg-dark-surface border-r border-dark-border flex flex-col">
+    <>
+      <div className="h-full bg-dark-surface border-r border-dark-border flex flex-col">
       {/* Header */}
       <div className="p-4 border-b border-dark-border flex items-center justify-between">
         <h2 className="font-semibold text-lg">AgentCore</h2>
@@ -57,12 +68,13 @@ export default function Sidebar({ onClose }: SidebarProps) {
       <div className="flex-1 overflow-y-auto p-2">
         <nav className="space-y-1">
           <button
-            onClick={() => setActiveTab('chat')}
+            onClick={() => setShowNewChatDialog(true)}
+            disabled={isSending}
             className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
               activeTab === 'chat'
                 ? 'bg-dark-surface-hover text-dark-text'
                 : 'text-dark-text-secondary hover:bg-dark-bg hover:text-dark-text'
-            }`}
+            } ${isSending ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
             <MessageSquare className="w-5 h-5" />
             <span>新對話</span>
@@ -145,5 +157,14 @@ export default function Sidebar({ onClose }: SidebarProps) {
         </button>
       </div>
     </div>
+      
+    {/* 新對話確認對話框 */}
+    <NewChatDialog
+      isOpen={showNewChatDialog}
+      onClose={() => setShowNewChatDialog(false)}
+      onConfirm={handleNewChat}
+      isDisabled={isSending}
+    />
+  </>
   )
 }
