@@ -206,6 +206,54 @@ Resources:
           Value: BindingCodes
   
   # ============================================================
+  # Conversations Table
+  # ============================================================
+  
+  ConversationsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub '${AWS::StackName}-conversations'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: unified_user_id
+          AttributeType: S
+        - AttributeName: conversation_id
+          AttributeType: S
+        - AttributeName: last_message_time
+          AttributeType: S
+      KeySchema:
+        - AttributeName: unified_user_id
+          KeyType: HASH
+        - AttributeName: conversation_id
+          KeyType: RANGE
+      GlobalSecondaryIndexes:
+        - IndexName: conversation_id-index
+          KeySchema:
+            - AttributeName: conversation_id
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+        - IndexName: user-by-time-index
+          KeySchema:
+            - AttributeName: unified_user_id
+              KeyType: HASH
+            - AttributeName: last_message_time
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+      SSESpecification:
+        SSEEnabled: true
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Purpose
+          Value: ConversationManagement
+  
+  # ============================================================
   # Secrets Manager
   # ============================================================
   
@@ -292,12 +340,15 @@ Resources:
         Variables:
           CONNECTIONS_TABLE: !Ref WebSocketConnectionsTable
           BINDINGS_TABLE: !Ref UserBindingsTable
+          CONVERSATIONS_TABLE: !Ref ConversationsTable
           EVENT_BUS_NAME: !Ref ExistingEventBusName
       Policies:
         - DynamoDBReadPolicy:
             TableName: !Ref WebSocketConnectionsTable
         - DynamoDBReadPolicy:
             TableName: !Ref UserBindingsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ConversationsTable
         - Statement:
             - Effect: Allow
               Action:
@@ -454,6 +505,68 @@ Resources:
             Method: POST
             Auth:
               Authorizer: MyLambdaTokenAuthorizer
+  
+  # Conversations Function
+  ConversationsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-conversations-api'
+      CodeUri: ../lambdas/rest/
+      Handler: conversations.handler
+      Description: Handle conversation management operations
+      Environment:
+        Variables:
+          CONVERSATIONS_TABLE: !Ref ConversationsTable
+          HISTORY_TABLE: !Ref ConversationHistoryTable
+          BINDINGS_TABLE: !Ref UserBindingsTable
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ConversationsTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref ConversationHistoryTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref UserBindingsTable
+      Events:
+        ListConversations:
+          Type: Api
+          Properties:
+            RestApiId: !Ref RestApi
+            Path: /conversations
+            Method: GET
+            Auth:
+              Authorizer: MyLambdaTokenAuthorizer
+        CreateConversation:
+          Type: Api
+          Properties:
+            RestApiId: !Ref RestApi
+            Path: /conversations
+            Method: POST
+            Auth:
+              Authorizer: MyLambdaTokenAuthorizer
+        UpdateConversation:
+          Type: Api
+          Properties:
+            RestApiId: !Ref RestApi
+            Path: /conversations/{id}
+            Method: PUT
+            Auth:
+              Authorizer: MyLambdaTokenAuthorizer
+        DeleteConversation:
+          Type: Api
+          Properties:
+            RestApiId: !Ref RestApi
+            Path: /conversations/{id}
+            Method: DELETE
+            Auth:
+              Authorizer: MyLambdaTokenAuthorizer
+        GetConversationMessages:
+          Type: Api
+          Properties:
+            RestApiId: !Ref RestApi
+            Path: /conversations/{id}/messages
+            Method: GET
+            Auth:
+              Authorizer: MyLambdaTokenAuthorizer
 
   # ============================================================
   # Response Router Updates (to be integrated with existing)
@@ -471,12 +584,15 @@ Resources:
         Variables:
           CONNECTIONS_TABLE: !Ref WebSocketConnectionsTable
           HISTORY_TABLE: !Ref ConversationHistoryTable
+          CONVERSATIONS_TABLE: !Ref ConversationsTable
           WEBSOCKET_API_ENDPOINT: !Sub 'https://${WebSocketApi}.execute-api.${AWS::Region}.amazonaws.com/${WebSocketStage}'
       Policies:
         - DynamoDBReadPolicy:
             TableName: !Ref WebSocketConnectionsTable
         - DynamoDBCrudPolicy:
             TableName: !Ref ConversationHistoryTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ConversationsTable
         - Statement:
             - Effect: Allow
               Action:
@@ -530,6 +646,12 @@ Resources:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub '/aws/lambda/${AuthorizerFunction}'
+      RetentionInDays: 14
+  
+  ConversationsFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${ConversationsFunction}'
       RetentionInDays: 14
   
   ResponseRouterLogGroup:
@@ -650,6 +772,18 @@ Outputs:
     Value: !Ref ConversationHistoryTable
     Export:
       Name: !Sub '${AWS::StackName}-ConversationHistoryTable'
+  
+  ConversationsTableName:
+    Description: Conversations DynamoDB table name
+    Value: !Ref ConversationsTable
+    Export:
+      Name: !Sub '${AWS::StackName}-ConversationsTable'
+  
+  ConversationsTableArn:
+    Description: Conversations DynamoDB table ARN
+    Value: !GetAtt ConversationsTable.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-ConversationsTableArn'
   
   JWTSecretArn:
     Description: JWT Secret ARN
