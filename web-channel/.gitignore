@@ -1,0 +1,41 @@
+# Lambda dependencies (installed by pip install -t)
+lambdas/*/boto3/
+lambdas/*/boto3-*.dist-info/
+lambdas/*/botocore/
+lambdas/*/botocore-*.dist-info/
+lambdas/*/PyJWT-*.dist-info/
+lambdas/*/jwt/
+lambdas/*/bcrypt/
+lambdas/*/bcrypt-*.dist-info/
+lambdas/*/dateutil/
+lambdas/*/python_dateutil-*.dist-info/
+lambdas/*/s3transfer/
+lambdas/*/s3transfer-*.dist-info/
+lambdas/*/six.py
+lambdas/*/six-*.dist-info/
+lambdas/*/urllib3/
+lambdas/*/urllib3-*.dist-info/
+lambdas/*/jmespath/
+lambdas/*/jmespath-*.dist-info/
+lambdas/*/bin/
+
+# Python cache
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+
+# SAM build artifacts
+infrastructure/.aws-sam/
+
+# Frontend build artifacts
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+
+# Deployment outputs
+frontend-config.json
+outputs.json
+
+# OS files
+.DS_Store
+Thumbs.db
