@@ -143,6 +143,78 @@ class ApiClient {
     return this.request('/binding/status')
   }
   
+  // Conversations endpoints
+  async getConversations(params?: {
+    limit?: number
+    last_key?: string
+    include_deleted?: boolean
+  }): Promise<{
+    conversations: {
+      pinned: any[]
+      recent: any[]
+    }
+    count: number
+    last_key?: string
+  }> {
+    const queryParams = new URLSearchParams()
+    if (params?.limit) queryParams.set('limit', params.limit.toString())
+    if (params?.last_key) queryParams.set('last_key', params.last_key)
+    if (params?.include_deleted) queryParams.set('include_deleted', 'true')
+    
+    const query = queryParams.toString()
+    return this.request(`/conversations${query ? '?' + query : ''}`)
+  }
+  
+  async createConversation(title: string = 'New Chat'): Promise<{
+    conversation_id: string
+    title: string
+    created_at: string
+    message: string
+  }> {
+    return this.request('/conversations', {
+      method: 'POST',
+      body: JSON.stringify({ title })
+    })
+  }
+  
+  async updateConversation(
+    conversationId: string,
+    updates: {
+      title?: string
+      is_pinned?: boolean
+    }
+  ): Promise<{ message: string }> {
+    return this.request(`/conversations/${conversationId}`, {
+      method: 'PUT',
+      body: JSON.stringify(updates)
+    })
+  }
+  
+  async deleteConversation(conversationId: string): Promise<{ message: string }> {
+    return this.request(`/conversations/${conversationId}`, {
+      method: 'DELETE'
+    })
+  }
+  
+  async getConversationMessages(
+    conversationId: string,
+    params?: {
+      limit?: number
+      last_key?: string
+    }
+  ): Promise<{
+    messages: any[]
+    count: number
+    last_key?: string
+  }> {
+    const queryParams = new URLSearchParams()
+    if (params?.limit) queryParams.set('limit', params.limit.toString())
+    if (params?.last_key) queryParams.set('last_key', params.last_key)
+    
+    const query = queryParams.toString()
+    return this.request(`/conversations/${conversationId}/messages${query ? '?' + query : ''}`)
+  }
+  
   // Admin endpoints
   async createUser(email: string, role: 'user' | 'admin' = 'user'): Promise<{
     email: string

@@ -89,14 +89,15 @@ class WebSocketClient {
     this.notifyConnectionHandlers(false)
   }
   
-  sendMessage(message: string): void {
+  sendMessage(message: string, conversationId?: string): void {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
       throw new Error('WebSocket not connected')
     }
     
     const payload = {
       action: 'sendMessage',
-      message
+      message,
+      conversation_id: conversationId
     }
     
     console.log('Sending message:', payload)

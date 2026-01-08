@@ -7,12 +7,22 @@ export default function ChatWindow() {
   const [input, setInput] = useState('')
   const inputRef = useRef<HTMLTextAreaElement>(null)
   
-  const { sendMessage, isSending, isConnected, error, clearError } = useChatStore()
+  const { 
+    sendMessage, 
+    isSending, 
+    isConnected, 
+    error, 
+    clearError,
+    currentConversationId,
+    conversations
+  } = useChatStore()
+  
+  const currentConversation = conversations.find(c => c.id === currentConversationId)
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!input.trim() || isSending || !isConnected) {
+    if (!input.trim() || isSending || !isConnected || !currentConversationId) {
       return
     }
     
@@ -42,6 +52,18 @@ export default function ChatWindow() {
     inputRef.current?.focus()
   }, [])
   
+  // Empty state (no conversation selected)
+  if (!currentConversationId) {
+    return (
+      <div className="flex-1 flex items-center justify-center bg-dark-bg">
+        <div className="text-center text-dark-text-secondary">
+          <p className="text-lg mb-2">👈 選擇一個對話開始聊天</p>
+          <p className="text-sm">或點擊「新對話」創建新的對話</p>
+        </div>
+      </div>
+    )
+  }
+  
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       {/* Connection error banner */}
@@ -65,6 +87,18 @@ export default function ChatWindow() {
           >
             關閉
           </button>
+        </div>
+      )}
+      
+      {/* Conversation title */}
+      {currentConversation && (
+        <div className="px-4 py-2 border-b border-dark-border bg-dark-surface">
+          <h3 className="text-sm font-medium truncate">
+            {currentConversation.title}
+          </h3>
+          <p className="text-xs text-dark-text-secondary">
+            {currentConversation.messageCount} 條消息
+          </p>
         </div>
       )}
       
@@ -92,14 +126,14 @@ export default function ChatWindow() {
                   maxHeight: '200px',
                   height: 'auto'
                 }}
-                disabled={!isConnected || isSending}
+                disabled={!isConnected || isSending || !currentConversationId}
               />
             </div>
             
             {/* Send button */}
             <button
               type="submit"
-              disabled={!input.trim() || !isConnected || isSending}
+              disabled={!input.trim() || !isConnected || isSending || !currentConversationId}
               className="btn-primary flex items-center gap-2 px-6 py-3"
             >
               {isSending ? (
