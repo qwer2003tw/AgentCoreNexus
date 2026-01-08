@@ -374,9 +374,25 @@ Resources:
       SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${WebSocketApi}/*'
   
   # ============================================================
-  # REST API (placeholder - will be expanded in next phase)
+  # REST API Lambda Functions
   # ============================================================
   
+  # Lambda Authorizer Function (must be defined before RestApi)
+  AuthorizerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-authorizer'
+      CodeUri: ../lambdas/rest/
+      Handler: authorizer.handler
+      Description: JWT token authorization
+      Environment:
+        Variables:
+          JWT_SECRET_ARN: !Ref JWTSecret
+      Policies:
+        - AWSSecretsManagerGetSecretValuePolicy:
+            SecretArn: !Ref JWTSecret
+  
+  # REST API
   RestApi:
     Type: AWS::Serverless::Api
     Properties:
@@ -387,8 +403,12 @@ Resources:
         AllowOrigin: "'*'"
         AllowHeaders: "'Content-Type,Authorization'"
         AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
+      Auth:
+        Authorizers:
+          MyLambdaTokenAuthorizer:
+            FunctionArn: !GetAtt AuthorizerFunction.Arn
   
-  # Placeholder for Auth Function (to be implemented)
+  # Auth Function
   AuthFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -418,6 +438,22 @@ Resources:
             RestApiId: !Ref RestApi
             Path: /auth/logout
             Method: POST
+        GetMe:
+          Type: Api
+          Properties:
+            RestApiId: !Ref RestApi
+            Path: /auth/me
+            Method: GET
+            Auth:
+              Authorizer: MyLambdaTokenAuthorizer
+        ChangePassword:
+          Type: Api
+          Properties:
+            RestApiId: !Ref RestApi
+            Path: /auth/change-password
+            Method: POST
+            Auth:
+              Authorizer: MyLambdaTokenAuthorizer
 
   # ============================================================
   # Response Router Updates (to be integrated with existing)
@@ -435,7 +471,7 @@ Resources:
         Variables:
           CONNECTIONS_TABLE: !Ref WebSocketConnectionsTable
           HISTORY_TABLE: !Ref ConversationHistoryTable
-          WEBSOCKET_API_ENDPOINT: !Sub 'https://${WebSocketApi}.execute-api.${AWS::Region}.amazonaws.com/prod'
+          WEBSOCKET_API_ENDPOINT: !Sub 'https://${WebSocketApi}.execute-api.${AWS::Region}.amazonaws.com/${WebSocketStage}'
       Policies:
         - DynamoDBReadPolicy:
             TableName: !Ref WebSocketConnectionsTable
@@ -445,6 +481,7 @@ Resources:
             - Effect: Allow
               Action:
                 - execute-api:ManageConnections
+                - execute-api:Invoke
               Resource: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${WebSocketApi}/*'
       Events:
         MessageCompleted:
@@ -456,6 +493,10 @@ Resources:
                 - agent-processor
               detail-type:
                 - message.completed
+              detail:
+                channel:
+                  type:
+                    - web
 
   # ============================================================
   # CloudWatch Log Groups
@@ -483,6 +524,12 @@ Resources:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub '/aws/lambda/${AuthFunction}'
+      RetentionInDays: 14
+  
+  AuthorizerFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${AuthorizerFunction}'
       RetentionInDays: 14
   
   ResponseRouterLogGroup:

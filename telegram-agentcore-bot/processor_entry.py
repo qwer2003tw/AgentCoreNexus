@@ -537,7 +537,7 @@ def publish_completion_event(original_message: dict[str, Any], result: dict[str,
 
         completion_event = {
             "messageId": original_message.get("messageId", "unknown"),
-            "channel": original_message.get("channel", {}).get("type", "unknown"),
+            "channel": original_message.get("channel", {}),  # Keep full channel dict
             "user": original_message.get("user", {}),
             "response": result.get("response", ""),
             "metadata": {

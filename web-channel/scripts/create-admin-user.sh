@@ -41,7 +41,7 @@ EXISTING=$(aws dynamodb get-item \
   --query 'Item' \
   --output text)
 
-if [ ! -z "$EXISTING" ]; then
+if [ ! -z "$EXISTING" ] && [ "$EXISTING" != "None" ]; then
     echo "⚠️  用戶已存在: $EMAIL"
     echo "如需重置密碼，請使用 Admin API"
     exit 1

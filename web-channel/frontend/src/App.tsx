@@ -23,7 +23,7 @@ function App() {
     // Initialize chat store (WebSocket subscriptions)
     const cleanup = initializeChat()
     return cleanup
-  }, [initializeChat])
+  }, []) // Remove initializeChat from dependencies to prevent re-initialization
   
   // Check if user needs to change password
   const requiresPasswordChange = user?.require_password_change === true

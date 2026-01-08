@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useAuthStore } from '@/stores/authStore'
 import { useChatStore } from '@/stores/chatStore'
 import ChatWindow from '@/components/Chat/ChatWindow'
@@ -8,13 +8,10 @@ import { Menu } from 'lucide-react'
 export default function ChatPage() {
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const { user } = useAuthStore()
-  const { initialize, isConnected } = useChatStore()
+  const { isConnected } = useChatStore()
   
-  useEffect(() => {
-    // Initialize chat (WebSocket subscriptions)
-    const cleanup = initialize()
-    return cleanup
-  }, [initialize])
+  // Note: WebSocket initialization is handled in App.tsx
+  // No need to initialize again here
   
   return (
     <div className="h-screen flex overflow-hidden bg-dark-bg">
