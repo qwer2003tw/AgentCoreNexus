@@ -1,0 +1,183 @@
+#!/bin/bash
+# .git/hooks/pre-commit
+# 
+# 目的：確保所有 commit 都經過完整驗證
+# 執行者：主要是 AI agents（Cline）
+# 時間：2-5 分鐘（AI 可接受）
+#
+# 此 hook 強制執行 clinerules 中定義的所有質量檢查：
+# - CODE_QUALITY_WORKFLOW.md: Ruff 檢查
+# - TEST_EXECUTION_WORKFLOW.md: 完整測試套件
+# - MANDATORY_CHECKLIST.md: 覆蓋率檢查
+
+set -e
+
+echo "🔍 Pre-commit: 完整質量檢查..."
+echo "（預計時間：2-5 分鐘）"
+echo ""
+
+# ============================================
+# 檢測 Python 文件變更
+# ============================================
+changed_py=$(git diff --cached --name-only --diff-filter=ACM | grep '\.py$' || true)
+
+if [ -z "$changed_py" ]; then
+    echo "ℹ️  無 Python 文件變更，跳過檢查"
+    exit 0
+fi
+
+echo "📝 檢測到 Python 文件變更，執行完整檢查..."
+echo ""
+
+# ============================================
+# Step 1: 代碼質量檢查（Ruff）⭐
+# ============================================
+echo "🔍 Step 1/4: 代碼質量檢查（Ruff）..."
+
+# telegram-lambda
+if echo "$changed_py" | grep -q "^telegram-lambda/"; then
+    echo "  → Checking telegram-lambda..."
+    cd telegram-lambda
+    ruff check . --fix || {
+        echo "❌ Ruff check 失敗（telegram-lambda）"
+        exit 1
+    }
+    ruff format . || {
+        echo "❌ Ruff format 失敗（telegram-lambda）"
+        exit 1
+    }
+    ruff check . || {
+        echo "❌ Ruff 仍有錯誤（telegram-lambda）"
+        exit 1
+    }
+    cd ..
+fi
+
+# telegram-agentcore-bot
+if echo "$changed_py" | grep -q "^telegram-agentcore-bot/"; then
+    echo "  → Checking telegram-agentcore-bot..."
+    cd telegram-agentcore-bot
+    ruff check . --fix || {
+        echo "❌ Ruff check 失敗（telegram-agentcore-bot）"
+        exit 1
+    }
+    ruff format . || {
+        echo "❌ Ruff format 失敗（telegram-agentcore-bot）"
+        exit 1
+    }
+    ruff check . || {
+        echo "❌ Ruff 仍有錯誤（telegram-agentcore-bot）"
+        exit 1
+    }
+    cd ..
+fi
+
+echo "✅ Step 1/4: 代碼質量檢查通過"
+echo ""
+
+# ============================================
+# Step 2: 單元測試 ⭐
+# ============================================
+echo "🧪 Step 2/4: 單元測試..."
+
+# telegram-lambda
+if echo "$changed_py" | grep -q "^telegram-lambda/"; then
+    echo "  → Testing telegram-lambda (unit tests)..."
+    cd telegram-lambda
+    python3.11 -m pytest tests/ --ignore=tests/e2e/ -v || {
+        echo "❌ 單元測試失敗（telegram-lambda）"
+        exit 1
+    }
+    cd ..
+fi
+
+# telegram-agentcore-bot
+if echo "$changed_py" | grep -q "^telegram-agentcore-bot/"; then
+    echo "  → Testing telegram-agentcore-bot..."
+    cd telegram-agentcore-bot
+    python3.11 -m pytest tests/ -v || {
+        echo "❌ 測試失敗（telegram-agentcore-bot）"
+        exit 1
+    }
+    cd ..
+fi
+
+echo "✅ Step 2/4: 單元測試通過"
+echo ""
+
+# ============================================
+# Step 3: E2E 測試 ⭐
+# ============================================
+echo "🎭 Step 3/4: E2E 測試..."
+
+if echo "$changed_py" | grep -q "^telegram-lambda/"; then
+    echo "  → E2E testing telegram-lambda..."
+    cd telegram-lambda
+    
+    # 檢查是否安裝了 E2E 依賴
+    if ! pip list | grep -q aiogram; then
+        echo "⚠️  E2E 依賴未安裝，跳過 E2E 測試"
+        echo "   執行：pip install -r requirements-test.txt"
+    else
+        python3.11 -m pytest tests/e2e/ -v || {
+            echo "❌ E2E 測試失敗"
+            exit 1
+        }
+    fi
+    cd ..
+fi
+
+echo "✅ Step 3/4: E2E 測試通過（或已跳過）"
+echo ""
+
+# ============================================
+# Step 4: 覆蓋率檢查 ⭐
+# ============================================
+echo "📊 Step 4/4: 覆蓋率檢查..."
+
+if echo "$changed_py" | grep -q "^telegram-lambda/"; then
+    echo "  → Coverage check for telegram-lambda..."
+    cd telegram-lambda
+    
+    # 生成覆蓋率報告
+    python3.11 -m pytest tests/ --cov=src --cov-report=xml --cov-report=term-missing
+    
+    # 嘗試 diff-cover（新代碼覆蓋率）
+    if command -v diff-cover &> /dev/null; then
+        if git rev-parse origin/main &> /dev/null 2>&1; then
+            echo "  → 檢查新代碼覆蓋率（≥ 80%）..."
+            diff-cover coverage.xml --compare-branch=origin/main --fail-under=80 || {
+                echo "⚠️  新代碼覆蓋率不足 80%"
+                echo ""
+                echo "請為新代碼添加測試，確保覆蓋率 ≥ 80%"
+                exit 1
+            }
+        else
+            echo "  → 無法連接 origin/main，檢查整體覆蓋率（≥ 70%）..."
+            python3.11 -m pytest tests/ --cov=src --cov-fail-under=70 || {
+                echo "⚠️  整體覆蓋率不足 70%"
+                exit 1
+            }
+        fi
+    else
+        echo "  → diff-cover 未安裝，檢查整體覆蓋率（≥ 70%）..."
+        python3.11 -m pytest tests/ --cov=src --cov-fail-under=70 || {
+            echo "⚠️  整體覆蓋率不足 70%"
+            exit 1
+        }
+    fi
+    cd ..
+fi
+
+echo "✅ Step 4/4: 覆蓋率檢查通過"
+echo ""
+
+# ============================================
+# 所有檢查完成
+# ============================================
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "✅ 所有檢查通過！代碼已準備好 commit"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+
+exit 0

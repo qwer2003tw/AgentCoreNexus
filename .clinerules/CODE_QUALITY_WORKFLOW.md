@@ -13,6 +13,24 @@ enforcement: strict
 
 ---
 
+## 🛡️ 技術強制執行
+
+**本專案已實施 pre-commit hook**，在每次 commit 時自動執行 Ruff 檢查。
+
+Hook 會自動執行：
+1. `ruff check . --fix` - 自動修復問題
+2. `ruff format .` - 格式化代碼
+3. `ruff check .` - 最終驗證
+
+**但這不代表你可以跳過主動檢查！** 作為 AI agent，你仍應在建議 commit 前主動執行這些檢查並報告結果。
+
+安裝 hook：
+```bash
+./setup-hooks.sh
+```
+
+---
+
 ## 📋 強制性檢查流程
 
 ### 何時觸發
