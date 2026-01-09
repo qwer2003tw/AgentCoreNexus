@@ -20,10 +20,12 @@ function App() {
   }, [token, user, loadUser])
   
   useEffect(() => {
-    // Initialize chat store (WebSocket subscriptions)
-    const cleanup = initializeChat()
-    return cleanup
-  }, []) // Remove initializeChat from dependencies to prevent re-initialization
+    // Initialize chat store ONLY when user is logged in
+    if (token && user) {
+      const cleanup = initializeChat()
+      return cleanup
+    }
+  }, [token, user]) // Re-initialize when login status changes
   
   // Check if user needs to change password
   const requiresPasswordChange = user?.require_password_change === true

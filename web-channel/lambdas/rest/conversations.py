@@ -43,6 +43,10 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     
     print(f"{method} {path}")
     
+    # Handle OPTIONS for CORS preflight
+    if method == "OPTIONS":
+        return response(200, {"message": "OK"})
+    
     # 從 JWT 提取 email
     email = extract_email_from_token(event)
     if not email:

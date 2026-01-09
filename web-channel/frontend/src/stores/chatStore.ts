@@ -74,6 +74,13 @@ export const useChatStore = create<ChatState>((set, get) => ({
   // ============================================================
   
   loadConversations: async () => {
+    // Check if user is logged in
+    const token = localStorage.getItem('jwt_token')
+    if (!token) {
+      console.log('No token, skipping conversation load')
+      return
+    }
+    
     set({ isLoadingConversations: true })
     
     try {
