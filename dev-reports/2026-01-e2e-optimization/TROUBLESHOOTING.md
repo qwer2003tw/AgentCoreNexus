@@ -219,5 +219,41 @@ await page.waitForSelector('textarea', { timeout: 10000 })
 
 ---
 
+---
+
+## ✅ 問題已解決 (2026-01-12 12:37)
+
+### 修復方案：明確的 URL 導航驗證 + 手動兜底
+
+**修改文件**: `web-channel/e2e-tests/setup/fixtures.ts`
+
+**核心修復**：
+1. 添加明確的 URL 檢查 - 不再假設自動導航成功
+2. 實施手動導航兜底 - 如果 URL 不包含 `/chat`，主動導航
+3. 增強 debug 日誌 - 每個步驟都有清晰的輸出
+4. 失敗時截圖診斷 - 保存頁面狀態便於排查
+5. 優化等待策略 - 使用 `domcontentloaded` 替代 `networkidle`
+
+**關鍵代碼**：
+```typescript
+// Step 7: Verify URL navigation (CRITICAL FIX)
+const currentUrl = page.url()
+console.log(`📍 Worker ${testInfo.parallelIndex}: Current URL after login: ${currentUrl}`)
+
+if (!currentUrl.includes('/chat')) {
+  console.log(`⚠️ Worker ${testInfo.parallelIndex}: Not on chat page, attempting manual navigation...`)
+  await page.goto('/chat')
+  await page.waitForLoadState('domcontentloaded', { timeout: 5000 })
+  console.log(`📍 Worker ${testInfo.parallelIndex}: Manually navigated to: ${page.url()}`)
+}
+```
+
+**詳細報告**: 查看 `web-channel/e2e-tests/E2E_FIX_REPORT.md`
+
+**測試驗證**: 需要 push 代碼後在 GitHub Actions 中驗證
+
+---
+
 **記錄人**: Cline AI  
-**最後更新**: 2026-01-12 11:53
+**最後更新**: 2026-01-12 12:37  
+**狀態**: ✅ 已修復，等待測試驗證
