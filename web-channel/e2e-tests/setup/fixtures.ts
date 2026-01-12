@@ -79,49 +79,34 @@ export const test = base.extend<{ authenticatedPage: Page }>({
       await page.waitForSelector('button:has-text("新對話")', { timeout: 10000 })
       console.log(`📍 Worker ${testInfo.parallelIndex}: Chat page loaded - "新對話" button found`)
       
-      // Step 9: Wait for conversations to load (frontend auto-creates first conversation)
-      // Smart timeout: First worker gets longer timeout for Lambda cold start
-      const isFirstWorker = testInfo.parallelIndex === 0
-      const conversationTimeout = isFirstWorker ? 60000 : 30000  // 60s for cold start, 30s for warm
-      const textareaTimeout = isFirstWorker ? 40000 : 20000
-      
-      console.log(`📍 Worker ${testInfo.parallelIndex}: Using ${conversationTimeout}ms timeout (${isFirstWorker ? 'cold start' : 'warm'})`)
-      
-      // Wait for either: conversation list to have items OR textarea to appear
+      // Step 9: Wait for conversations to load (optimized timeout after WebSocket fix)
       await Promise.race([
         // Option 1: Wait for conversation to appear in sidebar
         page.waitForFunction(
-          () => {
-            const convButtons = document.querySelectorAll('.p-2 button h3')
-            return convButtons.length > 0
-          },
-          { timeout: conversationTimeout }
+          () => document.querySelectorAll('.p-2 button h3').length > 0,
+          { timeout: 15000 }
         ),
         // Option 2: Wait for textarea (in case conversation loads very quickly)
-        page.waitForSelector('textarea:not([disabled])', { timeout: conversationTimeout })
+        page.waitForSelector('textarea:not([disabled])', { timeout: 15000 })
       ]).catch(async (error) => {
-        console.log(`⚠️ Worker ${testInfo.parallelIndex}: Conversation not auto-created, will create manually...`)
-        // If auto-creation failed, manually create conversation
+        console.log(`⚠️ Worker ${testInfo.parallelIndex}: No conversation, creating manually...`)
         await page.click('button:has-text("新對話")').catch(() => {})
-        // Wait longer for Lambda to respond (especially for cold start)
-        const manualCreateTimeout = isFirstWorker ? 30000 : 10000
-        console.log(`📍 Worker ${testInfo.parallelIndex}: Waiting ${manualCreateTimeout}ms for manual conversation creation...`)
-        await page.waitForTimeout(manualCreateTimeout)
+        await page.waitForTimeout(2000)
       })
       
-      console.log(`📍 Worker ${testInfo.parallelIndex}: Conversation loaded`)
+      console.log(`📍 Worker ${testInfo.parallelIndex}: Conversation ready`)
       
-      // Step 10: Wait for WebSocket connection (optional, increased timeout)
+      // Step 10: Wait for WebSocket connection (now should be fast after IAM fix)
       await page.waitForFunction(
         () => document.querySelector('.connection-status')?.textContent?.includes('已連接'),
-        { timeout: 10000 }  // Increased from 5s to 10s
+        { timeout: 5000 }
       ).catch(() => {
-        console.log(`⚠️ Worker ${testInfo.parallelIndex}: WebSocket indicator not found, continuing anyway`)
+        console.log(`⚠️ Worker ${testInfo.parallelIndex}: WebSocket not connected`)
       })
       
-      // Step 11: Final verification - textarea available (smart timeout)
-      await page.waitForSelector('textarea:not([disabled])', { timeout: textareaTimeout })
-      console.log(`✅ Worker ${testInfo.parallelIndex} authenticated successfully (total time: ~${isFirstWorker ? '90' : '30-40'}s)`)
+      // Step 11: Final verification - textarea available
+      await page.waitForSelector('textarea:not([disabled])', { timeout: 10000 })
+      console.log(`✅ Worker ${testInfo.parallelIndex}: Authenticated`)
       
     } catch (error) {
       // Diagnostic information on failure
@@ -153,21 +138,21 @@ export const test = base.extend<{ authenticatedPage: Page }>({
 
 export { expect } from '@playwright/test'
 
-// Helper functions
+// Helper functions (optimized timeouts after WebSocket fix)
 export async function createNewConversation(page: Page): Promise<string> {
   await page.click('button:has-text("新對話")')
   
-  // Wait for API response (increased timeout for Lambda cold start)
+  // Wait for API response
   await page.waitForResponse(
     response => response.url().includes('/conversations') && response.status() === 200,
-    { timeout: 30000 }  // Increased from 5s to 30s for Lambda
-  ).catch(() => console.log('⚠️ Conversation API call timeout'))
+    { timeout: 5000 }
+  ).catch(() => console.log('⚠️ Conversation API timeout'))
   
-  // Wait for new conversation to appear in sidebar (increased timeout)
-  await page.waitForTimeout(3000)  // Increased from 1s to 3s
+  // Wait for new conversation to appear
+  await page.waitForTimeout(1000)
   
-  // Get the newly created conversation title (first h3 in sidebar)
-  const newConvTitle = await page.locator('.p-2 button h3').first().textContent({ timeout: 10000 })  // Increased from 5s to 10s
+  // Get the newly created conversation title
+  const newConvTitle = await page.locator('.p-2 button h3').first().textContent({ timeout: 5000 })
   
   return newConvTitle || '新對話'
 }
@@ -175,10 +160,10 @@ export async function createNewConversation(page: Page): Promise<string> {
 export async function sendMessage(page: Page, message: string) {
   await page.fill('textarea', message)
   await page.click('button[type="submit"]')
-  await page.waitForTimeout(500)  // Wait for optimistic update
+  await page.waitForTimeout(500)
 }
 
-export async function waitForAIReply(page: Page, timeout = 60000) {  // Increased from 15s to 60s for Lambda + AI processing
+export async function waitForAIReply(page: Page, timeout = 15000) {
   const initialMessageCount = await page.locator('.flex.gap-3').count()
   
   // Wait for new message to appear
