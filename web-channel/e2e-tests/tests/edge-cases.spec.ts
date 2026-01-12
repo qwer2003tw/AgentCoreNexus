@@ -50,22 +50,40 @@ test.describe('Edge Cases and Boundary Tests', () => {
     await page.waitForTimeout(2000)
   })
   
-  test.skip('handles many conversations efficiently', async ({ authenticatedPage: page }) => {
-    // TODO: Create 50+ conversations and test performance
-    // This test takes too long for regular execution
+  test('handles many conversations efficiently', async ({ authenticatedPage: page }) => {
+    const startTime = Date.now()
+    
+    // Create 10 conversations (reasonable amount for testing)
+    for (let i = 0; i < 10; i++) {
+      await createNewConversation(page)
+      await page.waitForTimeout(200)
+    }
+    
+    const createTime = Date.now() - startTime
+    
+    // Verify all created
+    const count = await page.locator('.p-2 button').count()
+    expect(count).toBeGreaterThanOrEqual(10)
+    
+    // Should be reasonably fast (< 30 seconds)
+    expect(createTime).toBeLessThan(30000)
   })
   
-  test.skip('prevents XSS with HTML tags', async ({ authenticatedPage: page }) => {
+  test('prevents XSS with HTML tags', async ({ authenticatedPage: page }) => {
     await createNewConversation(page)
     
-    // Try to inject HTML
+    // Try to inject script tag
     await sendMessage(page, '<script>alert("XSS")</script>')
-    await page.waitForTimeout(5000)
+    await page.waitForTimeout(2000)
     
-    // Script should not execute
-    // Verify text is escaped
+    // Script should be escaped as text, not executed
     const messages = await page.locator('.flex.gap-3').allTextContents()
-    expect(messages.some(m => m.includes('<script>'))).toBeTruthy()  // Should show as text
+    const hasScriptAsText = messages.some(m => m.includes('<script>'))
+    expect(hasScriptAsText).toBeTruthy()
+    
+    // Verify page still functional (script didn't execute)
+    const textareaEnabled = await page.locator('textarea').isEnabled()
+    expect(textareaEnabled).toBeTruthy()
   })
 })
 
