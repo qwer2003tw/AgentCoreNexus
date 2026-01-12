@@ -10,12 +10,16 @@ test.describe('Authentication', () => {
     await page.fill('input[type="password"]', TEST_USER.password)
     await page.click('button[type="submit"]')
     
-    // Wait for chat page
-    await page.waitForSelector('textarea', { timeout: 10000 })
+    // ✅ Wait for chat page to load - verify by checking for "新對話" button
+    await page.waitForSelector('button:has-text("新對話")', { timeout: 10000 })
     
-    // Verify logged in (check for textarea which indicates chat page)
-    const isLoggedIn = await page.locator('textarea').isVisible()
-    expect(isLoggedIn).toBeTruthy()
+    // ✅ Verify logged in - check for logout button (simplest unique identifier)
+    const logoutButton = await page.locator('button:has-text("登出")').isVisible()
+    expect(logoutButton).toBeTruthy()
+    
+    // ✅ Verify connection status
+    const isConnected = await page.locator('text=已連接').isVisible()
+    expect(isConnected).toBeTruthy()
   })
   
   test('cannot login with invalid credentials', async ({ page }) => {

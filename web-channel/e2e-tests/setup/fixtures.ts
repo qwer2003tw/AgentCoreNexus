@@ -40,8 +40,8 @@ export const test = base.extend<{ authenticatedPage: Page }>({
     await page.fill('input[type="password"]', TEST_USER.password)
     await page.click('button[type="submit"]')
     
-    // Wait for chat page to load
-    await page.waitForSelector('textarea', { timeout: 10000 })
+    // Wait for chat page to load (wait for sidebar to appear)
+    await page.waitForSelector('button:has-text("新對話")', { timeout: 10000 })
     
     // Wait for WebSocket connection
     await page.waitForFunction(
@@ -50,6 +50,13 @@ export const test = base.extend<{ authenticatedPage: Page }>({
     ).catch(() => {
       console.log('WebSocket connection indicator not found, continuing anyway')
     })
+    
+    // ✅ Create a new conversation so textarea appears
+    await page.click('button:has-text("新對話")')
+    await page.waitForTimeout(500)  // Wait for conversation creation
+    
+    // Now textarea should be visible
+    await page.waitForSelector('textarea', { timeout: 10000 })
     
     console.log(`✅ Worker ${testInfo.parallelIndex} authenticated successfully`)
     
