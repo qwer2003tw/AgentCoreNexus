@@ -67,9 +67,10 @@ export const test = base.extend<{ authenticatedPage: Page }>({
       const currentUrl = page.url()
       console.log(`📍 Worker ${testInfo.parallelIndex}: Current URL after login: ${currentUrl}`)
       
-      if (!currentUrl.includes('/chat')) {
-        console.log(`⚠️ Worker ${testInfo.parallelIndex}: Not on chat page, attempting manual navigation...`)
-        await page.goto('/chat')
+      // Check if NOT on login page (should be on chat page at root "/")
+      if (currentUrl.includes('/login')) {
+        console.log(`⚠️ Worker ${testInfo.parallelIndex}: Still on login page, attempting manual navigation...`)
+        await page.goto('/')
         await page.waitForLoadState('domcontentloaded', { timeout: 5000 })
         console.log(`📍 Worker ${testInfo.parallelIndex}: Manually navigated to: ${page.url()}`)
       }
