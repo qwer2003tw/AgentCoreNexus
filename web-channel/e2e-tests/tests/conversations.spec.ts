@@ -49,7 +49,7 @@ test.describe('Conversation Management', () => {
     }
   })
   
-  test.skip('can rename conversation', async ({ authenticatedPage: page }) => {
+  test('can rename conversation', async ({ authenticatedPage: page }) => {
     // Create conversation
     await createNewConversation(page)
     
@@ -74,7 +74,7 @@ test.describe('Conversation Management', () => {
     expect(title).toBe(newTitle)
   })
   
-  test.skip('can delete conversation', async ({ authenticatedPage: page }) => {
+  test('can delete conversation', async ({ authenticatedPage: page }) => {
     const initialCount = await page.locator('.p-2 button').count()
     
     // Create new conversation
@@ -105,7 +105,7 @@ test.describe('Conversation Management', () => {
     expect(finalCount).toBeLessThan(countAfterCreate)
   })
   
-  test.skip('can pin conversation', async ({ authenticatedPage: page }) => {
+  test('can pin conversation', async ({ authenticatedPage: page }) => {
     // Create conversation
     await createNewConversation(page)
     await sendMessage(page, '這是要置頂的對話')
@@ -126,7 +126,7 @@ test.describe('Conversation Management', () => {
     expect(hasPinnedSection).toBeTruthy()
   })
   
-  test.skip('search conversations works', async ({ authenticatedPage: page }) => {
+  test('search conversations works', async ({ authenticatedPage: page }) => {
     // Create conversations with distinct content
     await createNewConversation(page)
     await sendMessage(page, '蘋果相關的問題')
