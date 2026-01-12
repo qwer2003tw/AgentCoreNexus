@@ -125,7 +125,12 @@ jobs:
         with:
           node-version: '18'
       
-      - name: Install dependencies
+      - name: Install frontend dependencies
+        run: |
+          cd web-channel/frontend
+          npm ci
+      
+      - name: Install E2E test dependencies
         run: |
           cd web-channel/e2e-tests
           npm ci
