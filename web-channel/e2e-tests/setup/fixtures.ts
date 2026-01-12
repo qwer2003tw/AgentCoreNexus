@@ -20,6 +20,9 @@ const TEST_USERS = [
   }
 ]
 
+// ✅ Export TEST_USER for backward compatibility (tests that directly import it)
+export const TEST_USER = TEST_USERS[0]
+
 // Extended test with authenticated page
 export const test = base.extend<{ authenticatedPage: Page }>({
   authenticatedPage: async ({ page }, use, testInfo) => {
