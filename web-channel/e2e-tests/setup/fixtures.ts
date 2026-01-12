@@ -79,7 +79,29 @@ export const test = base.extend<{ authenticatedPage: Page }>({
       await page.waitForSelector('button:has-text("新對話")', { timeout: 10000 })
       console.log(`📍 Worker ${testInfo.parallelIndex}: Chat page loaded - "新對話" button found`)
       
-      // Step 9: Wait for WebSocket connection (optional)
+      // Step 9: Wait for conversations to load (frontend auto-creates first conversation)
+      // Wait for either: conversation list to have items OR textarea to appear
+      await Promise.race([
+        // Option 1: Wait for conversation to appear in sidebar
+        page.waitForFunction(
+          () => {
+            const convButtons = document.querySelectorAll('.p-2 button h3')
+            return convButtons.length > 0
+          },
+          { timeout: 15000 }
+        ),
+        // Option 2: Wait for textarea (in case conversation loads very quickly)
+        page.waitForSelector('textarea:not([disabled])', { timeout: 15000 })
+      ]).catch(async (error) => {
+        console.log(`⚠️ Worker ${testInfo.parallelIndex}: Conversation not auto-created, will create manually...`)
+        // If auto-creation failed, manually create conversation
+        await page.click('button:has-text("新對話")').catch(() => {})
+        await page.waitForTimeout(2000)
+      })
+      
+      console.log(`📍 Worker ${testInfo.parallelIndex}: Conversation loaded`)
+      
+      // Step 10: Wait for WebSocket connection (optional)
       await page.waitForFunction(
         () => document.querySelector('.connection-status')?.textContent?.includes('已連接'),
         { timeout: 5000 }
@@ -87,8 +109,8 @@ export const test = base.extend<{ authenticatedPage: Page }>({
         console.log(`⚠️ Worker ${testInfo.parallelIndex}: WebSocket indicator not found, continuing anyway`)
       })
       
-      // Step 10: Wait for textarea to be available (final verification)
-      await page.waitForSelector('textarea:not([disabled])', { timeout: 20000 })
+      // Step 11: Final verification - textarea available
+      await page.waitForSelector('textarea:not([disabled])', { timeout: 10000 })
       console.log(`✅ Worker ${testInfo.parallelIndex} authenticated successfully`)
       
     } catch (error) {
