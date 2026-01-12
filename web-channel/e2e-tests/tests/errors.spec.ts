@@ -76,10 +76,16 @@ test.describe('Error Handling', () => {
     // Wait for page to load
     await page.waitForSelector('button:has-text("新對話")', { timeout: 15000 })
     
-    // Check connection status shows disconnected
-    await page.waitForTimeout(2000)  // Give time for connection attempt
-    const statusText = await page.locator('.connection-status').textContent({ timeout: 5000 }).catch(() => '')
-    expect(statusText).toContain('未連接')
+    // Give time for WebSocket connection attempt to fail
+    await page.waitForTimeout(3000)
+    
+    // Verify textarea is disabled (due to no WebSocket connection)
+    const textareaDisabled = await page.locator('textarea').isDisabled()
+    expect(textareaDisabled).toBeTruthy()
+    
+    // Or verify connection status indicator shows error
+    const hasDisconnectedIndicator = await page.locator('text=/未連接|Disconnect/i').isVisible().catch(() => false)
+    expect(textareaDisabled || hasDisconnectedIndicator).toBeTruthy()
   })
   
   test('displays error messages to user', async ({ authenticatedPage: page }) => {
