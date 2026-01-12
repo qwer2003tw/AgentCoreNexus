@@ -208,7 +208,10 @@ class TestNormalizedMessageProcessing:
         }
 
         mock_agent_instance = Mock()
-        mock_agent_instance.process_message.return_value = {"success": True, "response": "AI response"}
+        mock_agent_instance.process_message.return_value = {
+            "success": True,
+            "response": "AI response",
+        }
         mock_agent_class.return_value = mock_agent_instance
 
         result = process_normalized_message(normalized)
