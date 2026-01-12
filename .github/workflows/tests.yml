@@ -25,8 +25,9 @@ jobs:
         run: |
           cd telegram-lambda
           python -m pip install --upgrade pip
+          pip install ruff pytest pytest-cov
           pip install -r requirements.txt
-          pip install -r requirements-test.txt
+          pip install -r requirements-test.txt || true
       
       - name: Run Ruff checks
         run: |
@@ -70,8 +71,8 @@ jobs:
         run: |
           cd telegram-agentcore-bot
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install pytest pytest-cov pytest-asyncio coverage diff-cover
+          pip install ruff pytest pytest-cov pytest-asyncio coverage diff-cover
+          pip install -r requirements.txt || true
       
       - name: Run Ruff checks
         run: |
