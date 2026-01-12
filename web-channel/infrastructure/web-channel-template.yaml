@@ -310,7 +310,7 @@ Resources:
             TableName: !Ref WebSocketConnectionsTable
         - DynamoDBReadPolicy:
             TableName: !Ref WebUsersTable
-        - DynamoDBReadPolicy:
+        - DynamoDBCrudPolicy:
             TableName: !Ref UserBindingsTable
         - AWSSecretsManagerGetSecretValuePolicy:
             SecretArn: !Ref JWTSecret
