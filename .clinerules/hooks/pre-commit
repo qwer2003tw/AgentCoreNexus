@@ -72,6 +72,25 @@ if echo "$changed_py" | grep -q "^telegram-agentcore-bot/"; then
     cd ..
 fi
 
+# web-channel
+if echo "$changed_py" | grep -q "^web-channel/"; then
+    echo "  → Checking web-channel..."
+    cd web-channel
+    ruff check . --fix || {
+        echo "❌ Ruff check 失敗（web-channel）"
+        exit 1
+    }
+    ruff format . || {
+        echo "❌ Ruff format 失敗（web-channel）"
+        exit 1
+    }
+    ruff check . || {
+        echo "❌ Ruff 仍有錯誤（web-channel）"
+        exit 1
+    }
+    cd ..
+fi
+
 echo "✅ Step 1/4: 代碼質量檢查通過"
 echo ""
 
