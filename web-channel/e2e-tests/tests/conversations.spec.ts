@@ -58,7 +58,7 @@ test.describe('Conversation Management', () => {
     await page.waitForTimeout(300)
     
     // Click rename
-    await page.click('text=重命名').catch(() => {
+    await page.click('text=重命名對話').catch(() => {
       console.log('Rename option not found in context menu')
     })
     await page.waitForTimeout(300)
@@ -89,7 +89,7 @@ test.describe('Conversation Management', () => {
     await page.waitForTimeout(300)
     
     // Click delete
-    await page.click('text=刪除').catch(() => {
+    await page.click('text=刪除對話').catch(() => {
       console.log('Delete option not found in context menu')
     })
     await page.waitForTimeout(300)
@@ -116,7 +116,7 @@ test.describe('Conversation Management', () => {
     await page.waitForTimeout(300)
     
     // Click pin option
-    await page.click('text=置頂').catch(() => {
+    await page.click('text=置頂對話').catch(() => {
       console.log('Pin option not found in context menu')
     })
     await page.waitForTimeout(1000)
