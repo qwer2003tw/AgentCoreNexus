@@ -3,8 +3,8 @@ import { defineConfig, devices } from '@playwright/test'
 export default defineConfig({
   testDir: './tests',
   
-  // Maximum time one test can run
-  timeout: 60 * 1000,
+  // Maximum time one test can run (increased for Lambda cold start)
+  timeout: 120 * 1000,  // Increased from 60s to 120s
   
   // Test execution settings
   fullyParallel: true,  //  Enable parallel execution
@@ -22,10 +22,10 @@ export default defineConfig({
   // Shared settings
   use: {
     baseURL: 'http://localhost:5173',
-    trace: 'retain-on-failure',  //  Optimized: only keep trace on failure
+    trace: 'retain-on-failure',  //  Optimized: only keep trace on failure
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
-    actionTimeout: 10000,
+    actionTimeout: 15000,  // Increased from 10s to 15s for slow APIs
   },
   
   // Configure projects for different browsers
