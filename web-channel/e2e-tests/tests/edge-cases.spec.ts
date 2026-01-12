@@ -32,18 +32,22 @@ test.describe('Edge Cases and Boundary Tests', () => {
   test('handles rapid clicking', async ({ authenticatedPage: page }) => {
     await createNewConversation(page)
     
-    // Rapidly click send button
+    // Fill textarea and click submit
     await page.fill('textarea', '測試')
     await page.click('button[type="submit"]')
-    await page.click('button[type="submit"]')
-    await page.click('button[type="submit"]')
     
-    // Should handle gracefully (debounce or disable)
-    await page.waitForTimeout(1000)
+    // Verify button becomes disabled while sending (correct behavior)
+    const button = page.locator('button[type="submit"]')
     
-    // System should still be responsive
-    const textareaEnabled = await page.locator('textarea').isEnabled()
-    expect(textareaEnabled).toBeTruthy()
+    // Wait a moment for button to be disabled
+    await page.waitForTimeout(100)
+    
+    // Verify button is disabled (preventing rapid clicking)
+    const isDisabled = await button.isDisabled()
+    expect(isDisabled).toBeTruthy()
+    
+    // Wait for message to be sent
+    await page.waitForTimeout(2000)
   })
   
   test.skip('handles many conversations efficiently', async ({ authenticatedPage: page }) => {

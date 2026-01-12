@@ -29,7 +29,13 @@ test.describe('Conversation Management', () => {
     
     // Switch to first conversation
     await page.locator('.p-2 button').nth(1).click()
-    await page.waitForTimeout(500)
+    
+    // Wait for messages to load
+    await page.waitForResponse(
+      response => response.url().includes('/messages'),
+      { timeout: 5000 }
+    ).catch(() => console.log('Message load API not detected'))
+    await page.waitForTimeout(1000)
     
     // Verify we see Message A
     const messages = await page.locator('.flex.gap-3').allTextContents()

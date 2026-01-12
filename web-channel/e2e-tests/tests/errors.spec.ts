@@ -66,15 +66,19 @@ test.describe('Error Handling', () => {
   })
   
   test('displays error messages to user', async ({ authenticatedPage: page }) => {
-    // This is a placeholder - actual implementation depends on error handling UI
+    await createNewConversation(page)
     
-    // Try to send empty message (should show validation error)
-    await page.click('button[type="submit"]')
-    await page.waitForTimeout(1000)
+    // Verify submit button is disabled when textarea is empty
+    const button = page.locator('button[type="submit"]')
+    const isDisabledWhenEmpty = await button.isDisabled()
+    expect(isDisabledWhenEmpty).toBeTruthy()
     
-    // Textarea should still be focused/available
-    const textareaVisible = await page.locator('textarea').isVisible()
-    expect(textareaVisible).toBeTruthy()
+    // Fill with text - button should enable
+    await page.fill('textarea', '測試消息')
+    await page.waitForTimeout(100)
+    
+    const isEnabledWithText = await button.isEnabled()
+    expect(isEnabledWithText).toBeTruthy()
   })
 })
 
