@@ -7,6 +7,7 @@
 AgentCore Nexus 是一個可擴展的多通道 AI 助理平台，整合了兩個核心組件：
 - **Universal Message Adapter** (telegram-lambda): 通道無關的訊息接收與標準化層
 - **Agent Processor** (telegram-agentcore-bot): 基於 AgentCore 的智能處理引擎
+- **Web Channel** (web-channel): Web UI 與 WebSocket 入口層
 
 透過 AWS EventBridge 事件驅動架構，支援 Telegram、Discord、Slack、Web 等多種通道。
 
@@ -38,7 +39,11 @@ AgentCore Nexus 是一個可擴展的多通道 AI 助理平台，整合了兩個
 ```
 AgentCoreNexus/
 ├── README.md                              # 本文件
-├── AgentCore_Nexus_Integration_Guide.md   # 完整架構設計文件
+├── AGENT.md                               # AI Agent 工作規範（由 .clinerules 整理）
+├── .clinerules/                           # AI Agent 行為規則與工作流
+├── docs/                                  # 核心文檔（架構/部署/測試）
+├── dev-in-progress/                       # 開發中文檔
+├── dev-reports/                           # 開發報告歸檔
 │
 ├── telegram-lambda/                       # Universal Message Adapter
 │   ├── src/                               # Lambda 函數代碼
@@ -53,23 +58,29 @@ AgentCoreNexus/
 │   ├── DEPLOYMENT_GUIDE_EventBridge.md    # 部署指南
 │   └── docs/                              # 詳細文件
 │
-└── telegram-agentcore-bot/                # Agent Processor
-    ├── agents/                            # AgentCore 對話代理
-    │   └── conversation_agent.py
-    ├── services/                          # 核心服務
-    │   ├── memory_service.py              # 記憶管理
-    │   └── browser_service.py             # 瀏覽器整合
-    ├── tools/                             # Agent 工具集
-    │   ├── calculator.py
-    │   ├── weather.py
-    │   └── ...
-    ├── processor_entry.py                 # EventBridge 事件處理入口
-    ├── telegram_agent.py                  # 原 Telegram bot 入口
-    ├── tests/                             # 測試套件
-    │   ├── test_processor_entry.py        # Processor 測試（15 個）
-    │   └── ...
-    ├── template.yaml                      # SAM 部署模板
-    └── requirements.txt                   # Python 依賴
+├── telegram-agentcore-bot/                # Agent Processor
+│   ├── agents/                            # AgentCore 對話代理
+│   │   └── conversation_agent.py
+│   ├── services/                          # 核心服務
+│   │   ├── memory_service.py              # 記憶管理
+│   │   └── browser_service.py             # 瀏覽器整合
+│   ├── tools/                             # Agent 工具集
+│   │   ├── calculator.py
+│   │   ├── weather.py
+│   │   └── ...
+│   ├── processor_entry.py                 # EventBridge 事件處理入口
+│   ├── telegram_agent.py                  # 原 Telegram bot 入口
+│   ├── tests/                             # 測試套件
+│   │   ├── test_processor_entry.py        # Processor 測試（15 個）
+│   │   └── ...
+│   ├── template.yaml                      # SAM 部署模板
+│   └── requirements.txt                   # Python 依賴
+│
+└── web-channel/                           # Web Channel（前端 + 後端）
+    ├── frontend/                          # Web UI
+    ├── e2e-tests/                         # Playwright E2E
+    ├── README.md                          # 組件說明
+    └── QUICKSTART.md                      # 快速開始
 ```
 
 ## 🚀 快速開始
@@ -166,16 +177,22 @@ make info            # 顯示詳細資訊
 
 ## 📖 文件
 
-### 核心文檔
+### 核心文檔索引
 - **[文檔索引](docs/README.md)** - 完整文檔目錄
 - **[架構設計指南](docs/architecture-guide.md)** - 系統架構與技術細節
 - **[部署指南](docs/deployment-guide.md)** - AWS 部署步驟
+- **[測試指南](docs/TESTING.md)** - 測試流程與工具
+- **[代碼質量指南](docs/CODE_QUALITY.md)** - Ruff 與格式化規範
 - **[管理員命令](docs/admin-commands.md)** - 管理功能說明
 - **[瀏覽器實現](docs/browser-implementation.md)** - Browser Sandbox 使用
 
 ### 組件文檔
 - **[telegram-lambda 文件](telegram-lambda/docs/)** - Webhook 接收器文檔
 - **[telegram-agentcore-bot](telegram-agentcore-bot/)** - AI 處理器文檔
+- **[web-channel](web-channel/README.md)** - Web Channel 組件說明
+- **[web-channel 快速開始](web-channel/QUICKSTART.md)** - Web Channel 啟動指南
+- **[web-channel 前端](web-channel/frontend/README.md)** - Web UI 開發說明
+- **[web-channel E2E 測試](web-channel/e2e-tests/README.md)** - Playwright 測試指南
 
 ### 開發報告
 - **[dev-reports](dev-reports/)** - 已完成功能的開發報告歸檔
@@ -185,6 +202,14 @@ make info            # 顯示詳細資訊
 
 ### 開發中
 - **[dev-in-progress](dev-in-progress/)** - 正在開發的功能（多平台 agents 協作）
+
+### 規範與工作流
+- **[AGENT.md](AGENT.md)** - AI Agent 工作規範總覽
+- **[.clinerules/README.md](.clinerules/README.md)** - Cline Rules 索引
+- **[文檔管理規範](.clinerules/DOCUMENTATION_WORKFLOW.md)** - 文檔生命週期
+- **[代碼質量工作流](.clinerules/CODE_QUALITY_WORKFLOW.md)** - Ruff 檢查規範
+- **[測試標準](.clinerules/TESTING_STANDARDS.md)** - 測試要求與覆蓋率
+- **[測試快速參考](.clinerules/QUICK_REFERENCE.md)** - 常用測試指令
 
 ## 🛠️ 開發指引
 
@@ -259,5 +284,5 @@ ruff format .
 ---
 
 **版本**: v0.5.0-phase3  
-**最後更新**: 2026-01-06  
+**最後更新**: 2026-01-12  
 **維護者**: [您的名稱/團隊]
