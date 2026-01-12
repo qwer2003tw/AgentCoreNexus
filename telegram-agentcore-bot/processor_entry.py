@@ -537,9 +537,11 @@ def publish_completion_event(original_message: dict[str, Any], result: dict[str,
 
         completion_event = {
             "messageId": original_message.get("messageId", "unknown"),
+            "conversation_id": original_message.get("conversation_id", "default"),
             "channel": original_message.get("channel", {}),  # Keep full channel dict
             "user": original_message.get("user", {}),
             "response": result.get("response", ""),
+            "original": original_message,  # Include full original message for router
             "metadata": {
                 "session_id": result.get("session_id", "unknown"),
                 "original_message_id": original_message.get("messageId", "unknown"),

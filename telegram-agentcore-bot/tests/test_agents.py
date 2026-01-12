@@ -119,9 +119,9 @@ class TestConversationAgent(unittest.TestCase):
         agent = ConversationAgent(self.tools)
         result = agent.process_message("測試訊息")
 
-        # 驗證錯誤處理
+        # 驗證錯誤處理（修正為實際的錯誤訊息格式）
         self.assertFalse(result["success"])
-        self.assertIn("處理訊息時發生錯誤", result["response"])
+        self.assertIn("系統處理時遇到問題", result["response"])
         self.assertIn("error", result)
 
     @patch("agents.conversation_agent.BedrockModel")

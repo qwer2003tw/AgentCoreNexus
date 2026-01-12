@@ -147,8 +147,8 @@ class TestEventBridgeEventProcessing:
 class TestSQSEventProcessing:
     """測試 SQS 事件處理（向後兼容）"""
 
-    @patch("processor_entry.conversation_agent")
-    def test_process_sqs_event_success(self, mock_agent):
+    @patch("processor_entry.ConversationAgent")
+    def test_process_sqs_event_success(self, mock_agent_class):
         """測試成功處理 SQS 事件"""
         from processor_entry import process_sqs_event
 
@@ -163,34 +163,39 @@ class TestSQSEventProcessing:
         }
         context = Mock()
 
-        mock_agent.process_message.return_value = "Response"
+        mock_agent_instance = Mock()
+        mock_agent_instance.process_message.return_value = "Response"
+        mock_agent_class.return_value = mock_agent_instance
 
         result = process_sqs_event(event, context)
 
         assert result["statusCode"] == 200
         body = json.loads(result["body"])
         assert body["processed"] == 1
-        mock_agent.process_message.assert_called_once_with("Test message")
+        mock_agent_instance.process_message.assert_called_once_with("Test message")
 
-    @patch("processor_entry.conversation_agent")
-    def test_process_sqs_event_no_text(self, mock_agent):
+    @patch("processor_entry.ConversationAgent")
+    def test_process_sqs_event_no_text(self, mock_agent_class):
         """測試處理無文字的 SQS 事件"""
         from processor_entry import process_sqs_event
 
         event = {"Records": [{"body": json.dumps({"message": {"from": {"id": 123456789}}})}]}
         context = Mock()
 
+        mock_agent_instance = Mock()
+        mock_agent_class.return_value = mock_agent_instance
+
         result = process_sqs_event(event, context)
 
         assert result["statusCode"] == 200
-        mock_agent.process_message.assert_not_called()
+        mock_agent_instance.process_message.assert_not_called()
 
 
 class TestNormalizedMessageProcessing:
     """測試標準化訊息處理"""
 
-    @patch("processor_entry.conversation_agent")
-    def test_process_text_message_success(self, mock_agent):
+    @patch("processor_entry.ConversationAgent")
+    def test_process_text_message_success(self, mock_agent_class):
         """測試成功處理文字訊息"""
         from processor_entry import process_normalized_message
 
@@ -202,7 +207,9 @@ class TestNormalizedMessageProcessing:
             "context": {"sessionId": "session-123"},
         }
 
-        mock_agent.process_message.return_value = "AI response"
+        mock_agent_instance = Mock()
+        mock_agent_instance.process_message.return_value = {"success": True, "response": "AI response"}
+        mock_agent_class.return_value = mock_agent_instance
 
         result = process_normalized_message(normalized)
 
@@ -210,10 +217,10 @@ class TestNormalizedMessageProcessing:
         assert result["response"] == "AI response"
         assert result["user_id"] == "tg:123"
         assert result["session_id"] == "session-123"
-        mock_agent.process_message.assert_called_once_with("Hello AI")
+        mock_agent_instance.process_message.assert_called_once_with("Hello AI")
 
-    @patch("processor_entry.conversation_agent")
-    def test_process_unsupported_message_type(self, mock_agent):
+    @patch("processor_entry.ConversationAgent")
+    def test_process_unsupported_message_type(self, mock_agent_class):
         """測試不支援的訊息類型"""
         from processor_entry import process_normalized_message
 
@@ -228,10 +235,11 @@ class TestNormalizedMessageProcessing:
 
         assert result["success"] is False
         assert "Unsupported message type" in result["error"]
-        mock_agent.process_message.assert_not_called()
+        # ConversationAgent 不應該被實例化
+        mock_agent_class.assert_not_called()
 
-    @patch("processor_entry.conversation_agent")
-    def test_process_message_exception(self, mock_agent):
+    @patch("processor_entry.ConversationAgent")
+    def test_process_message_exception(self, mock_agent_class):
         """測試處理訊息時發生異常"""
         from processor_entry import process_normalized_message
 
@@ -242,7 +250,9 @@ class TestNormalizedMessageProcessing:
             "context": {},
         }
 
-        mock_agent.process_message.side_effect = Exception("Agent error")
+        mock_agent_instance = Mock()
+        mock_agent_instance.process_message.side_effect = Exception("Agent error")
+        mock_agent_class.return_value = mock_agent_instance
 
         result = process_normalized_message(normalized)
 
