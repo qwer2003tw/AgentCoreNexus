@@ -40,7 +40,10 @@ export default function ConversationItem({
   return (
     <button
       onClick={onClick}
-      onContextMenu={onContextMenu}
+      onContextMenu={(e) => {
+        e.preventDefault()
+        onContextMenu(e)
+      }}
       className={`
         w-full text-left px-3 py-3 rounded-lg transition-colors mb-1
         ${isActive 
