@@ -36,7 +36,7 @@ class TestCommands:
         # 檢查包含系統資訊（格式可能改變，或因 AWS 錯誤返回錯誤訊息）
         text = last_message["text"]
         # 在 CI 環境中可能無法取得 CloudFormation 資訊
-        assert ("系統資訊" in text or "Stack" in text or "無法取得部署資訊" in text)
+        assert "系統資訊" in text or "Stack" in text or "無法取得部署資訊" in text
 
     def test_unknown_command_forwarded_to_processor(self, full_mock_env, lambda_context):
         """測試未知命令被轉發到處理器"""
