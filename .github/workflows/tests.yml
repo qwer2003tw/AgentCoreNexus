@@ -139,8 +139,8 @@ jobs:
       - name: Configure test environment
         run: |
           cd web-channel/frontend
-          echo "VITE_API_ENDPOINT=${{ secrets.TEST_API_ENDPOINT }}" > .env.test
-          echo "VITE_WS_ENDPOINT=${{ secrets.TEST_WS_ENDPOINT }}" >> .env.test
+          echo "VITE_API_ENDPOINT=${{ secrets.TEST_API_ENDPOINT }}" > .env.local
+          echo "VITE_WS_ENDPOINT=${{ secrets.TEST_WS_ENDPOINT }}" >> .env.local
           echo "✅ Test environment configured"
       
       - name: Install frontend dependencies
