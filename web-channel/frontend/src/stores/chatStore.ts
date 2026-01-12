@@ -43,12 +43,13 @@ interface ChatState {
   deleteConversation: (id: string) => Promise<void>
   renameConversation: (id: string, title: string) => Promise<void>
   togglePinConversation: (id: string) => Promise<void>
+  updateConversationTitle: (id: string, title: string) => void
   setSearchQuery: (query: string) => void
   getFilteredConversations: () => { pinned: Conversation[], recent: Conversation[] }
   
   // Actions - Messages
   sendMessage: (content: string) => Promise<void>
-  addMessage: (message: ChatMessage) => void
+  addMessage: (message: ChatMessage, targetConversationId?: string) => void
   getCurrentMessages: () => ChatMessage[]
   
   // Actions - Connection
@@ -262,6 +263,14 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }
   },
   
+  updateConversationTitle: (id: string, title: string) => {
+    set(state => ({
+      conversations: state.conversations.map(c =>
+        c.id === id ? { ...c, title } : c
+      )
+    }))
+  },
+  
   setSearchQuery: (query: string) => {
     set({ searchQuery: query })
   },
@@ -329,16 +338,17 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }
   },
   
-  addMessage: (message: ChatMessage) => {
+  addMessage: (message: ChatMessage, targetConversationId?: string) => {
     const state = get()
-    const currentConvId = state.currentConversationId
+    // Use provided targetConversationId, otherwise fall back to currentConversationId
+    const convId = targetConversationId || state.currentConversationId
     
-    if (!currentConvId) return
+    if (!convId) return
     
-    // Add message to current conversation
+    // Add message to the specified conversation (not necessarily the current one)
     set(state => ({
       conversations: state.conversations.map(c =>
-        c.id === currentConvId
+        c.id === convId
           ? { 
               ...c, 
               messages: [...c.messages, message],
@@ -385,7 +395,15 @@ export const useChatStore = create<ChatState>((set, get) => ({
           timestamp: message.timestamp,
           channel: 'web'
         }
-        get().addMessage(chatMessage)
+        // Use conversation_id from message to route to correct conversation
+        const targetConvId = (message as any).conversation_id
+        get().addMessage(chatMessage, targetConvId)
+        
+        // Update title if provided in message
+        const newTitle = (message as any).title
+        if (newTitle && targetConvId) {
+          get().updateConversationTitle(targetConvId, newTitle)
+        }
       }
     })
     

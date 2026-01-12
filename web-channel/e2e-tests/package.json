@@ -1,0 +1,22 @@
+{
+  "name": "web-channel-e2e-tests",
+  "version": "1.0.0",
+  "description": "E2E tests for AgentCore Web Channel",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:debug": "playwright test --debug",
+    "test:ui": "playwright test --ui",
+    "test:report": "playwright show-report",
+    "test:chat": "playwright test tests/chat.spec.ts",
+    "test:conversations": "playwright test tests/conversations.spec.ts",
+    "test:auth": "playwright test tests/auth.spec.ts"
+  },
+  "keywords": ["e2e", "playwright", "testing"],
+  "author": "AgentCore Team",
+  "license": "MIT",
+  "devDependencies": {
+    "@playwright/test": "^1.40.0",
+    "@types/node": "^20.10.0"
+  }
+}

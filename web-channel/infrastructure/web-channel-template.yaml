@@ -399,6 +399,15 @@ Resources:
       RouteKey: $default
       Target: !Sub 'integrations/${DefaultIntegration}'
   
+  # Lambda Permissions for Authorizer
+  AuthorizerInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref AuthorizerFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${RestApi}/authorizers/*'
+  
   # Lambda Permissions for WebSocket
   WebSocketConnectPermission:
     Type: AWS::Lambda::Permission
@@ -458,6 +467,10 @@ Resources:
         Authorizers:
           MyLambdaTokenAuthorizer:
             FunctionArn: !GetAtt AuthorizerFunction.Arn
+            FunctionPayloadType: TOKEN
+            Identity:
+              Header: Authorization
+              ReauthorizeEvery: 0
       GatewayResponses:
         DEFAULT_4XX:
           ResponseParameters:
@@ -737,8 +750,8 @@ Resources:
             Cookies:
               Forward: none
           Compress: true
-          DefaultTTL: 86400
-          MaxTTL: 31536000
+          DefaultTTL: 0
+          MaxTTL: 0
           MinTTL: 0
         CustomErrorResponses:
           - ErrorCode: 404
