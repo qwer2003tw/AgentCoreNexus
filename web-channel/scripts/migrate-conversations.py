@@ -225,7 +225,7 @@ def get_all_messages(user_id: str) -> list[dict[str, Any]]:
         return messages
 
     except Exception as e:
-        raise Exception(f"Unable to get messages: {str(e)}")
+        raise Exception(f"Unable to get messages: {str(e)}") from e
 
 
 def group_messages_into_conversations(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
