@@ -3,6 +3,7 @@ WebSocket $default handler
 Handles incoming WebSocket messages and sends to EventBridge
 """
 
+import contextlib
 import json
 import os
 import uuid
@@ -112,14 +113,12 @@ def send_to_eventbridge(message: dict[str, Any]) -> None:
 
 
 def update_connection_activity(connection_id: str) -> None:
-    try:
+    with contextlib.suppress(ClientError):
         connections_table.update_item(
             Key={"connection_id": connection_id},
             UpdateExpression="SET last_activity = :now",
             ExpressionAttributeValues={":now": datetime.now(UTC).isoformat()},
         )
-    except ClientError:
-        pass
 
 
 def auto_assign_conversation_id(unified_user_id: str) -> str:

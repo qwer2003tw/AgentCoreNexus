@@ -51,7 +51,7 @@ def test_router_saves_conversation_history_to_dynamodb(aws_environment, test_use
     }
 
     # Save history
-    new_title = save_conversation_history(original_message, "I'm doing great, thanks!")
+    save_conversation_history(original_message, "I'm doing great, thanks!")
 
     # Verify history saved
     history_table = aws_environment["history"]

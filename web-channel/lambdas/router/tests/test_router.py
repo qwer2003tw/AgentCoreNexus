@@ -48,7 +48,7 @@ def test_save_conversation_history(dynamodb_tables):
         "context": {"conversation_id": "conv-123"},
     }
 
-    new_title = save_conversation_history(original_message, "AI response")
+    save_conversation_history(original_message, "AI response")
 
     # Verify messages saved
     history_table = dynamodb_tables["history"]

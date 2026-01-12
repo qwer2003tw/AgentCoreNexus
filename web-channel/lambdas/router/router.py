@@ -1,5 +1,7 @@
 """Response Router Lambda - Routes AI responses to channels"""
 
+import builtins
+import contextlib
 import json
 import os
 import time
@@ -33,7 +35,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         if not response_content:
             return {"statusCode": 400, "body": "Missing response"}
         user_info = detail.get("user", {}) or original_message.get("user", {})
-        unified_user_id = user_info.get("unified_user_id")
+        user_info.get("unified_user_id")
         channel_info = detail.get("channel", {})
         orig_channel = original_message.get("channel", {})
         if isinstance(channel_info, str):
@@ -149,10 +151,8 @@ def send_to_websocket(
         )
     except apigw_management.exceptions.GoneException:
         print(f"Connection gone: {connection_id}")
-        try:
+        with contextlib.suppress(builtins.BaseException):
             connections_table.delete_item(Key={"connection_id": connection_id})
-        except:
-            pass
     except Exception as e:
         print(f"Error: {str(e)}")
         import traceback
