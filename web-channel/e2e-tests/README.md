@@ -76,29 +76,64 @@ npm run test:report
 
 ### 測試環境
 
-**預設**：http://localhost:5173（本地開發）
+#### **本地開發**
+- **Base URL**: `http://localhost:5173`
+- **API**: 使用 `.env.local` 或 `.env.test` 配置
+
+#### **GitHub Actions CI**
+
+**API Endpoints**（從 GitHub Secrets 讀取）：
+- `TEST_API_ENDPOINT`: `https://dr614rh1s6.execute-api.us-west-2.amazonaws.com/prod`
+- `TEST_WS_ENDPOINT`: `wss://c8921qtrs8.execute-api.us-west-2.amazonaws.com/prod`
+
+**設置 GitHub Secrets**：
+
+前往 `Repository → Settings → Secrets and variables → Actions`，新增：
+
+```
+TEST_API_ENDPOINT = https://dr614rh1s6.execute-api.us-west-2.amazonaws.com/prod
+TEST_WS_ENDPOINT = wss://c8921qtrs8.execute-api.us-west-2.amazonaws.com/prod
+TEST_USER_1_EMAIL = test1@test.com
+TEST_USER_1_PASSWORD = Test123!
+TEST_USER_2_EMAIL = test2@test.com
+TEST_USER_2_PASSWORD = Test123!
+TEST_USER_3_EMAIL = test3@test.com
+TEST_USER_3_PASSWORD = Test123!
+TEST_USER_4_EMAIL = test4@test.com
+TEST_USER_4_PASSWORD = Test123!
+```
 
 **修改測試環境**：
-編輯 `playwright.config.ts`：
-```typescript
-use: {
-  baseURL: 'https://your-production-url.com',
-  ...
-}
-```
+編輯 `playwright.config.ts` 或使用環境變數
 
 ### 測試帳號
 
-**預設**：test@test.com / Test123!
+#### **本地開發**
+- `test@test.com / Test123!`（或設置環境變數）
 
-**修改帳號**：
-編輯 `setup/fixtures.ts`：
-```typescript
-export const TEST_USER = {
-  email: 'your@email.com',
-  password: 'YourPassword'
-}
-```
+#### **GitHub Actions CI（4 Workers）**
+
+使用 4 個獨立測試帳號確保 worker 隔離：
+- Worker 1: `test1@test.com / Test123!`
+- Worker 2: `test2@test.com / Test123!`
+- Worker 3: `test3@test.com / Test123!`
+- Worker 4: `test4@test.com / Test123!`
+
+**配置方式**：
+1. 在 AWS 後端創建 4 個測試帳號
+2. 在 GitHub Repository Settings → Secrets 設置：
+   - `TEST_USER_1_EMAIL` 和 `TEST_USER_1_PASSWORD`
+   - `TEST_USER_2_EMAIL` 和 `TEST_USER_2_PASSWORD`
+   - `TEST_USER_3_EMAIL` 和 `TEST_USER_3_PASSWORD`
+   - `TEST_USER_4_EMAIL` 和 `TEST_USER_4_PASSWORD`
+
+**為什麼需要 4 個帳號**：
+- 4 workers 並行執行測試
+- 避免 session 衝突和並發競爭
+- 確保測試穩定性
+
+**修改測試帳號**：
+編輯 `setup/fixtures.ts` 中的 `TEST_USERS` 陣列
 
 ## 🔍 測試細節
 

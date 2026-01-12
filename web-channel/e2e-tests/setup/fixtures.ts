@@ -1,14 +1,34 @@
 import { test as base, Page } from '@playwright/test'
 
-// Test credentials
-export const TEST_USER = {
-  email: 'test@test.com',
-  password: 'Test123!'
-}
+// ✅ Support 4 test accounts for 4 workers (worker isolation)
+const TEST_USERS = [
+  {
+    email: process.env.TEST_USER_1_EMAIL || 'test1@test.com',
+    password: process.env.TEST_USER_1_PASSWORD || 'Test123!'
+  },
+  {
+    email: process.env.TEST_USER_2_EMAIL || 'test2@test.com',
+    password: process.env.TEST_USER_2_PASSWORD || 'Test123!'
+  },
+  {
+    email: process.env.TEST_USER_3_EMAIL || 'test3@test.com',
+    password: process.env.TEST_USER_3_PASSWORD || 'Test123!'
+  },
+  {
+    email: process.env.TEST_USER_4_EMAIL || 'test4@test.com',
+    password: process.env.TEST_USER_4_PASSWORD || 'Test123!'
+  }
+]
 
 // Extended test with authenticated page
 export const test = base.extend<{ authenticatedPage: Page }>({
-  authenticatedPage: async ({ page }, use) => {
+  authenticatedPage: async ({ page }, use, testInfo) => {
+    // ✅ Select test account based on worker ID
+    const workerIndex = testInfo.parallelIndex % TEST_USERS.length
+    const TEST_USER = TEST_USERS[workerIndex]
+    
+    console.log(`🔵 Worker ${testInfo.parallelIndex} using ${TEST_USER.email}`)
+    
     // Perform login
     await page.goto('/')
     
@@ -27,6 +47,8 @@ export const test = base.extend<{ authenticatedPage: Page }>({
     ).catch(() => {
       console.log('WebSocket connection indicator not found, continuing anyway')
     })
+    
+    console.log(`✅ Worker ${testInfo.parallelIndex} authenticated successfully`)
     
     await use(page)
   },
