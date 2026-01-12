@@ -1,4 +1,4 @@
-# 代碼提交前檢查清單
+# 測試快速參考
 
 **在任何 commit/push 前必須執行！**
 
@@ -6,72 +6,53 @@
 
 ---
 
-## ⚡ 一鍵完整檢查
+## ⚡ 一鍵測試（推薦）
 
 ```bash
-cd telegram-lambda
-./run_all_tests.sh --cov -v
+make test        # 所有組件（5-8 分鐘）
+make test-quick  # 跳過 Web E2E（2-3 分鐘）
 ```
 
-或手動使用 python3.11：
+或使用腳本：
 ```bash
-cd telegram-lambda
-python3.11 -m ruff check . --fix && \
-python3.11 -m ruff format . && \
-python3.11 -m ruff check . && \
-python3.11 -m pytest tests/ -v --cov=src
+./run_all_tests.sh          # 完整測試
+./run_all_tests.sh --quick  # 快速測試
 ```
 
 ---
 
-## 📋 分步檢查（如果出問題）
-
-### 1. Ruff 代碼質量（強制）⭐
-```bash
-ruff check . --fix && ruff format . && ruff check .
-```
-**要求**: 0 errors
-
-### 2. 單元測試（強制）⭐
-```bash
-pytest tests/ --ignore=tests/e2e/ -v
-```
-**要求**: 所有測試通過
-
-### 3. E2E 測試（強制）⭐
-```bash
-python3.11 -m pytest tests/e2e/ -v
-```
-**要求**: 所有測試通過
-
-### 4. 覆蓋率（強制）⭐
-```bash
-python3.11 -m pytest tests/ --cov=src --cov-report=xml
-diff-cover coverage.xml --compare-branch=main --fail-under=80
-```
-**要求**: 新代碼覆蓋率 ≥ 80%
-
----
-
-## ✅ 全部通過後
+## 📦 組件測試
 
 ```bash
-git add .
-git commit -m "feat: your message"
-git push
+make test-agentcore   # AI 處理器
+make test-lambda      # Webhook 接收器
+make test-web         # Web 前端
+make test-backend     # 所有後端組件
 ```
 
 ---
 
-## 🚫 禁止的行為
+## 📊 覆蓋率
 
-- ❌ 跳過任何步驟
-- ❌ 使用 `git commit --no-verify`
-- ❌ 覆蓋率不足 80% 就提交
-- ❌ 有測試失敗就提交
+```bash
+make coverage-report  # 查看所有組件覆蓋率
+```
 
 ---
 
-**規則來源**:
-- `.clinerules/CODE_QUALITY_WORKFLOW.md`
-- `.clinerules/TEST_EXECUTION_WORKFLOW.md`
+## 🚫 記住
+
+- ✅ 提交前必須測試
+- ✅ 新代碼覆蓋率 ≥ 80%
+- ❌ 禁止使用 `git commit --no-verify`
+- ❌ 禁止跳過任何步驟
+
+---
+
+## 📚 詳細說明
+
+完整的測試規範、AI Agent 操作指南、故障排除，請參閱：
+→ **`.clinerules/TESTING_STANDARDS.md`**
+
+測試指南（面向開發者）：
+→ `docs/TESTING.md`

@@ -6,7 +6,7 @@
 
 ## 🎯 強制性要求
 
-根據 `.clinerules/TEST_EXECUTION_WORKFLOW.md`，在任何 commit/push 前必須：
+根據 `.clinerules/TESTING_STANDARDS.md`，在任何 commit/push 前必須：
 
 1. ✅ **Ruff 代碼質量檢查通過**（0 errors）
 2. ✅ **所有測試通過**（單元 + 整合 + E2E）
@@ -218,7 +218,7 @@ pytest tests/test_failed.py -v --tb=long
 ## 📚 相關資源
 
 ### 專案文檔
-- `.clinerules/TEST_EXECUTION_WORKFLOW.md` - 測試執行規範
+- `.clinerules/TESTING_STANDARDS.md` - 測試標準與規範（完整版）
 - `.clinerules/CODE_QUALITY_WORKFLOW.md` - 代碼質量規範
 - `tests/e2e/README.md` - E2E 測試完整指南
 - `tests/e2e/QUICKSTART.md` - E2E 測試快速開始

@@ -1,7 +1,7 @@
 # AgentCoreNexus Makefile
 # 統一管理多個 CloudFormation Stacks
 
-.PHONY: help deploy-all deploy-telegram deploy-processor deploy-web update-frontend status logs clean info
+.PHONY: help deploy-all deploy-telegram deploy-processor deploy-web update-frontend status logs clean info test test-all test-backend test-frontend test-agentcore test-lambda test-web test-quick coverage-report
 
 # AWS 配置
 AWS_REGION ?= us-west-2
@@ -14,8 +14,18 @@ WEB_STACK = agentcore-web-channel
 # 顯示幫助
 help:
 	@echo "╔═══════════════════════════════════════════════════════════════╗"
-	@echo "║          AgentCoreNexus 部署管理工具                          ║"
+	@echo "║          AgentCoreNexus 管理工具                              ║"
 	@echo "╚═══════════════════════════════════════════════════════════════╝"
+	@echo ""
+	@echo "🧪 測試指令："
+	@echo "  make test             - 執行所有測試（推薦）"
+	@echo "  make test-backend     - 測試後端組件"
+	@echo "  make test-frontend    - 測試前端組件"
+	@echo "  make test-agentcore   - 只測試 AI 處理器"
+	@echo "  make test-lambda      - 只測試 Webhook 接收器"
+	@echo "  make test-web         - 只測試 Web 前端"
+	@echo "  make test-quick       - 快速測試（不含 Web E2E）"
+	@echo "  make coverage-report  - 查看覆蓋率報告"
 	@echo ""
 	@echo "📦 部署指令："
 	@echo "  make deploy-all       - 部署所有 stacks（首次部署）"
@@ -190,3 +200,78 @@ clean:
 	@aws cloudformation delete-stack --region $(AWS_REGION) --stack-name $(TELEGRAM_STACK) 2>/dev/null || echo "  Stack 不存在"
 	@echo ""
 	@echo "✅ 清理完成"
+
+# ==========================================
+# 測試指令
+# ==========================================
+
+# 所有測試（推薦）
+test-all: test
+test:
+	@echo "🧪 執行所有組件測試..."
+	@./run_all_tests.sh
+
+# 後端測試（Python 組件）
+test-backend:
+	@echo "🐍 測試後端組件..."
+	@$(MAKE) test-agentcore
+	@echo ""
+	@$(MAKE) test-lambda
+
+# AI 處理器測試
+test-agentcore:
+	@echo "🤖 測試 telegram-agentcore-bot..."
+	@cd telegram-agentcore-bot && \
+		if [ -f "run_tests_with_coverage.sh" ]; then \
+			./run_tests_with_coverage.sh; \
+		else \
+			python3.11 run_tests.py; \
+		fi
+
+# Webhook 接收器測試
+test-lambda:
+	@echo "📱 測試 telegram-lambda..."
+	@cd telegram-lambda && \
+		if [ -f "run_all_tests.sh" ]; then \
+			./run_all_tests.sh --cov; \
+		else \
+			python3.11 -m pytest tests/ -v; \
+		fi
+
+# 前端測試
+test-frontend: test-web
+test-web:
+	@echo "🌐 測試 web-channel..."
+	@if [ -d "web-channel/e2e-tests" ]; then \
+		cd web-channel/e2e-tests && npm test; \
+	else \
+		echo "⚠️  web-channel/e2e-tests 不存在"; \
+	fi
+
+# 快速測試（不含覆蓋率和 Web E2E）
+test-quick:
+	@echo "⚡ 快速測試（不含覆蓋率）..."
+	@./run_all_tests.sh --quick
+
+# 覆蓋率報告
+coverage-report:
+	@echo "📊 覆蓋率報告"
+	@echo ""
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@echo "🤖 telegram-agentcore-bot:"
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@if [ -f "telegram-agentcore-bot/coverage.xml" ]; then \
+		cd telegram-agentcore-bot && python3.11 -m coverage report 2>/dev/null || echo "  請先運行測試以生成覆蓋率報告"; \
+	else \
+		echo "  未找到覆蓋率報告，請運行: make test-agentcore"; \
+	fi
+	@echo ""
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@echo "📱 telegram-lambda:"
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@if [ -f "telegram-lambda/coverage.xml" ]; then \
+		cd telegram-lambda && python3.11 -m coverage report 2>/dev/null || echo "  請先運行測試以生成覆蓋率報告"; \
+	else \
+		echo "  未找到覆蓋率報告，請運行: make test-lambda"; \
+	fi
+	@echo ""

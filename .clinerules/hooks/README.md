@@ -179,8 +179,8 @@ pip install -r requirements-test.txt
 ## 📚 相關文檔
 
 - [CODE_QUALITY_WORKFLOW.md](../CODE_QUALITY_WORKFLOW.md) - Ruff 檢查規範
-- [TEST_EXECUTION_WORKFLOW.md](../TEST_EXECUTION_WORKFLOW.md) - 測試執行規範
-- [MANDATORY_CHECKLIST.md](../MANDATORY_CHECKLIST.md) - AI Agent 檢查清單
+- [TESTING_STANDARDS.md](../TESTING_STANDARDS.md) - 測試標準與規範（整合版）
+- [QUICK_REFERENCE.md](../QUICK_REFERENCE.md) - 測試快速參考
 - [QUICK_REFERENCE.md](../QUICK_REFERENCE.md) - 快速參考
 
 ---
