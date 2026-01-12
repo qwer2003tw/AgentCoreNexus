@@ -4,6 +4,7 @@ Updated Info Handler - 顯示所有 3 個 stacks 的資訊
 整合說明：
 將此代碼合併到 telegram-lambda/src/commands/handlers/info_handler.py
 """
+
 import logging
 
 logger = logging.getLogger(__name__)
