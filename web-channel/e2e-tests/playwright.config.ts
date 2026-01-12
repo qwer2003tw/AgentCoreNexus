@@ -7,10 +7,10 @@ export default defineConfig({
   timeout: 120 * 1000,  // Increased from 60s to 120s
   
   // Test execution settings
-  fullyParallel: true,  //  Enable parallel execution
+  fullyParallel: true,  //  Enable parallel execution
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 4 : 2,  //  4 workers in CI, 2 locally
+  workers: 4,  //  Use 4 workers for faster execution (local and CI)
   
   // Reporter
   reporter: [
