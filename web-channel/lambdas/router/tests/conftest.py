@@ -1,7 +1,6 @@
 """Shared test fixtures for Router Lambda"""
-import json
+
 import os
-from datetime import UTC, datetime
 
 # Set environment variables before any imports
 os.environ["AWS_ACCESS_KEY_ID"] = "testing"

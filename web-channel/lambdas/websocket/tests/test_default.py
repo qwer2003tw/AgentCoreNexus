@@ -1,17 +1,16 @@
 """Tests for WebSocket default handler"""
+
 import json
-from datetime import UTC, datetime, timedelta
-from unittest.mock import MagicMock, patch
+from datetime import UTC, datetime
+from unittest.mock import patch
 
 import pytest
-
 from default import (
     auto_assign_conversation_id,
     create_new_conversation,
     create_unified_message,
     get_connection,
     handler,
-    send_to_eventbridge,
     update_connection_activity,
 )
 

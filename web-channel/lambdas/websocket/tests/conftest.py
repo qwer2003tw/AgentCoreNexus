@@ -1,4 +1,5 @@
 """Shared test fixtures for WebSocket Lambda"""
+
 import json
 import os
 from datetime import UTC, datetime, timedelta
@@ -116,7 +117,11 @@ def jwt_secret(aws_credentials):
         client.create_secret(
             Name="test-jwt-secret",
             SecretString=json.dumps(
-                {"jwt_secret": "test-secret-key-123", "jwt_algorithm": "HS256", "jwt_expiry_days": 7}
+                {
+                    "jwt_secret": "test-secret-key-123",
+                    "jwt_algorithm": "HS256",
+                    "jwt_expiry_days": 7,
+                }
             ),
         )
 

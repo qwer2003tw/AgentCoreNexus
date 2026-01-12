@@ -1,4 +1,5 @@
 """Shared fixtures for integration tests"""
+
 import json
 import os
 import sys
@@ -33,7 +34,7 @@ def aws_environment():
     with mock_aws():
         # Setup DynamoDB
         dynamodb = boto3.resource("dynamodb", region_name="us-east-1")
-        
+
         # Connections table
         connections_table = dynamodb.create_table(
             TableName="test-connections",
@@ -41,7 +42,7 @@ def aws_environment():
             AttributeDefinitions=[{"AttributeName": "connection_id", "AttributeType": "S"}],
             BillingMode="PAY_PER_REQUEST",
         )
-        
+
         # Web users table
         users_table = dynamodb.create_table(
             TableName="test-web-users",
@@ -49,7 +50,7 @@ def aws_environment():
             AttributeDefinitions=[{"AttributeName": "email", "AttributeType": "S"}],
             BillingMode="PAY_PER_REQUEST",
         )
-        
+
         # Bindings table with GSI
         bindings_table = dynamodb.create_table(
             TableName="test-bindings",
@@ -58,14 +59,16 @@ def aws_environment():
                 {"AttributeName": "unified_user_id", "AttributeType": "S"},
                 {"AttributeName": "web_email", "AttributeType": "S"},
             ],
-            GlobalSecondaryIndexes=[{
-                "IndexName": "web_email-index",
-                "KeySchema": [{"AttributeName": "web_email", "KeyType": "HASH"}],
-                "Projection": {"ProjectionType": "ALL"},
-            }],
+            GlobalSecondaryIndexes=[
+                {
+                    "IndexName": "web_email-index",
+                    "KeySchema": [{"AttributeName": "web_email", "KeyType": "HASH"}],
+                    "Projection": {"ProjectionType": "ALL"},
+                }
+            ],
             BillingMode="PAY_PER_REQUEST",
         )
-        
+
         # Conversations table with GSI
         conversations_table = dynamodb.create_table(
             TableName="test-conversations",
@@ -78,17 +81,19 @@ def aws_environment():
                 {"AttributeName": "conversation_id", "AttributeType": "S"},
                 {"AttributeName": "last_message_time", "AttributeType": "S"},
             ],
-            GlobalSecondaryIndexes=[{
-                "IndexName": "user-by-time-index",
-                "KeySchema": [
-                    {"AttributeName": "unified_user_id", "KeyType": "HASH"},
-                    {"AttributeName": "last_message_time", "KeyType": "RANGE"},
-                ],
-                "Projection": {"ProjectionType": "ALL"},
-            }],
+            GlobalSecondaryIndexes=[
+                {
+                    "IndexName": "user-by-time-index",
+                    "KeySchema": [
+                        {"AttributeName": "unified_user_id", "KeyType": "HASH"},
+                        {"AttributeName": "last_message_time", "KeyType": "RANGE"},
+                    ],
+                    "Projection": {"ProjectionType": "ALL"},
+                }
+            ],
             BillingMode="PAY_PER_REQUEST",
         )
-        
+
         # History table
         history_table = dynamodb.create_table(
             TableName="test-history",
@@ -102,18 +107,20 @@ def aws_environment():
             ],
             BillingMode="PAY_PER_REQUEST",
         )
-        
+
         # Setup Secrets Manager
         secrets_client = boto3.client("secretsmanager", region_name="us-east-1")
         secrets_client.create_secret(
             Name="test-jwt-secret",
-            SecretString=json.dumps({
-                "jwt_secret": "test-secret-key-123",
-                "jwt_algorithm": "HS256",
-                "jwt_expiry_days": 7
-            }),
+            SecretString=json.dumps(
+                {
+                    "jwt_secret": "test-secret-key-123",
+                    "jwt_algorithm": "HS256",
+                    "jwt_expiry_days": 7,
+                }
+            ),
         )
-        
+
         yield {
             "connections": connections_table,
             "users": users_table,
@@ -128,30 +135,34 @@ def test_user_with_binding(aws_environment):
     """Create a test user with binding"""
     users_table = aws_environment["users"]
     bindings_table = aws_environment["bindings"]
-    
+
     # Create user (use pre-computed bcrypt hash)
     password_hash = "$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYqYqY5GyYq"
-    users_table.put_item(Item={
-        "email": "test@example.com",
-        "password_hash": password_hash,
-        "enabled": True,
-        "role": "user",
-        "created_at": datetime.now(UTC).isoformat(),
-    })
-    
+    users_table.put_item(
+        Item={
+            "email": "test@example.com",
+            "password_hash": password_hash,
+            "enabled": True,
+            "role": "user",
+            "created_at": datetime.now(UTC).isoformat(),
+        }
+    )
+
     # Create binding
     unified_user_id = "test-unified-user-123"
-    bindings_table.put_item(Item={
-        "unified_user_id": unified_user_id,
-        "web_email": "test@example.com",
-        "binding_status": "web_only",
-        "created_at": datetime.now(UTC).isoformat(),
-    })
-    
+    bindings_table.put_item(
+        Item={
+            "unified_user_id": unified_user_id,
+            "web_email": "test@example.com",
+            "binding_status": "web_only",
+            "created_at": datetime.now(UTC).isoformat(),
+        }
+    )
+
     return {
         "email": "test@example.com",
         "unified_user_id": unified_user_id,
-        "password": "testpass123"
+        "password": "testpass123",
     }
 
 
@@ -159,7 +170,7 @@ def test_user_with_binding(aws_environment):
 def valid_jwt_token():
     """Generate a valid JWT token"""
     import jwt
-    
+
     payload = {
         "sub": "test@example.com",
         "role": "user",

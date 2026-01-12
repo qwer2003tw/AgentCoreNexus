@@ -1,7 +1,8 @@
 """Shared test fixtures for REST Lambda"""
+
 import json
 import os
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 
 # Set environment variables before any imports
 os.environ["AWS_ACCESS_KEY_ID"] = "testing"
@@ -52,7 +53,11 @@ def jwt_secret(aws_credentials):
         client.create_secret(
             Name="test-jwt-secret",
             SecretString=json.dumps(
-                {"jwt_secret": "test-secret-key-123", "jwt_algorithm": "HS256", "jwt_expiry_days": 7}
+                {
+                    "jwt_secret": "test-secret-key-123",
+                    "jwt_algorithm": "HS256",
+                    "jwt_expiry_days": 7,
+                }
             ),
         )
 
@@ -65,7 +70,7 @@ def jwt_secret(aws_credentials):
 def test_user(dynamodb_tables):
     """Create a test user with mock hashed password"""
     users_table = dynamodb_tables["users"]
-    
+
     # Use a pre-computed bcrypt hash for "testpass123"
     # This avoids needing bcrypt library during test collection
     password_hash = "$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYqYqY5GyYq"

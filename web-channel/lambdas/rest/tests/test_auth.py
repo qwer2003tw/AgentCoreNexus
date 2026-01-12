@@ -1,20 +1,16 @@
 """Tests for REST Auth handler"""
+
 import json
-from datetime import UTC, datetime, timedelta
-from unittest.mock import MagicMock, patch
 
 import jwt
 import pytest
-
 from auth import (
     extract_email_from_token,
     generate_jwt_token,
-    handle_get_user,
     handler,
     is_valid_email,
     validate_password_strength,
 )
-
 
 # Skip bcrypt-dependent tests for now due to library compatibility
 # These will be tested in integration tests or with proper bcrypt installation

@@ -1,10 +1,9 @@
 """Tests for WebSocket connect handler"""
-import json
+
 from datetime import UTC, datetime, timedelta
 
 import jwt
 import pytest
-
 from connect import get_unified_user_id, handler, verify_jwt_token
 
 

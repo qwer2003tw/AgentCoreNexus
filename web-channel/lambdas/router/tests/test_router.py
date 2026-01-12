@@ -1,10 +1,10 @@
 """Tests for Router Lambda"""
+
 import json
 from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
-
 from router import (
     handler,
     save_conversation_history,

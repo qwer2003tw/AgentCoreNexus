@@ -52,8 +52,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             conversation_id = auto_assign_conversation_id(unified_user_id)
 
         unified_message = create_unified_message(
-            unified_user_id, connection_id, email, 
-            message_text, "user", conversation_id
+            unified_user_id, connection_id, email, message_text, "user", conversation_id
         )
 
         send_to_eventbridge(unified_message)
@@ -64,6 +63,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     except Exception as e:
         print(f"Error: {str(e)}")
         import traceback
+
         traceback.print_exc()
         return {"statusCode": 500, "body": "Internal server error"}
 
@@ -78,8 +78,12 @@ def get_connection(connection_id: str) -> dict[str, Any] | None:
 
 
 def create_unified_message(
-    unified_user_id: str, connection_id: str, email: str,
-    message_text: str, role: str, conversation_id: str
+    unified_user_id: str,
+    connection_id: str,
+    email: str,
+    message_text: str,
+    role: str,
+    conversation_id: str,
 ) -> dict[str, Any]:
     return {
         "message_id": str(uuid.uuid4()),
@@ -94,12 +98,14 @@ def create_unified_message(
 
 def send_to_eventbridge(message: dict[str, Any]) -> None:
     response = eventbridge.put_events(
-        Entries=[{
-            "Source": "universal-adapter",
-            "DetailType": "message.received",
-            "Detail": json.dumps(message),
-            "EventBusName": EVENT_BUS_NAME,
-        }]
+        Entries=[
+            {
+                "Source": "universal-adapter",
+                "DetailType": "message.received",
+                "Detail": json.dumps(message),
+                "EventBusName": EVENT_BUS_NAME,
+            }
+        ]
     )
     if response["FailedEntryCount"] > 0:
         raise Exception("Failed to send event to EventBridge")
@@ -125,17 +131,17 @@ def auto_assign_conversation_id(unified_user_id: str) -> str:
             ExpressionAttributeValues={
                 ":uid": unified_user_id,
                 ":time": one_hour_ago,
-                ":false": False
+                ":false": False,
             },
             FilterExpression="attribute_not_exists(is_deleted) OR is_deleted = :false",
             Limit=1,
-            ScanIndexForward=False
+            ScanIndexForward=False,
         )
-        
+
         items = result.get("Items", [])
         if items:
             return items[0]["conversation_id"]
-        
+
         return create_new_conversation(unified_user_id)
     except Exception:
         return create_new_conversation(unified_user_id)
@@ -145,16 +151,18 @@ def create_new_conversation(unified_user_id: str) -> str:
     conv_id = str(uuid.uuid4())
     now = datetime.now(UTC).isoformat()
     try:
-        conversations_table.put_item(Item={
-            "unified_user_id": unified_user_id,
-            "conversation_id": conv_id,
-            "title": "New Chat",
-            "created_at": now,
-            "last_message_time": now,
-            "message_count": 0,
-            "is_pinned": False,
-            "is_deleted": False
-        })
+        conversations_table.put_item(
+            Item={
+                "unified_user_id": unified_user_id,
+                "conversation_id": conv_id,
+                "title": "New Chat",
+                "created_at": now,
+                "last_message_time": now,
+                "message_count": 0,
+                "is_pinned": False,
+                "is_deleted": False,
+            }
+        )
         return conv_id
     except Exception:
         return f"temp_{uuid.uuid4()}"
