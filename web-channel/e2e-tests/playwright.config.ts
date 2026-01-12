@@ -7,10 +7,10 @@ export default defineConfig({
   timeout: 60 * 1000,
   
   // Test execution settings
-  fullyParallel: false,  // Run tests sequentially for now
+  fullyParallel: true,  //  Enable parallel execution
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: 1,  // Single worker for sequential execution
+  workers: process.env.CI ? 4 : 2,  //  4 workers in CI, 2 locally
   
   // Reporter
   reporter: [
@@ -22,7 +22,7 @@ export default defineConfig({
   // Shared settings
   use: {
     baseURL: 'http://localhost:5173',
-    trace: 'on-first-retry',
+    trace: 'retain-on-failure',  //  Optimized: only keep trace on failure
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
     actionTimeout: 10000,

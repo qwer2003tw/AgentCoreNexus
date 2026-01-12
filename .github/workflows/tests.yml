@@ -1,5 +1,10 @@
 name: Tests
 
+# ✅ Cancel in-progress runs for the same branch
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
 on:
   push:
     branches: [ main, develop ]
@@ -120,10 +125,15 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       
+      # ✅ Enhanced Node.js setup with npm caching
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: |
+            web-channel/frontend/package-lock.json
+            web-channel/e2e-tests/package-lock.json
       
       - name: Install frontend dependencies
         run: |
@@ -135,10 +145,29 @@ jobs:
           cd web-channel/e2e-tests
           npm ci
       
+      # ✅ Cache Playwright browsers to avoid re-downloading
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-browsers-${{ runner.os }}-${{ hashFiles('web-channel/e2e-tests/package-lock.json') }}
+          restore-keys: |
+            playwright-browsers-${{ runner.os }}-
+      
+      # ✅ Only install browsers if cache miss
       - name: Install Playwright browsers
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
         run: |
           cd web-channel/e2e-tests
           npx playwright install --with-deps
+      
+      # ✅ Install system dependencies only if cache hit
+      - name: Install Playwright system dependencies
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: |
+          cd web-channel/e2e-tests
+          npx playwright install-deps
       
       - name: Run E2E tests
         run: |
