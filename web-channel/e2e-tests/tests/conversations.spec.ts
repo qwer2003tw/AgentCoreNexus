@@ -113,10 +113,23 @@ test.describe('Conversation Management', () => {
     await sendMessage(page, '這是要置頂的對話')
     await page.waitForTimeout(2000)
     
-    // Right-click to pin
+    // Right-click to open menu
     await openConversationContextMenu(page)
     
-    // Click pin option
+    // Check current state and ensure we pin (not unpin)
+    const menuText = await page.locator('[data-testid="conversation-context-menu"]').textContent()
+    const isPinned = menuText?.includes('取消置頂')
+    
+    if (isPinned) {
+      // If already pinned, first unpin it
+      await page.locator('[data-testid="conversation-context-menu"]').locator('text=取消置頂').click()
+      await page.waitForTimeout(1000)
+      
+      // Open menu again to pin
+      await openConversationContextMenu(page)
+    }
+    
+    // Now click to pin
     await page.locator('[data-testid="conversation-context-menu"]').locator('text=置頂對話').click()
     
     // Wait for pin API
@@ -126,12 +139,9 @@ test.describe('Conversation Management', () => {
     ).catch(() => console.log('Pin API not detected'))
     await page.waitForTimeout(2000)
     
-    // Verify pinned section exists or conversation moved to top
+    // Verify pinned section exists
     const hasPinnedSection = await page.locator('text=📌 置頂').isVisible().catch(() => false)
-    const firstConvTitle = await getConversationTitle(page, 0)
-    
-    // Either pinned section exists OR conversation is at top
-    expect(hasPinnedSection || firstConvTitle.includes('置頂')).toBeTruthy()
+    expect(hasPinnedSection).toBeTruthy()
   })
   
   test('search conversations works', async ({ authenticatedPage: page }) => {
