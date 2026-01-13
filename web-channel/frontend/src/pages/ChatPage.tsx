@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuthStore } from '@/stores/authStore'
 import { useChatStore } from '@/stores/chatStore'
 import ChatWindow from '@/components/Chat/ChatWindow'
@@ -12,6 +12,18 @@ export default function ChatPage() {
   
   // Note: WebSocket initialization is handled in App.tsx
   // No need to initialize again here
+  
+  // 添加 Escape 鍵支援關閉側邊欄
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && sidebarOpen) {
+        setSidebarOpen(false)
+      }
+    }
+    
+    window.addEventListener('keydown', handleEscape)
+    return () => window.removeEventListener('keydown', handleEscape)
+  }, [sidebarOpen])
   
   return (
     <div className="h-screen flex overflow-hidden bg-dark-bg">

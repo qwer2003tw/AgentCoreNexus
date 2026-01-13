@@ -2,10 +2,12 @@ import { useState, useRef, useEffect } from 'react'
 import { useChatStore } from '@/stores/chatStore'
 import { Send, Loader2, AlertCircle } from 'lucide-react'
 import MessageList from './MessageList'
+import { useIsMobile } from '@/hooks/useDeviceType'
 
 export default function ChatWindow() {
   const [input, setInput] = useState('')
   const inputRef = useRef<HTMLTextAreaElement>(null)
+  const isMobile = useIsMobile() // 檢測移動設備
   
   const { 
     sendMessage, 
@@ -40,17 +42,46 @@ export default function ChatWindow() {
   }
   
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    // Submit on Enter (but not Shift+Enter)
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      handleSubmit(e)
+    // 根據設備類型改變 Enter 行為
+    if (e.key === 'Enter') {
+      if (isMobile) {
+        // 📱 移動設備：Enter = 換行（不阻止預設行為）
+        // 讓 textarea 自然換行
+        return
+      } else {
+        // 💻 桌面設備：Enter = 發送（除非按住 Shift）
+        if (!e.shiftKey) {
+          e.preventDefault()
+          handleSubmit(e)
+        }
+        // Shift+Enter 時不 preventDefault，允許換行
+      }
     }
+  }
+  
+  // 自動調整 textarea 高度
+  const adjustTextareaHeight = () => {
+    const textarea = inputRef.current
+    if (textarea) {
+      textarea.style.height = 'auto'
+      textarea.style.height = `${Math.min(textarea.scrollHeight, 200)}px`
+    }
+  }
+  
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setInput(e.target.value)
+    adjustTextareaHeight()
   }
   
   useEffect(() => {
     // Auto-focus input on mount
     inputRef.current?.focus()
   }, [])
+  
+  // 當輸入改變時調整高度
+  useEffect(() => {
+    adjustTextareaHeight()
+  }, [input])
   
   // Empty state (no conversation selected)
   if (!currentConversationId) {
@@ -116,9 +147,20 @@ export default function ChatWindow() {
               <textarea
                 ref={inputRef}
                 value={input}
-                onChange={(e) => setInput(e.target.value)}
+                onChange={handleInputChange}
                 onKeyDown={handleKeyDown}
-                placeholder={isConnected ? "輸入訊息... (Enter 發送，Shift+Enter 換行)" : "等待連接..."}
+                placeholder={
+                  isConnected 
+                    ? isMobile
+                      ? "輸入訊息... (Enter 換行，點擊發送)" // 📱 移動設備提示
+                      : "輸入訊息... (Enter 發送，Shift+Enter 換行)" // 💻 桌面提示
+                    : "等待連接..."
+                }
+                aria-label={
+                  isMobile 
+                    ? "輸入訊息，按 Enter 換行，點擊發送按鈕發送消息" 
+                    : "輸入訊息，按 Enter 發送消息，Shift 加 Enter 換行"
+                }
                 className="w-full px-4 py-3 rounded-xl input-field resize-none"
                 rows={1}
                 style={{
@@ -134,12 +176,19 @@ export default function ChatWindow() {
             <button
               type="submit"
               disabled={!input.trim() || !isConnected || isSending || !currentConversationId}
-              className="btn-primary flex items-center gap-2 px-6 py-3"
+              className={`btn-primary flex items-center gap-2 ${
+                isMobile ? 'px-5 py-4 min-w-[64px] min-h-[48px]' : 'px-6 py-3'
+              }`}
+              aria-label="發送訊息"
             >
               {isSending ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
+                <Loader2 className={isMobile ? "w-6 h-6 animate-spin" : "w-5 h-5 animate-spin"} />
               ) : (
-                <Send className="w-5 h-5" />
+                <Send className={isMobile ? "w-6 h-6" : "w-5 h-5"} />
+              )}
+              {/* 移動設備顯示「發送」文字提示 */}
+              {isMobile && !isSending && (
+                <span className="text-sm font-medium">發送</span>
               )}
             </button>
           </div>

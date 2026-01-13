@@ -1,6 +1,10 @@
 import { test, expect, createNewConversation, sendMessage, waitForAIReply, switchToConversation, getConversationTitle, getMessageCount } from '../setup/fixtures'
 
 test.describe('Chat Core Functionality', () => {
+  // Set desktop viewport for all tests in this suite
+  test.beforeEach(async ({ authenticatedPage: page }) => {
+    await page.setViewportSize({ width: 1920, height: 1080 })
+  })
   
   test('user can send message and receive AI reply', async ({ authenticatedPage: page }) => {
     // Create new conversation
