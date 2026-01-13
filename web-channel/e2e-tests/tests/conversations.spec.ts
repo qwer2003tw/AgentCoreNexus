@@ -57,17 +57,17 @@ test.describe('Conversation Management', () => {
     await openConversationContextMenu(page)
     
     // Click rename
-    await page.click('[data-testid="conversation-context-menu"] text=重命名對話')
+    await page.locator('[data-testid="conversation-context-menu"]').locator('text=重命名對話').click()
     await page.waitForTimeout(500)
     
-    // Enter new title in dialog
+    // Enter new title in dialog (use id selector as input has no placeholder)
     const newTitle = 'My Custom Title'
-    const input = page.locator('input[type="text"]').first()
+    const input = page.locator('input[id="title"]')
     await input.fill('')  // Clear first
     await input.fill(newTitle)
     
-    // Click confirm button
-    await page.click('button:has-text("確認")')
+    // Click confirm button (actual button text is "確定" not "確認")
+    await page.click('button:has-text("確定")')
     await page.waitForTimeout(1000)
     
     // Verify title changed
@@ -89,11 +89,11 @@ test.describe('Conversation Management', () => {
     await openConversationContextMenu(page)
     
     // Click delete
-    await page.click('[data-testid="conversation-context-menu"] text=刪除對話')
+    await page.locator('[data-testid="conversation-context-menu"]').locator('text=刪除對話').click()
     await page.waitForTimeout(500)
     
-    // Confirm deletion
-    await page.click('button:has-text("確認")')
+    // Confirm deletion (actual button text is "刪除" not "確定")
+    await page.click('button:has-text("刪除")')
     
     // Wait for deletion API and UI update
     await page.waitForResponse(
@@ -117,7 +117,7 @@ test.describe('Conversation Management', () => {
     await openConversationContextMenu(page)
     
     // Click pin option
-    await page.click('[data-testid="conversation-context-menu"] text=置頂對話')
+    await page.locator('[data-testid="conversation-context-menu"]').locator('text=置頂對話').click()
     
     // Wait for pin API
     await page.waitForResponse(
