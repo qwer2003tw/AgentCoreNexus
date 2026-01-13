@@ -1,4 +1,4 @@
-import { test, expect, createNewConversation, sendMessage, getConversationTitle } from '../setup/fixtures'
+import { test, expect, createNewConversation, sendMessage, getConversationTitle, openConversationContextMenu } from '../setup/fixtures'
 
 test.describe('Conversation Management', () => {
   
@@ -49,35 +49,25 @@ test.describe('Conversation Management', () => {
     expect(messages.length).toBeGreaterThan(0)
   })
   
-  // TODO: Context menu functionality is implemented in frontend but not detectable in test environment
-  // ConversationContextMenu, RenameConversationDialog, DeleteConfirmDialog all exist
-  // May be Playwright + React compatibility issue in headless mode
-  // Manual testing confirms feature works correctly
-  test.skip('can rename conversation', async ({ authenticatedPage: page }) => {
+  test('can rename conversation', async ({ authenticatedPage: page }) => {
     // Create conversation
     await createNewConversation(page)
     
     // Right-click to open context menu
-    await page.locator('.p-2 button').first().click({ button: 'right' })
-    
-    // Wait for context menu to appear with explicit visibility check
-    await page.waitForSelector('text=重命名對話', { 
-      state: 'visible',
-      timeout: 3000 
-    })
+    await openConversationContextMenu(page)
     
     // Click rename
-    await page.click('text=重命名對話')
+    await page.locator('[data-testid="conversation-context-menu"]').locator('text=重命名對話').click()
     await page.waitForTimeout(500)
     
-    // Enter new title in dialog
+    // Enter new title in dialog (use id selector as input has no placeholder)
     const newTitle = 'My Custom Title'
-    const input = page.locator('input[type="text"]').first()
+    const input = page.locator('input[id="title"]')
     await input.fill('')  // Clear first
     await input.fill(newTitle)
     
-    // Click confirm button
-    await page.click('button:has-text("確認")')
+    // Click confirm button (actual button text is "確定" not "確認")
+    await page.click('button:has-text("確定")')
     await page.waitForTimeout(1000)
     
     // Verify title changed
@@ -85,9 +75,7 @@ test.describe('Conversation Management', () => {
     expect(title).toContain('Custom')  // More lenient check
   })
   
-  // TODO: Right-click context menu not appearing in tests
-  // Frontend may need to implement context menu functionality or improve rendering
-  test.skip('can delete conversation', async ({ authenticatedPage: page }) => {
+  test('can delete conversation', async ({ authenticatedPage: page }) => {
     const initialCount = await page.locator('.p-2 button').count()
     
     // Create new conversation
@@ -98,20 +86,14 @@ test.describe('Conversation Management', () => {
     expect(countAfterCreate).toBe(initialCount + 1)
     
     // Right-click to delete
-    await page.locator('.p-2 button').first().click({ button: 'right' })
-    
-    // Wait for context menu to appear with explicit visibility check
-    await page.waitForSelector('text=刪除對話', { 
-      state: 'visible',
-      timeout: 3000 
-    })
+    await openConversationContextMenu(page)
     
     // Click delete
-    await page.click('text=刪除對話')
+    await page.locator('[data-testid="conversation-context-menu"]').locator('text=刪除對話').click()
     await page.waitForTimeout(500)
     
-    // Confirm deletion
-    await page.click('button:has-text("確認")')
+    // Confirm deletion (actual button text is "刪除" not "確定")
+    await page.click('button:has-text("刪除")')
     
     // Wait for deletion API and UI update
     await page.waitForResponse(
@@ -125,25 +107,17 @@ test.describe('Conversation Management', () => {
     expect(finalCount).toBeLessThan(countAfterCreate)
   })
   
-  // TODO: Right-click context menu not appearing in tests
-  // Frontend may need to implement context menu functionality or improve rendering
-  test.skip('can pin conversation', async ({ authenticatedPage: page }) => {
+  test('can pin conversation', async ({ authenticatedPage: page }) => {
     // Create conversation
     await createNewConversation(page)
     await sendMessage(page, '這是要置頂的對話')
     await page.waitForTimeout(2000)
     
     // Right-click to pin
-    await page.locator('.p-2 button').first().click({ button: 'right' })
-    
-    // Wait for context menu to appear with explicit visibility check
-    await page.waitForSelector('text=置頂對話', { 
-      state: 'visible',
-      timeout: 3000 
-    })
+    await openConversationContextMenu(page)
     
     // Click pin option
-    await page.click('text=置頂對話')
+    await page.locator('[data-testid="conversation-context-menu"]').locator('text=置頂對話').click()
     
     // Wait for pin API
     await page.waitForResponse(

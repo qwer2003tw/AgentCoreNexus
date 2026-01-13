@@ -190,3 +190,28 @@ export async function getConversationTitle(page: Page, index: number = 0): Promi
 export async function getMessageCount(page: Page): Promise<number> {
   return await page.locator('.flex.gap-3').count()
 }
+
+export async function openConversationContextMenu(page: Page, index: number = 0): Promise<void> {
+  const conversationButton = page.locator('.p-2 button:has(h3)').nth(index)
+  await conversationButton.waitFor({ state: 'visible', timeout: 5000 })
+  await conversationButton.scrollIntoViewIfNeeded()
+
+  const box = await conversationButton.boundingBox()
+  const clientX = box ? Math.round(box.x + box.width / 2) : 10
+  const clientY = box ? Math.round(box.y + box.height / 2) : 10
+
+  await conversationButton.dispatchEvent('contextmenu', {
+    bubbles: true,
+    cancelable: true,
+    clientX,
+    clientY
+  })
+
+  const contextMenu = page.locator('[data-testid="conversation-context-menu"]')
+  try {
+    await contextMenu.waitFor({ state: 'visible', timeout: 2000 })
+  } catch {
+    await page.mouse.click(clientX, clientY, { button: 'right' })
+    await contextMenu.waitFor({ state: 'visible', timeout: 2000 })
+  }
+}

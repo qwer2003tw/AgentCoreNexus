@@ -62,6 +62,7 @@ export default function ConversationContextMenu({
   return (
     <div
       ref={menuRef}
+      data-testid="conversation-context-menu"
       className="fixed bg-dark-surface border border-dark-border rounded-lg shadow-xl py-1 min-w-[180px] z-50"
       style={{
         top: `${y}px`,
