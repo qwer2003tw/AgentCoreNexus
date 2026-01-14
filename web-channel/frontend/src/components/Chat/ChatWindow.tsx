@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useChatStore, Attachment } from '@/stores/chatStore'
-import { Send, Loader2, AlertCircle, Paperclip, X, RotateCw } from 'lucide-react'
+import { Send, Loader2, AlertCircle, Paperclip, X, RotateCw, CheckCircle, XCircle } from 'lucide-react'
 import MessageList from './MessageList'
 import { useIsMobile } from '@/hooks/useDeviceType'
 import { api } from '@/services/api'
@@ -293,15 +293,28 @@ export default function ChatWindow() {
                     className="flex items-center gap-3 rounded-lg border border-dark-border bg-dark-surface/70 px-3 py-2"
                   >
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm text-dark-text truncate">{upload.file.name}</p>
+                      <div className="flex items-center gap-2">
+                        {upload.status === 'uploaded' && (
+                          <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
+                        )}
+                        {upload.status === 'failed' && (
+                          <XCircle className="w-4 h-4 text-error flex-shrink-0" />
+                        )}
+                        <p className="text-sm text-dark-text truncate">{upload.file.name}</p>
+                      </div>
                       <div className="mt-1 h-1.5 rounded-full bg-dark-border">
                         <div
-                          className={`h-full rounded-full ${
-                            upload.status === 'failed' ? 'bg-error' : 'bg-primary'
+                          className={`h-full rounded-full transition-colors ${
+                            upload.status === 'failed' ? 'bg-error' : 
+                            upload.status === 'uploaded' ? 'bg-green-500' :
+                            'bg-primary'
                           }`}
                           style={{ width: `${upload.progress}%` }}
                         />
                       </div>
+                      {upload.status === 'uploaded' && !upload.error && (
+                        <p className="mt-1 text-xs text-green-500">✅ 已上傳</p>
+                      )}
                       {upload.error && (
                         <p className="mt-1 text-xs text-error">{upload.error}</p>
                       )}
