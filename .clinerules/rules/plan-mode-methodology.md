@@ -3,21 +3,12 @@ name: plan-mode-methodology
 description: Plan Mode 的標準工作方法論，確保技術決策基於可靠資訊而非假設
 priority: high
 enforcement: strict
+always_active: true
 ---
 
-# ⚠️ DEPRECATED - 此文件已廢棄
+# Plan Mode Methodology
 
-**此文件已被 `.clinerules/rules/plan-mode-methodology.md` 替代。**
-
-**遷移日期**: 2026-01-14  
-**新文件位置**: [.clinerules/rules/plan-mode-methodology.md](./rules/plan-mode-methodology.md)  
-**保留期限**: 2-4 週觀察期後將刪除
-
-**請使用新文件！** 新文件內容相同，但符合 Cline 官方結構標準。
-
----
-
-# Plan Mode 標準工作方法論
+**這是始終活動的規則** - 在 Plan Mode 中，所有 Cline agents 必須遵循這個方法論。
 
 ## 🎯 核心原則
 
@@ -263,7 +254,8 @@ Step 5: 呈現計劃
 
 ---
 
-**規則版本**: v1.0  
+**規則版本**: v1.1  
+**最後更新**: 2026-01-14  
 **創建日期**: 2026-01-07  
 **基於案例**: 圖片分析功能規劃的教訓  
 **維護者**: AgentCoreNexus Team

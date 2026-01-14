@@ -1,0 +1,102 @@
+#!/usr/bin/env bash
+# TaskStart Hook - 任務開始時自動檢測專案並注入規範
+#
+# 這是 Cline Hook（非 Git Hook）
+# 在任務開始時觸發，用於自動檢測專案類型並注入相關規範
+
+input=$(cat)
+
+context=""
+
+# ============================================
+# 檢測專案類型
+# ============================================
+
+# 檢測 AgentCoreNexus 專案
+if [[ -d "telegram-lambda" ]] && [[ -d "telegram-agentcore-bot" ]]; then
+  context="PROJECT: AgentCoreNexus Telegram Bot 專案。"
+  context+=" 這是一個雙 Stack 架構："
+  context+=" telegram-lambda-receiver（接收層）+ telegram-unified-bot（處理層）。"
+  
+  # 強制性規範提醒
+  context+=" MANDATORY: 修改 Python 代碼後必須執行完整測試流程。"
+  context+=" 使用 Python 3.11 執行測試。新代碼覆蓋率必須 ≥ 80%。"
+fi
+
+# 檢測當前工作目錄組件
+if [[ "$PWD" == *"telegram-lambda"* ]]; then
+  context+=" COMPONENT: 在 Webhook 接收器組件中工作。"
+  context+=" 主要職責：接收 Telegram webhook、驗證 allowlist、路由消息。"
+  context+=" 關鍵文件：handler.py, file_handler.py, allowlist.py。"
+  
+elif [[ "$PWD" == *"telegram-agentcore-bot"* ]]; then
+  context+=" COMPONENT: 在 AI 處理器組件中工作。"
+  context+=" 主要職責：AI 對話處理、工具調用、記憶管理、瀏覽器整合。"
+  context+=" 關鍵文件：processor_entry.py, conversation_agent.py。"
+  
+elif [[ "$PWD" == *"web-channel"* ]]; then
+  context+=" COMPONENT: 在 Web Channel 組件中工作。"
+  context+=" 這是前端 + 後端的完整 Web 應用。"
+fi
+
+# ============================================
+# 注入技術棧信息
+# ============================================
+
+# Python 專案檢測
+if [[ -f "requirements.txt" ]] || [[ -f "pyproject.toml" ]]; then
+  context+=" TECH_STACK: Python 3.11 + AWS Lambda + SAM。"
+  context+=" 代碼質量工具：Ruff（linting + formatting）。"
+  context+=" 測試框架：pytest + pytest-cov。"
+fi
+
+# Node.js 專案檢測
+if [[ -f "package.json" ]]; then
+  if grep -q "react" package.json 2>/dev/null; then
+    context+=" TECH_STACK: React + TypeScript + Vite。"
+  elif grep -q "playwright" package.json 2>/dev/null; then
+    context+=" TECH_STACK: Playwright E2E Testing。"
+  else
+    context+=" TECH_STACK: Node.js。"
+  fi
+fi
+
+# ============================================
+# 注入可用的 workflows
+# ============================================
+
+if [[ -d ".clinerules/workflows" ]]; then
+  workflow_count=$(ls -1 .clinerules/workflows/*.md 2>/dev/null | wc -l)
+  if (( workflow_count > 0 )); then
+    context+=" AVAILABLE_WORKFLOWS: 專案有 ${workflow_count} 個可用的 workflows。"
+    context+=" 使用 /workflow.md 調用，例如：/test-full.md, /deploy-lambda.md, /fix-linting.md。"
+  fi
+fi
+
+# ============================================
+# 根據 Git 狀態提供提示
+# ============================================
+
+if git rev-parse --git-dir > /dev/null 2>&1; then
+  current_branch=$(git branch --show-current 2>/dev/null || echo "")
+  uncommitted=$(git status --porcelain 2>/dev/null | wc -l)
+  
+  if [[ -n "$current_branch" ]]; then
+    context+=" GIT: 當前分支 '$current_branch'"
+    if (( uncommitted > 0 )); then
+      context+="，有 $uncommitted 個未提交的變更。"
+    else
+      context+="，工作目錄乾淨。"
+    fi
+  fi
+fi
+
+# ============================================
+# 輸出結果
+# ============================================
+
+if [[ -n "$context" ]]; then
+  jq -n --arg ctx "$context" '{"cancel": false, "contextModification": $ctx}'
+else
+  echo '{"cancel": false}'
+fi

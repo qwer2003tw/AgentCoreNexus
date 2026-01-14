@@ -1,23 +1,14 @@
 ---
-name: code-quality-workflow
-description: 強制性代碼質量檢查工作流，確保所有代碼變更在提交前通過 Ruff 檢查
+name: code-quality
+description: 強制性代碼質量規則，確保所有代碼變更在提交前通過 Ruff 檢查
 priority: critical
 enforcement: strict
+always_active: true
 ---
 
-# ⚠️ DEPRECATED - 此文件已廢棄
+# Code Quality Rules
 
-**此文件已被 `.clinerules/rules/code-quality.md` 替代。**
-
-**遷移日期**: 2026-01-14  
-**新文件位置**: [.clinerules/rules/code-quality.md](./rules/code-quality.md)  
-**保留期限**: 2-4 週觀察期後將刪除
-
-**請使用新文件！** 新文件內容相同，但符合 Cline 官方結構標準。
-
----
-
-# 代碼質量工作流規範
+**這是始終活動的規則** - 所有 Cline agents 在任何時候都必須遵守這些代碼質量標準。
 
 ## 🎯 核心原則
 
@@ -382,24 +373,22 @@ ruff check .
 
 ---
 
-## 🔄 規則更新
+## 🔄 規則更新歷史
 
-此規則會根據實踐經驗持續改進：
+**版本 1.1** (2026-01-14):
+- 重新組織為 rules/ 結構
+- 添加 `always_active: true` 標記
+- 明確說明這是始終活動的規則
 
 **版本 1.0** (2026-01-07):
 - 初始版本
 - 定義強制性檢查流程
 - 明確禁止行為
 
-**未來改進方向**：
-- 根據使用反饋調整
-- 添加更多場景範例
-- 優化錯誤處理流程
-
 ---
 
-**規範版本**: v1.0  
-**創建日期**: 2026-01-07  
+**規則版本**: v1.1  
+**最後更新**: 2026-01-14  
 **強制執行**: 是  
 **適用範圍**: 所有 Cline agents  
 **優先級**: Critical (最高)
