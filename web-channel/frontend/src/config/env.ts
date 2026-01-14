@@ -13,6 +13,7 @@ export const config = {
   maxMessageLength: 4000,
   historyPageSize: 50,
   tokenExpiryDays: 7,
+  maxAttachmentSizeBytes: 25 * 1024 * 1024,
   
   // WebSocket settings
   wsReconnectInterval: 1000, // Start with 1 second
@@ -23,7 +24,9 @@ export const config = {
   features: {
     export: true,
     binding: true,
-    darkMode: true
+    darkMode: true,
+    mockApi: (import.meta as any).env?.VITE_E2E_MOCK === 'true',
+    mockWebSocket: (import.meta as any).env?.VITE_E2E_MOCK === 'true'
   }
 }
 

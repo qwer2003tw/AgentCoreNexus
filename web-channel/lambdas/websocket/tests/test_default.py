@@ -75,6 +75,37 @@ def test_handler_without_message(dynamodb_tables, test_connection):
 
 
 @pytest.mark.unit
+def test_handler_with_attachments_only(dynamodb_tables, test_connection, mock_eventbridge):
+    """Test handler accepts attachments without text"""
+    import os
+
+    os.environ["EVENT_BUS_NAME"] = "test-event-bus"
+
+    event = {
+        "requestContext": {"connectionId": "test-conn-123"},
+        "body": json.dumps(
+            {
+                "attachments": [
+                    {
+                        "id": "att-1",
+                        "name": "report.pdf",
+                        "size": 1024,
+                        "content_type": "application/pdf",
+                        "key": "attachments/user-1/att-1/report.pdf",
+                    }
+                ],
+                "conversation_id": "conv-123",
+            }
+        ),
+    }
+
+    response = handler(event, None)
+
+    assert response["statusCode"] == 200
+    assert response["body"] == "Message sent"
+
+
+@pytest.mark.unit
 def test_handler_with_invalid_connection(dynamodb_tables):
     """Test handler fails with non-existent connection"""
     event = {
@@ -139,11 +170,22 @@ def test_create_unified_message():
         message_text="Test message",
         role="user",
         conversation_id="conv-789",
+        attachments=[
+            {
+                "id": "att-1",
+                "name": "image.png",
+                "size": 2048,
+                "content_type": "image/png",
+                "key": "attachments/user-123/att-1/image.png",
+            }
+        ],
+        message_type="attachments",
     )
 
     assert message["user"]["unified_user_id"] == "user-123"
     assert message["channel"]["channel_id"] == "conn-456"
     assert message["content"]["text"] == "Test message"
+    assert message["content"]["attachments"][0]["name"] == "image.png"
     assert message["conversation_id"] == "conv-789"
     assert "message_id" in message
     assert "timestamp" in message

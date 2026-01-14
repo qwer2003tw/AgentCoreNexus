@@ -35,11 +35,38 @@ export interface User {
   created_at?: string
 }
 
+export interface Attachment {
+  id: string
+  name: string
+  size: number
+  content_type: string
+  key: string
+}
+
 class ApiClient {
   private baseUrl: string
   
   constructor() {
     this.baseUrl = config.apiEndpoint
+  }
+
+  private mockState = {
+    token: 'mock-token',
+    user: {
+      email: 'test1@test.com',
+      role: 'user',
+      require_password_change: false
+    },
+    conversations: [] as Array<{
+      conversation_id: string
+      title: string
+      created_at: string
+      last_message_time: string
+      message_count: number
+      is_pinned: boolean
+      is_deleted?: boolean
+    }>,
+    messages: {} as Record<string, any[]>
   }
   
   private getAuthHeader(): HeadersInit {
@@ -51,6 +78,10 @@ class ApiClient {
     endpoint: string,
     options: RequestInit = {}
   ): Promise<T> {
+    if (config.features.mockApi) {
+      return this.mockRequest<T>(endpoint, options)
+    }
+
     const url = `${this.baseUrl}${endpoint}`
     
     const response = await fetch(url, {
@@ -72,6 +103,128 @@ class ApiClient {
     }
     
     return data
+  }
+
+  private async mockRequest<T>(endpoint: string, options: RequestInit): Promise<T> {
+    const method = (options.method || 'GET').toUpperCase()
+    const now = new Date().toISOString()
+    this.loadMockState()
+
+    if (endpoint === '/auth/login' && method === 'POST') {
+      const body = JSON.parse(options.body as string)
+      if (body.password !== 'Test123!') {
+        throw { error: 'Invalid credentials', statusCode: 401 } as ApiError
+      }
+      this.mockState.user.email = body.email
+      return {
+        token: this.mockState.token,
+        user: this.mockState.user
+      } as T
+    }
+
+    if (endpoint === '/auth/me' && method === 'GET') {
+      return this.mockState.user as T
+    }
+
+    if (endpoint === '/auth/logout' && method === 'POST') {
+      return { message: 'Logged out' } as T
+    }
+
+    if (endpoint.startsWith('/conversations') && method === 'GET') {
+      const conversationIdMatch = endpoint.match(/\/conversations\/([^/]+)\/messages/)
+      if (conversationIdMatch) {
+        const conversationId = conversationIdMatch[1]
+        const messages = this.mockState.messages[conversationId] || []
+        return { messages, count: messages.length } as T
+      }
+
+      const activeConversations = this.mockState.conversations.filter(c => !c.is_deleted)
+      return {
+        conversations: {
+          pinned: activeConversations.filter(c => c.is_pinned),
+          recent: activeConversations.filter(c => !c.is_pinned)
+        },
+        count: activeConversations.length
+      } as T
+    }
+
+    if (endpoint === '/conversations' && method === 'POST') {
+      const body = JSON.parse(options.body as string)
+      const conversation = {
+        conversation_id: `conv-${Date.now()}`,
+        title: body.title || '新對話',
+        created_at: now,
+        last_message_time: now,
+        message_count: 0,
+        is_pinned: false
+      }
+      this.mockState.conversations.unshift(conversation)
+      this.saveMockState()
+      return { ...conversation, message: 'Created' } as T
+    }
+
+    const updateMatch = endpoint.match(/\/conversations\/([^/]+)$/)
+    if (updateMatch && method === 'PUT') {
+      const conversationId = updateMatch[1]
+      const updates = JSON.parse(options.body as string)
+      this.mockState.conversations = this.mockState.conversations.map(conv =>
+        conv.conversation_id === conversationId
+          ? { ...conv, ...updates, last_message_time: now }
+          : conv
+      )
+      this.saveMockState()
+      return { message: 'Updated' } as T
+    }
+
+    if (updateMatch && method === 'DELETE') {
+      const conversationId = updateMatch[1]
+      this.mockState.conversations = this.mockState.conversations.map(conv =>
+        conv.conversation_id === conversationId ? { ...conv, is_deleted: true } : conv
+      )
+      this.saveMockState()
+      return { message: 'Deleted' } as T
+    }
+
+    if (endpoint === '/attachments/presign' && method === 'POST') {
+      const body = JSON.parse(options.body as string)
+      const response = {
+        upload_url: 'https://example.com/mock-upload',
+        attachment: {
+          id: `att-${Date.now()}`,
+          name: body.filename,
+          size: body.size,
+          content_type: body.content_type,
+          key: `attachments/mock/${Date.now()}/${body.filename}`
+        }
+      } as T
+      return response
+    }
+
+    if (endpoint === '/attachments/download' && method === 'POST') {
+      return { download_url: 'https://example.com/mock-download' } as T
+    }
+
+    this.saveMockState()
+    return {} as T
+  }
+
+  private loadMockState() {
+    try {
+      const stored = localStorage.getItem('mock_api_state')
+      if (stored) {
+        this.mockState = JSON.parse(stored)
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  private saveMockState() {
+    try {
+      localStorage.setItem('mock_api_state', JSON.stringify(this.mockState))
+    } catch {
+      // ignore
+    }
   }
   
   // Auth endpoints
@@ -213,6 +366,25 @@ class ApiClient {
     
     const query = queryParams.toString()
     return this.request(`/conversations/${conversationId}/messages${query ? '?' + query : ''}`)
+  }
+
+  // Attachments endpoints
+  async createAttachmentUpload(data: {
+    filename: string
+    content_type: string
+    size: number
+  }): Promise<{ upload_url: string; attachment: Attachment }> {
+    return this.request('/attachments/presign', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    })
+  }
+
+  async getAttachmentDownloadUrl(key: string): Promise<{ download_url: string }> {
+    return this.request('/attachments/download', {
+      method: 'POST',
+      body: JSON.stringify({ key })
+    })
   }
   
   // Admin endpoints

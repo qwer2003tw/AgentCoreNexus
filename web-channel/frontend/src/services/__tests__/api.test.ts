@@ -113,6 +113,69 @@ describe('API Client', () => {
       expect(result.conversation_id).toBe('conv-123')
     })
   })
+
+  describe('attachments', () => {
+    it('should request presigned upload url', async () => {
+      vi.mocked(localStorage.getItem).mockReturnValue('test-token')
+
+      const mockResponse = {
+        upload_url: 'https://s3.upload/test',
+        attachment: {
+          id: 'att-1',
+          name: 'report.pdf',
+          size: 1024,
+          content_type: 'application/pdf',
+          key: 'attachments/user/att-1/report.pdf'
+        }
+      }
+
+      vi.mocked(global.fetch).mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockResponse,
+      } as Response)
+
+      const result = await api.createAttachmentUpload({
+        filename: 'report.pdf',
+        content_type: 'application/pdf',
+        size: 1024
+      })
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/attachments/presign'),
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({
+            filename: 'report.pdf',
+            content_type: 'application/pdf',
+            size: 1024
+          })
+        })
+      )
+
+      expect(result).toEqual(mockResponse)
+    })
+
+    it('should request presigned download url', async () => {
+      const mockResponse = { download_url: 'https://s3.download/test' }
+
+      vi.mocked(global.fetch).mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockResponse,
+      } as Response)
+
+      const result = await api.getAttachmentDownloadUrl('attachments/user/att-1/report.pdf')
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/attachments/download'),
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({ key: 'attachments/user/att-1/report.pdf' })
+        })
+      )
+
+      expect(result).toEqual(mockResponse)
+    })
+  })
   
   describe('error handling', () => {
     it('should handle 401 unauthorized', async () => {

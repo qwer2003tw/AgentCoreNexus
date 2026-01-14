@@ -32,6 +32,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             return {"statusCode": 400, "body": "Missing event detail"}
         original_message = detail.get("original", detail)
         response_content = detail.get("response", "")
+        response_attachments = detail.get("attachments") or []
         if not response_content:
             return {"statusCode": 400, "body": "Missing response"}
         user_info = detail.get("user", {}) or original_message.get("user", {})
@@ -57,9 +58,17 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             or original_message.get("conversation_id")
             or original_message.get("context", {}).get("conversation_id", "default")
         )
-        new_title = save_conversation_history(original_message, response_content)
+        new_title = save_conversation_history(
+            original_message, response_content, response_attachments
+        )
         if channel_type == "web":
-            send_to_websocket(channel_id, response_content, conversation_id, new_title)
+            send_to_websocket(
+                channel_id,
+                response_content,
+                conversation_id,
+                new_title,
+                response_attachments,
+            )
         return {"statusCode": 200, "body": "Success"}
     except Exception as e:
         print(f"Error: {str(e)}")
@@ -70,11 +79,14 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
 
 
 def save_conversation_history(
-    original_message: dict[str, Any], response_content: str
+    original_message: dict[str, Any],
+    response_content: str,
+    response_attachments: list[dict[str, Any]] | None = None,
 ) -> str | None:
     try:
         unified_user_id = original_message.get("user", {}).get("unified_user_id")
         user_text = original_message.get("content", {}).get("text", "")
+        user_attachments = original_message.get("content", {}).get("attachments", [])
         conversation_id = original_message.get("conversation_id") or original_message.get(
             "context", {}
         ).get("conversation_id", "default")
@@ -95,7 +107,7 @@ def save_conversation_history(
                 "timestamp_msgid": f"{timestamp_user}#{user_msg_id}",
                 "conversation_id": conversation_id,
                 "role": "user",
-                "content": {"text": user_text, "attachments": []},
+                "content": {"text": user_text, "attachments": user_attachments},
                 "channel": channel_type,
                 "metadata": {},
                 "ttl": ttl,
@@ -109,7 +121,10 @@ def save_conversation_history(
                 "timestamp_msgid": f"{timestamp_assistant}#{assistant_msg_id}",
                 "conversation_id": conversation_id,
                 "role": "assistant",
-                "content": {"text": response_content, "attachments": []},
+                "content": {
+                    "text": response_content,
+                    "attachments": response_attachments or [],
+                },
                 "channel": channel_type,
                 "metadata": {},
                 "ttl": ttl,
@@ -125,7 +140,11 @@ def save_conversation_history(
 
 
 def send_to_websocket(
-    connection_id: str, message: str, conversation_id: str, title: str | None = None
+    connection_id: str,
+    message: str,
+    conversation_id: str,
+    title: str | None = None,
+    attachments: list[dict[str, Any]] | None = None,
 ) -> None:
     try:
         endpoint = WEBSOCKET_API_ENDPOINT.replace("wss://", "https://")
@@ -138,6 +157,7 @@ def send_to_websocket(
             "content": message,
             "conversation_id": conversation_id,
             "timestamp": datetime.now(UTC).isoformat(),
+            "attachments": attachments or [],
         }
         if title:
             data["title"] = title

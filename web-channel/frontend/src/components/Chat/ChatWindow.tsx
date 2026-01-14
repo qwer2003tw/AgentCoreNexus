@@ -1,12 +1,26 @@
 import { useState, useRef, useEffect } from 'react'
-import { useChatStore } from '@/stores/chatStore'
-import { Send, Loader2, AlertCircle } from 'lucide-react'
+import { useChatStore, Attachment } from '@/stores/chatStore'
+import { Send, Loader2, AlertCircle, Paperclip, X, RotateCw } from 'lucide-react'
 import MessageList from './MessageList'
 import { useIsMobile } from '@/hooks/useDeviceType'
+import { api } from '@/services/api'
+import { config } from '@/config/env'
+
+interface UploadItem {
+  id: string
+  file: File
+  status: 'uploading' | 'uploaded' | 'failed' | 'canceled'
+  progress: number
+  error?: string
+  attachment?: Attachment
+}
 
 export default function ChatWindow() {
   const [input, setInput] = useState('')
+  const [uploads, setUploads] = useState<UploadItem[]>([])
   const inputRef = useRef<HTMLTextAreaElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const uploadRequestsRef = useRef<Record<string, XMLHttpRequest>>({})
   const isMobile = useIsMobile() // 檢測移動設備
   
   const { 
@@ -23,16 +37,29 @@ export default function ChatWindow() {
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
-    if (!input.trim() || isSending || !isConnected || !currentConversationId) {
+
+    const readyAttachments = uploads
+      .filter(upload => upload.status === 'uploaded' && upload.attachment)
+      .map(upload => upload.attachment as Attachment)
+    const hasPendingUploads = uploads.some(upload => upload.status === 'uploading')
+    const message = input.trim()
+
+    if (
+      (!message && readyAttachments.length === 0) ||
+      isSending ||
+      hasPendingUploads ||
+      !isConnected ||
+      !currentConversationId
+    ) {
       return
     }
-    
-    const message = input.trim()
+
     setInput('')
     
     try {
-      await sendMessage(message)
+      await sendMessage(message, readyAttachments)
+
+      setUploads([])
       
       // Focus back on input
       inputRef.current?.focus()
@@ -71,6 +98,108 @@ export default function ChatWindow() {
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInput(e.target.value)
     adjustTextareaHeight()
+  }
+
+  const updateUpload = (id: string, update: Partial<UploadItem>) => {
+    setUploads(prev =>
+      prev.map(item => (item.id === id ? { ...item, ...update } : item))
+    )
+  }
+
+  const uploadFile = async (id: string, file: File) => {
+    try {
+      const response = await api.createAttachmentUpload({
+        filename: file.name,
+        content_type: file.type || 'application/octet-stream',
+        size: file.size
+      })
+
+      const xhr = new XMLHttpRequest()
+      uploadRequestsRef.current[id] = xhr
+
+      xhr.upload.addEventListener('progress', event => {
+        if (event.lengthComputable) {
+          const percent = Math.round((event.loaded / event.total) * 100)
+          updateUpload(id, { progress: percent })
+        }
+      })
+
+      xhr.addEventListener('load', () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          updateUpload(id, {
+            status: 'uploaded',
+            progress: 100,
+            attachment: response.attachment
+          })
+        } else {
+          updateUpload(id, { status: 'failed', error: '上傳失敗' })
+        }
+      })
+
+      xhr.addEventListener('error', () => {
+        updateUpload(id, { status: 'failed', error: '上傳失敗' })
+      })
+
+      xhr.addEventListener('abort', () => {
+        updateUpload(id, { status: 'canceled', error: '已取消上傳' })
+      })
+
+      xhr.open('PUT', response.upload_url, true)
+      xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream')
+      xhr.send(file)
+    } catch (error: any) {
+      updateUpload(id, { status: 'failed', error: error?.error || '上傳失敗' })
+    }
+  }
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || [])
+    if (!files.length) return
+
+    files.forEach(file => {
+      if (file.size > config.maxAttachmentSizeBytes) {
+        const failedId = `${Date.now()}-${file.name}`
+        setUploads(prev => [
+          ...prev,
+          {
+            id: failedId,
+            file,
+            status: 'failed',
+            progress: 0,
+            error: '檔案超過大小限制'
+          }
+        ])
+        return
+      }
+
+      const id = `${Date.now()}-${Math.random().toString(16).slice(2)}`
+      setUploads(prev => [
+        ...prev,
+        { id, file, status: 'uploading', progress: 0 }
+      ])
+      uploadFile(id, file)
+    })
+
+    event.target.value = ''
+  }
+
+  const handleCancelUpload = (id: string) => {
+    const xhr = uploadRequestsRef.current[id]
+    if (xhr) {
+      xhr.abort()
+    }
+  }
+
+  const handleRetryUpload = (id: string) => {
+    const item = uploads.find(upload => upload.id === id)
+    if (!item) return
+
+    updateUpload(id, { status: 'uploading', progress: 0, error: undefined })
+    uploadFile(id, item.file)
+  }
+
+  const handleRemoveUpload = (id: string) => {
+    setUploads(prev => prev.filter(item => item.id !== id))
   }
   
   useEffect(() => {
@@ -140,8 +269,89 @@ export default function ChatWindow() {
       
       {/* Input area */}
       <div className="border-t border-dark-border bg-dark-surface p-4">
-        <form onSubmit={handleSubmit} className="max-w-4xl mx-auto">
+        <form onSubmit={handleSubmit} className="max-w-4xl mx-auto space-y-3">
+          {uploads.length > 0 && (
+            <div className="space-y-2 rounded-xl border border-dark-border bg-dark-bg/60 p-3">
+              <div className="flex items-center justify-between text-xs text-dark-text-secondary">
+                <span>待上傳檔案</span>
+                <span>上限 {Math.round(config.maxAttachmentSizeBytes / (1024 * 1024))} MB</span>
+              </div>
+              <div className="space-y-2">
+                {uploads.map(upload => (
+                  <div
+                    key={upload.id}
+                    className="flex items-center gap-3 rounded-lg border border-dark-border bg-dark-surface/70 px-3 py-2"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-dark-text truncate">{upload.file.name}</p>
+                      <div className="mt-1 h-1.5 rounded-full bg-dark-border">
+                        <div
+                          className={`h-full rounded-full ${
+                            upload.status === 'failed' ? 'bg-error' : 'bg-primary'
+                          }`}
+                          style={{ width: `${upload.progress}%` }}
+                        />
+                      </div>
+                      {upload.error && (
+                        <p className="mt-1 text-xs text-error">{upload.error}</p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {upload.status === 'uploading' && (
+                        <button
+                          type="button"
+                          className="btn-secondary px-2 py-1 text-xs"
+                          onClick={() => handleCancelUpload(upload.id)}
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      )}
+                      {upload.status === 'failed' && (
+                        <button
+                          type="button"
+                          className="btn-secondary px-2 py-1 text-xs"
+                          onClick={() => handleRetryUpload(upload.id)}
+                        >
+                          <RotateCw className="h-3 w-3" />
+                        </button>
+                      )}
+                      {upload.status !== 'uploading' && (
+                        <button
+                          type="button"
+                          className="btn-secondary px-2 py-1 text-xs"
+                          onClick={() => handleRemoveUpload(upload.id)}
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="flex items-end gap-3">
+            {/* Upload button */}
+            <div className="flex items-center">
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                className="hidden"
+                onChange={handleFileSelect}
+              />
+              <button
+                type="button"
+                className="btn-secondary px-4 py-3"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={!isConnected || isSending || !currentConversationId}
+                aria-label="上傳檔案"
+              >
+                <Paperclip className="w-5 h-5" />
+              </button>
+            </div>
+
             {/* Text input */}
             <div className="flex-1 relative">
               <textarea
@@ -175,7 +385,13 @@ export default function ChatWindow() {
             {/* Send button */}
             <button
               type="submit"
-              disabled={!input.trim() || !isConnected || isSending || !currentConversationId}
+              disabled={
+                (!input.trim() && uploads.every(upload => upload.status !== 'uploaded')) ||
+                uploads.some(upload => upload.status === 'uploading') ||
+                !isConnected ||
+                isSending ||
+                !currentConversationId
+              }
               className={`btn-primary flex items-center gap-2 ${
                 isMobile ? 'px-5 py-4 min-w-[64px] min-h-[48px]' : 'px-6 py-3'
               }`}
@@ -194,8 +410,11 @@ export default function ChatWindow() {
           </div>
           
           {/* Character count */}
-          <div className="mt-2 text-xs text-dark-text-secondary text-right">
-            {input.length} / 4000
+          <div className="flex items-center justify-between text-xs text-dark-text-secondary">
+            <span>
+              {uploads.some(upload => upload.status === 'uploading') ? '檔案上傳中...' : '可附加多個檔案'}
+            </span>
+            <span>{input.length} / 4000</span>
           </div>
         </form>
       </div>

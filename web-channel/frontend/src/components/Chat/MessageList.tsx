@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useChatStore } from '@/stores/chatStore'
 import { User, Bot } from 'lucide-react'
+import AttachmentItem from './AttachmentItem'
 
 export default function MessageList() {
   const { getCurrentMessages } = useChatStore()
@@ -41,15 +42,24 @@ export default function MessageList() {
           
           {/* Message bubble */}
           <div
-            className={`max-w-[70%] rounded-2xl px-4 py-3 ${
+            className={`max-w-[70%] rounded-2xl px-4 py-3 space-y-3 ${
               message.role === 'user'
                 ? 'bg-primary text-white'
                 : 'bg-dark-surface border border-dark-border'
             }`}
           >
-            <p className="text-sm whitespace-pre-wrap break-words">
-              {message.content}
-            </p>
+            {message.content && (
+              <p className="text-sm whitespace-pre-wrap break-words">
+                {message.content}
+              </p>
+            )}
+            {!!message.attachments?.length && (
+              <div className="space-y-2">
+                {message.attachments.map((attachment) => (
+                  <AttachmentItem key={attachment.id} attachment={attachment} />
+                ))}
+              </div>
+            )}
             <p
               className={`text-xs mt-1 ${
                 message.role === 'user' ? 'text-white/70' : 'text-dark-text-secondary'

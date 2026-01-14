@@ -70,10 +70,10 @@ describe('API Integration Flows', () => {
     vi.mocked(websocket.isConnected).mockReturnValue(true)
     vi.mocked(websocket.sendMessage).mockImplementation(() => {})
     
-    await useChatStore.getState().sendMessage('Hello!')
+    await useChatStore.getState().sendMessage('Hello!', [])
     
     // Verify message sent
-    expect(websocket.sendMessage).toHaveBeenCalledWith('Hello!', 'conv-1')
+    expect(websocket.sendMessage).toHaveBeenCalledWith('Hello!', 'conv-1', [])
     
     // Verify optimistic update
     const messages = useChatStore.getState().conversations[0].messages

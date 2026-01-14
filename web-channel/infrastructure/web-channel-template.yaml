@@ -594,6 +594,41 @@ Resources:
             Auth:
               Authorizer: MyLambdaTokenAuthorizer
 
+  # Attachments Function
+  AttachmentsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-attachments-api'
+      CodeUri: ../lambdas/rest/
+      Handler: attachments.handler
+      Description: Handle attachment upload/download presigned URLs
+      Environment:
+        Variables:
+          ATTACHMENTS_BUCKET: !Ref AttachmentsBucket
+          BINDINGS_TABLE: !Ref UserBindingsTable
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Ref AttachmentsBucket
+        - DynamoDBReadPolicy:
+            TableName: !Ref UserBindingsTable
+      Events:
+        PresignUpload:
+          Type: Api
+          Properties:
+            RestApiId: !Ref RestApi
+            Path: /attachments/presign
+            Method: POST
+            Auth:
+              Authorizer: MyLambdaTokenAuthorizer
+        PresignDownload:
+          Type: Api
+          Properties:
+            RestApiId: !Ref RestApi
+            Path: /attachments/download
+            Method: POST
+            Auth:
+              Authorizer: MyLambdaTokenAuthorizer
+
   # ============================================================
   # Response Router Updates (to be integrated with existing)
   # ============================================================
@@ -685,6 +720,12 @@ Resources:
     Properties:
       LogGroupName: !Sub '/aws/lambda/${ResponseRouterFunction}'
       RetentionInDays: 14
+
+  AttachmentsFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${AttachmentsFunction}'
+      RetentionInDays: 14
   
   # ============================================================
   # Frontend S3 Bucket
@@ -706,6 +747,23 @@ Resources:
           Value: !Ref Environment
         - Key: Purpose
           Value: Frontend static hosting
+
+  AttachmentsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub '${AWS::StackName}-attachments-${AWS::AccountId}'
+      VersioningConfiguration:
+        Status: Enabled
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Purpose
+          Value: Chat attachments storage
   
   FrontendBucketPolicy:
     Type: AWS::S3::BucketPolicy

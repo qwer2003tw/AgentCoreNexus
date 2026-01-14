@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import ChatWindow from '../ChatWindow'
 import { useChatStore } from '@/stores/chatStore'
 import { useIsMobile } from '@/hooks/useDeviceType'
+import { api } from '@/services/api'
 
 // Mock dependencies
 vi.mock('@/hooks/useDeviceType')
@@ -10,6 +11,40 @@ vi.mock('@/stores/chatStore')
 vi.mock('../MessageList', () => ({
   default: () => <div data-testid="message-list">Messages</div>
 }))
+vi.mock('@/services/api', () => ({
+  api: {
+    createAttachmentUpload: vi.fn(),
+    getAttachmentDownloadUrl: vi.fn()
+  }
+}))
+
+class MockXMLHttpRequest {
+  upload = {
+    addEventListener: vi.fn()
+  }
+  listeners: Record<string, () => void> = {}
+  status = 200
+  
+  addEventListener(event: string, callback: () => void) {
+    this.listeners[event] = callback
+  }
+  
+  open() {}
+  
+  setRequestHeader() {}
+  
+  send() {
+    if (this.listeners.load) {
+      this.listeners.load()
+    }
+  }
+  
+  abort() {
+    if (this.listeners.abort) {
+      this.listeners.abort()
+    }
+  }
+}
 
 describe('ChatWindow', () => {
   const mockSendMessage = vi.fn()
@@ -39,6 +74,7 @@ describe('ChatWindow', () => {
     vi.clearAllMocks()
     vi.mocked(useChatStore).mockReturnValue(defaultStoreState as any)
     vi.mocked(useIsMobile).mockReturnValue(false) // Default to desktop
+    vi.stubGlobal('XMLHttpRequest', MockXMLHttpRequest)
   })
   
   describe('Desktop Mode - Keyboard Behavior', () => {
@@ -56,7 +92,7 @@ describe('ChatWindow', () => {
       
       // Should have called sendMessage
       await waitFor(() => {
-        expect(mockSendMessage).toHaveBeenCalledWith('Hello!')
+        expect(mockSendMessage).toHaveBeenCalledWith('Hello!', [])
       })
       
       // Input should be cleared
@@ -142,7 +178,7 @@ describe('ChatWindow', () => {
       
       // Should have called sendMessage
       await waitFor(() => {
-        expect(mockSendMessage).toHaveBeenCalledWith('Hello!')
+        expect(mockSendMessage).toHaveBeenCalledWith('Hello!', [])
       })
     })
     
@@ -385,6 +421,48 @@ describe('ChatWindow', () => {
       const textarea = screen.getByRole('textbox')
       
       expect(textarea).toHaveAttribute('placeholder', '等待連接...')
+    })
+  })
+
+  describe('Attachment Uploads', () => {
+    it('should upload file and send message with attachment', async () => {
+      vi.mocked(api.createAttachmentUpload).mockResolvedValue({
+        upload_url: 'https://s3.upload/test',
+        attachment: {
+          id: 'att-1',
+          name: 'report.pdf',
+          size: 1024,
+          content_type: 'application/pdf',
+          key: 'attachments/user-1/att-1/report.pdf'
+        }
+      })
+
+      render(<ChatWindow />)
+
+      const fileInput = document.querySelector('input[type=\"file\"]') as HTMLInputElement
+      expect(fileInput).toBeTruthy()
+      const file = new File(['hello'], 'report.pdf', { type: 'application/pdf' })
+
+      fireEvent.change(fileInput, { target: { files: [file] } })
+
+      await waitFor(() => {
+        expect(screen.getByText('report.pdf')).toBeInTheDocument()
+      })
+
+      const sendButton = screen.getByRole('button', { name: /發送訊息/i })
+      fireEvent.click(sendButton)
+
+      await waitFor(() => {
+        expect(mockSendMessage).toHaveBeenCalledWith('', [
+          {
+            id: 'att-1',
+            name: 'report.pdf',
+            size: 1024,
+            content_type: 'application/pdf',
+            key: 'attachments/user-1/att-1/report.pdf'
+          }
+        ])
+      })
     })
   })
 })

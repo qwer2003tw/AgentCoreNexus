@@ -42,13 +42,36 @@ def test_save_conversation_history(dynamodb_tables):
     """Test conversation history saving"""
     original_message = {
         "user": {"unified_user_id": "user-123"},
-        "content": {"text": "User message"},
+        "content": {
+            "text": "User message",
+            "attachments": [
+                {
+                    "id": "att-1",
+                    "name": "report.pdf",
+                    "size": 2048,
+                    "content_type": "application/pdf",
+                    "key": "attachments/user-123/att-1/report.pdf",
+                }
+            ],
+        },
         "conversation_id": "conv-123",
         "channel": {"type": "web"},
         "context": {"conversation_id": "conv-123"},
     }
 
-    save_conversation_history(original_message, "AI response")
+    save_conversation_history(
+        original_message,
+        "AI response",
+        [
+            {
+                "id": "att-2",
+                "name": "output.txt",
+                "size": 1024,
+                "content_type": "text/plain",
+                "key": "attachments/user-123/att-2/output.txt",
+            }
+        ],
+    )
 
     # Verify messages saved
     history_table = dynamodb_tables["history"]
@@ -63,11 +86,13 @@ def test_save_conversation_history(dynamodb_tables):
     # Check user message
     user_msg = [i for i in items if i["role"] == "user"][0]
     assert user_msg["content"]["text"] == "User message"
+    assert user_msg["content"]["attachments"][0]["name"] == "report.pdf"
     assert user_msg["conversation_id"] == "conv-123"
 
     # Check assistant message
     assistant_msg = [i for i in items if i["role"] == "assistant"][0]
     assert assistant_msg["content"]["text"] == "AI response"
+    assert assistant_msg["content"]["attachments"][0]["name"] == "output.txt"
     assert assistant_msg["conversation_id"] == "conv-123"
 
 
@@ -163,7 +188,13 @@ def test_send_to_websocket_success(mock_apigw, dynamodb_tables, test_connection)
 
     router.apigw_management = mock_client
 
-    send_to_websocket("conn-456", "Test message", "conv-123", "Test Title")
+    send_to_websocket(
+        "conn-456",
+        "Test message",
+        "conv-123",
+        "Test Title",
+        [{"id": "att-1", "name": "file.txt", "size": 1, "content_type": "text/plain"}],
+    )
 
     # Verify post_to_connection was called
     assert mock_client.post_to_connection.called
@@ -176,6 +207,7 @@ def test_send_to_websocket_success(mock_apigw, dynamodb_tables, test_connection)
     assert data["content"] == "Test message"
     assert data["conversation_id"] == "conv-123"
     assert data["title"] == "Test Title"
+    assert data["attachments"][0]["name"] == "file.txt"
 
 
 @pytest.mark.unit

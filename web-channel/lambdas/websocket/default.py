@@ -37,9 +37,10 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     try:
         body = json.loads(event.get("body", "{}"))
         message_text = body.get("message", "")
+        attachments = body.get("attachments") or []
         conversation_id = body.get("conversation_id")
 
-        if not message_text:
+        if not message_text and not attachments:
             return {"statusCode": 400, "body": "Missing message"}
 
         connection = get_connection(connection_id)
@@ -52,8 +53,17 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         if not conversation_id:
             conversation_id = auto_assign_conversation_id(unified_user_id)
 
+        message_type = "text" if message_text else "attachments"
+
         unified_message = create_unified_message(
-            unified_user_id, connection_id, email, message_text, "user", conversation_id
+            unified_user_id,
+            connection_id,
+            email,
+            message_text,
+            "user",
+            conversation_id,
+            attachments,
+            message_type,
         )
 
         send_to_eventbridge(unified_message)
@@ -85,6 +95,8 @@ def create_unified_message(
     message_text: str,
     role: str,
     conversation_id: str,
+    attachments: list[dict[str, Any]] | None = None,
+    message_type: str = "text",
 ) -> dict[str, Any]:
     return {
         "message_id": str(uuid.uuid4()),
@@ -92,7 +104,11 @@ def create_unified_message(
         "timestamp": datetime.now(UTC).isoformat(),
         "channel": {"type": "web", "channel_id": connection_id, "metadata": {}},
         "user": {"unified_user_id": unified_user_id, "identifier": email, "role": role},
-        "content": {"text": message_text, "message_type": "text", "attachments": []},
+        "content": {
+            "text": message_text,
+            "message_type": message_type,
+            "attachments": attachments or [],
+        },
         "context": {"conversation_id": conversation_id, "session_id": connection_id},
     }
 

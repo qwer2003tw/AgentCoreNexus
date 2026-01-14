@@ -39,7 +39,7 @@ describe('WebSocket Service', () => {
     websocket.connect('test-token')
     mockWebSocket.readyState = WebSocket.OPEN
     
-    websocket.sendMessage('Hello', 'conv-123')
+    websocket.sendMessage('Hello', 'conv-123', [])
     
     // Check message sent
     expect(mockWebSocket.send).toHaveBeenCalledWith(
@@ -55,7 +55,7 @@ describe('WebSocket Service', () => {
     
     mockWebSocket.readyState = WebSocket.CLOSED
     
-    expect(() => websocket.sendMessage('Hello')).toThrow('WebSocket not connected')
+    expect(() => websocket.sendMessage('Hello', undefined, [])).toThrow('WebSocket not connected')
   })
   
   it('should notify message handlers', async () => {

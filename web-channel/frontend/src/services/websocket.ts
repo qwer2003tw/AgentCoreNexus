@@ -9,6 +9,14 @@ export interface Message {
   type: 'message' | 'error' | 'connected' | 'disconnected'
   content: string
   timestamp: string
+  conversation_id?: string
+  attachments?: Array<{
+    id: string
+    name: string
+    size: number
+    content_type: string
+    key: string
+  }>
 }
 
 type MessageHandler = (message: Message) => void
@@ -89,7 +97,17 @@ class WebSocketClient {
     this.notifyConnectionHandlers(false)
   }
   
-  sendMessage(message: string, conversationId?: string): void {
+  sendMessage(
+    message: string,
+    conversationId?: string,
+    attachments: Array<{
+      id: string
+      name: string
+      size: number
+      content_type: string
+      key: string
+    }> = []
+  ): void {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
       throw new Error('WebSocket not connected')
     }
@@ -97,7 +115,8 @@ class WebSocketClient {
     const payload = {
       action: 'sendMessage',
       message,
-      conversation_id: conversationId
+      conversation_id: conversationId,
+      attachments
     }
     
     console.log('Sending message:', payload)

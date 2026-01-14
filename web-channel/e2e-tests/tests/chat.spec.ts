@@ -107,6 +107,19 @@ test.describe('Chat Core Functionality', () => {
     const messageCount = await getMessageCount(page)
     expect(messageCount).toBeGreaterThanOrEqual(6)  // 3 user + 3 AI
   })
+
+  test('user can upload attachment and send message', async ({ authenticatedPage: page }) => {
+    await createNewConversation(page)
+
+    const fileInput = page.locator('input[type=\"file\"]')
+    await fileInput.setInputFiles('fixtures/sample.txt')
+
+    await page.waitForSelector('text=sample.txt', { timeout: 10000 })
+
+    await page.click('button[aria-label=\"發送訊息\"]')
+
+    await page.waitForSelector('text=sample.txt', { timeout: 10000 })
+  })
   
   test('WebSocket reconnection works', async ({ authenticatedPage: page }) => {
     // Create conversation and send message

@@ -5,7 +5,7 @@
 """
 
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import bcrypt
 import boto3
@@ -53,7 +53,7 @@ def create_test_users():
             try:
                 response = table.get_item(Key={"email": email})
                 if "Item" in response:
-                    print(f"   ⚠️  帳號已存在，跳過")
+                    print("   ⚠️  帳號已存在，跳過")
                     skip_count += 1
                     print()
                     continue
@@ -65,7 +65,7 @@ def create_test_users():
             password_hash = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt(rounds=12))
 
             # 創建用戶
-            now = datetime.now(timezone.utc).isoformat()
+            now = datetime.now(UTC).isoformat()
 
             table.put_item(
                 Item={
@@ -79,7 +79,7 @@ def create_test_users():
                 }
             )
 
-            print(f"   ✅ 創建成功")
+            print("   ✅ 創建成功")
             print(f"   密碼: {password}")
             success_count += 1
 

@@ -12,6 +12,15 @@ export interface ChatMessage {
   content: string
   timestamp: string
   channel?: string
+  attachments?: Attachment[]
+}
+
+export interface Attachment {
+  id: string
+  name: string
+  size: number
+  content_type: string
+  key: string
 }
 
 export interface Conversation {
@@ -48,7 +57,7 @@ interface ChatState {
   getFilteredConversations: () => { pinned: Conversation[], recent: Conversation[] }
   
   // Actions - Messages
-  sendMessage: (content: string) => Promise<void>
+  sendMessage: (content: string, attachments?: Attachment[]) => Promise<void>
   addMessage: (message: ChatMessage, targetConversationId?: string) => void
   getCurrentMessages: () => ChatMessage[]
   
@@ -176,9 +185,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
         const messages: ChatMessage[] = response.messages.map((m: any) => ({
           id: m.timestamp_msgid.split('#')[1],
           role: m.role,
-          content: m.content.text,
+          content: m.content.text || '',
           timestamp: m.timestamp_msgid.split('#')[0],
-          channel: m.channel
+          channel: m.channel,
+          attachments: m.content.attachments || []
         }))
         
         // Update conversation with messages
@@ -284,7 +294,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
       const query = searchQuery.toLowerCase()
       filtered = conversations.filter(c =>
         c.title.toLowerCase().includes(query) ||
-        c.messages.some(m => m.content.toLowerCase().includes(query))
+        c.messages.some(m =>
+          m.content.toLowerCase().includes(query) ||
+          (m.attachments || []).some(att => att.name.toLowerCase().includes(query))
+        )
       )
     }
     
@@ -299,7 +312,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   // Message Management
   // ============================================================
   
-  sendMessage: async (content: string) => {
+  sendMessage: async (content: string, attachments: Attachment[] = []) => {
     if (!websocket.isConnected()) {
       set({ error: '未連接到伺服器' })
       return
@@ -320,13 +333,14 @@ export const useChatStore = create<ChatState>((set, get) => ({
         role: 'user',
         content,
         timestamp: new Date().toISOString(),
-        channel: 'web'
+        channel: 'web',
+        attachments
       }
       
       get().addMessage(userMessage)
       
       // Send to server (with conversation_id)
-      websocket.sendMessage(content, currentConvId)
+      websocket.sendMessage(content, currentConvId, attachments)
       
       set({ isSending: false })
       
@@ -393,7 +407,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
           role: 'assistant',
           content: message.content,
           timestamp: message.timestamp,
-          channel: 'web'
+          channel: 'web',
+          attachments: message.attachments || []
         }
         // Use conversation_id from message to route to correct conversation
         const targetConvId = (message as any).conversation_id

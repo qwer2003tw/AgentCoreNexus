@@ -182,10 +182,10 @@ describe('chatStore', () => {
       vi.mocked(websocket.sendMessage).mockImplementation(() => {})
       
       const store = useChatStore.getState()
-      await store.sendMessage('Hello!')
+      await store.sendMessage('Hello!', [])
       
       // Check WebSocket called
-      expect(websocket.sendMessage).toHaveBeenCalledWith('Hello!', 'conv-1')
+      expect(websocket.sendMessage).toHaveBeenCalledWith('Hello!', 'conv-1', [])
       
       // Check optimistic update
       const state = useChatStore.getState()
@@ -201,7 +201,7 @@ describe('chatStore', () => {
       vi.mocked(websocket.isConnected).mockReturnValue(false)
       
       const store = useChatStore.getState()
-      await store.sendMessage('Hello')
+      await store.sendMessage('Hello', [])
       
       // Should set error
       const state = useChatStore.getState()
@@ -312,6 +312,46 @@ describe('chatStore', () => {
       // Should only return apple conversation
       expect(result.recent).toHaveLength(1)
       expect(result.recent[0].title).toBe('Apple Chat')
+    })
+
+    it('should match attachments in search query', () => {
+      useChatStore.setState({
+        conversations: [
+          {
+            id: 'conv-1',
+            title: 'Files',
+            messages: [
+              {
+                id: 'msg-1',
+                role: 'user',
+                content: '',
+                timestamp: '',
+                channel: 'web',
+                attachments: [
+                  {
+                    id: 'att-1',
+                    name: 'invoice.pdf',
+                    size: 100,
+                    content_type: 'application/pdf',
+                    key: 'attachments/user/att-1/invoice.pdf'
+                  }
+                ]
+              }
+            ],
+            messageCount: 1,
+            lastMessageTime: '',
+            isPinned: false,
+            createdAt: ''
+          }
+        ],
+        searchQuery: 'invoice'
+      })
+
+      const store = useChatStore.getState()
+      const result = store.getFilteredConversations()
+
+      expect(result.recent).toHaveLength(1)
+      expect(result.recent[0].title).toBe('Files')
     })
     
     it('should group pinned and recent conversations', () => {
