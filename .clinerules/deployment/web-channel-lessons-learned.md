@@ -318,6 +318,103 @@ Policies:
 
 ---
 
+### 9. 測試覆蓋的盲點 ⭐⭐⭐
+
+**問題**：E2E 測試沒有發現 `content_type.startsWith()` 的 undefined bug
+
+**為什麼測試沒發現**：
+```typescript
+// E2E 測試做了
+test('upload attachment', async ({ page }) => {
+    await fileInput.setInputFiles('sample.txt')
+    await page.waitForSelector('text=sample.txt')  // ✅ 上傳成功
+    await page.click('button[aria-label="發送訊息"]')  // ✅ 發送成功
+    // ❌ 但沒有等待 AI 回覆
+    // ❌ 沒有檢查回覆中的附件顯示
+})
+```
+
+**Bug 觸發條件**：
+1. 用戶上傳附件並發送
+2. AI 處理並回覆
+3. **回覆被保存到歷史**（包含附件資訊）
+4. 前端嘗試顯示歷史消息中的附件
+5. `AttachmentItem` 讀取 `content_type` → undefined → 崩潰
+
+**教訓**：
+- E2E 測試應該覆蓋**完整流程**，不只是功能入口
+- 應該等待異步操作完成
+- 應該測試資料顯示，不只是資料輸入
+
+**正確的測試**：
+```typescript
+test('attachment full flow with AI reply', async ({ page }) => {
+    await createNewConversation(page)
+    await fileInput.setInputFiles('sample.txt')
+    await page.click('button[aria-label="發送訊息"]')
+    
+    // ⭐ 等待 AI 回覆
+    await waitForAIReply(page, 30000)
+    
+    // ⭐ 重新載入（從歷史載入附件）
+    await page.reload()
+    
+    // ⭐ 驗證附件顯示正常
+    const attachments = page.locator('.attachment-item')
+    await expect(attachments).toBeVisible()
+    
+    // ⭐ 檢查沒有 JS 錯誤
+    const errors = await page.evaluate(() => 
+        performance.getEntriesByType('navigation')
+    )
+    // 頁面應該成功載入
+})
+```
+
+---
+
+### 10. 防禦性編程必要性 ⭐⭐⭐
+
+**教訓**：永遠不要假設資料完整性
+
+**錯誤示例**：
+```typescript
+const isImage = attachment.content_type.startsWith('image/')
+// ❌ 假設 content_type 一定存在
+```
+
+**正確做法**：
+```typescript
+const isImage = attachment.content_type?.startsWith('image/') ?? false
+// ✅ 使用 optional chaining
+// ✅ 提供預設值
+```
+
+**何時使用防禦性編程**：
+- ✅ 所有外部資料（API、資料庫、用戶輸入）
+- ✅ 可選欄位
+- ✅ 跨服務通訊
+- ✅ 歷史資料（格式可能改變）
+
+**檢查清單**：
+- [ ] 所有 `.` 存取都考慮 undefined
+- [ ] 使用 `?.` optional chaining
+- [ ] 提供合理的預設值
+- [ ] 在邊界處驗證資料
+
+**範例**：
+```typescript
+// ❌ 危險
+user.profile.name
+attachment.content_type.startsWith()
+
+// ✅ 安全
+user?.profile?.name ?? 'Unknown'
+attachment.content_type?.startsWith('image/') ?? false
+```
+
+---
+
 ## 📋 Web Channel 部署檢查清單
 
 ### Template 配置
