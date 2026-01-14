@@ -125,6 +125,12 @@ export default function ChatWindow() {
       })
 
       xhr.addEventListener('load', () => {
+        console.log('Upload response:', {
+          status: xhr.status,
+          statusText: xhr.statusText,
+          responseText: xhr.responseText
+        })
+        
         if (xhr.status >= 200 && xhr.status < 300) {
           updateUpload(id, {
             status: 'uploaded',
@@ -132,12 +138,16 @@ export default function ChatWindow() {
             attachment: response.attachment
           })
         } else {
-          updateUpload(id, { status: 'failed', error: '上傳失敗' })
+          const errorMsg = `上傳失敗 (${xhr.status}): ${xhr.statusText}`
+          console.error('Upload failed:', errorMsg, xhr.responseText)
+          updateUpload(id, { status: 'failed', error: errorMsg })
         }
       })
 
-      xhr.addEventListener('error', () => {
-        updateUpload(id, { status: 'failed', error: '上傳失敗' })
+      xhr.addEventListener('error', (e) => {
+        console.error('Upload XHR error:', e, 'status:', xhr.status)
+        const errorMsg = xhr.status ? `網絡錯誤 (${xhr.status})` : '網絡錯誤'
+        updateUpload(id, { status: 'failed', error: errorMsg })
       })
 
       xhr.addEventListener('abort', () => {

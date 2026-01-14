@@ -294,7 +294,7 @@ describe('ChatWindow', () => {
       
       // Should send trimmed message
       await waitFor(() => {
-        expect(mockSendMessage).toHaveBeenCalledWith('Hello!')
+        expect(mockSendMessage).toHaveBeenCalledWith('Hello!', [])
       })
     })
     

@@ -9,10 +9,15 @@ import uuid
 from typing import Any
 
 import boto3
+from botocore.client import Config
 from botocore.exceptions import ClientError
 
-# Initialize AWS clients
-s3_client = boto3.client("s3")
+# Initialize AWS clients with region-specific endpoint
+s3_client = boto3.client(
+    "s3",
+    region_name="us-west-2",
+    config=Config(signature_version="s3v4", s3={"addressing_style": "virtual"}),
+)
 dynamodb = boto3.resource("dynamodb")
 
 # Environment variables
