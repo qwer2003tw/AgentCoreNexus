@@ -1,222 +1,295 @@
-# Git Hooks 使用指南
+# Hooks 目錄說明
 
-本目錄包含 AgentCoreNexus 專案的 Git hooks，用於強制執行代碼質量標準。
-
----
-
-## 📋 已實施的 Hooks
-
-### Pre-commit Hook
-
-**目的**：在每次 commit 前自動執行完整的質量檢查
-
-**執行內容**：
-1. 🔍 **Ruff 代碼質量檢查**
-   - 自動修復可修復的問題
-   - 格式化代碼
-   - 驗證無剩餘錯誤
-
-2. 🧪 **單元測試**
-   - telegram-lambda: `pytest tests/ --ignore=tests/e2e/`
-   - telegram-agentcore-bot: `pytest tests/`
-
-3. 🎭 **E2E 測試**
-   - telegram-lambda: `pytest tests/e2e/`
-   - 如果依賴未安裝會跳過（並顯示警告）
-
-4. 📊 **覆蓋率檢查**
-   - 優先使用 `diff-cover` 檢查新代碼（≥ 80%）
-   - 如果 diff-cover 不可用，檢查整體覆蓋率（≥ 70%）
-
-**執行時間**：2-5 分鐘
-
-**觸發條件**：只在 Python 文件（.py）被修改時執行
+此目錄包含兩種不同類型的 hooks：**Git Hooks** 和 **Cline Hooks**。
 
 ---
 
-## 🔧 安裝
+## 🔀 兩種 Hooks 的區別
 
-### 自動安裝（推薦）
+### Git Hooks（傳統）
 
-在專案根目錄執行：
+**文件**: `pre-commit`（Git 自動使用）
+
+**觸發時機**: Git commit 時  
+**用途**: 在代碼提交前執行質量檢查  
+**執行內容**:
+- Ruff 代碼質量檢查
+- 單元測試
+- E2E 測試
+- 覆蓋率檢查
+
+**特點**:
+- ✅ 強制執行（commit 時自動觸發）
+- ✅ 保護代碼庫質量
+- ✅ 防止不合格代碼進入版本控制
+
+**安裝方式**:
 ```bash
 ./setup-hooks.sh
 ```
 
-腳本會：
-- ✅ 複製 hook 到 `.git/hooks/`
-- ✅ 設置執行權限
-- ✅ 檢查測試環境
-- ✅ 顯示安裝狀態
+---
 
-### 手動安裝
+### Cline Hooks（新功能）⭐
 
-```bash
-cp .clinerules/hooks/pre-commit .git/hooks/pre-commit
-chmod +x .git/hooks/pre-commit
+**文件**: `PreToolUse`, `TaskStart`, `PostToolUse`（Cline 使用）
+
+**觸發時機**: Cline AI 操作時  
+**用途**: 在 AI 工作流中注入邏輯和驗證
+
+#### PreToolUse（操作前驗證）
+**觸發**: Cline 使用工具前（如 write_file, execute_command）  
+**用途**: 
+- 阻止錯誤操作（如在 Python 專案創建 .ts 文件）
+- 驗證參數
+- 注入警告上下文
+
+**範例規則**:
+- ❌ 阻止在 Python 專案創建 TypeScript 文件
+- ⚠️ 警告測試文件使用 print()
+- ⚠️ 提醒測試命令使用 python3.11
+
+---
+
+#### TaskStart（任務開始注入）
+**觸發**: 開始新任務時  
+**用途**:
+- 自動檢測專案類型
+- 注入專案規範
+- 提供可用工具信息
+
+**注入信息**:
+- 專案類型（AgentCoreNexus）
+- 當前組件（receiver/processor/web）
+- 技術棧（Python 3.11, React 等）
+- 可用的 workflows
+- Git 狀態
+
+---
+
+#### PostToolUse（操作後學習）
+**觸發**: Cline 使用工具後  
+**用途**:
+- 監控性能（慢操作警告）
+- 學習修改模式
+- 提供後續建議
+
+**監控內容**:
+- 操作執行時間（> 5秒 警告）
+- 文件修改類型（handler, template, requirements）
+- 命令執行成功/失敗
+- 提供相關建議
+
+---
+
+## 🎯 兩者如何協作
+
+```
+用戶開始任務
+    ↓
+TaskStart Hook 觸發 → 注入專案上下文
+    ↓
+用戶/AI 操作文件
+    ↓
+PreToolUse Hook → 驗證操作（如創建文件）
+    ↓
+操作執行
+    ↓
+PostToolUse Hook → 監控和建議（如提醒測試）
+    ↓
+... 繼續工作 ...
+    ↓
+用戶執行 git commit
+    ↓
+Git pre-commit Hook → 強制質量檢查
+    ↓
+Commit 完成
+```
+
+**協同效果**:
+- Cline Hooks = 開發過程中的實時指導
+- Git Hooks = 提交前的最後防線
+
+---
+
+## 📂 目錄結構
+
+```
+.clinerules/hooks/
+├── README.md         # 本說明文件
+│
+├── pre-commit        # Git Hook（Git 使用）
+│                     # 在 git commit 時觸發
+│                     # 執行質量檢查和測試
+│
+├── PreToolUse        # Cline Hook（Cline 使用）
+│                     # 在工具執行前觸發
+│                     # 驗證操作和阻止錯誤
+│
+├── TaskStart         # Cline Hook（Cline 使用）
+│                     # 在任務開始時觸發
+│                     # 注入專案上下文
+│
+└── PostToolUse       # Cline Hook（Cline 使用）
+                      # 在工具執行後觸發
+                      # 監控和提供建議
 ```
 
 ---
 
-## 🎯 設計理念
+## 🔧 啟用和管理
 
-### 為什麼執行時間這麼長？
+### Git Hooks
 
-**因為主要執行者是 AI agents（Cline），而非人類開發者**
-
-| 特性 | 人類開發者 | AI Agent |
-|------|-----------|----------|
-| Commit 頻率 | 頻繁（每 10 分鐘） | 不頻繁（完成任務時） |
-| 等待容忍度 | 不願等 > 30 秒 | 可等 5-10 分鐘 |
-| 跳過傾向 | 會用 --no-verify | 遵循規範 |
-
-因此，我們可以在 pre-commit 執行完整測試，而不用擔心影響開發效率。
-
-### 為什麼不分成快速 + 完整兩層？
-
-**原因**：
-1. AI 不介意等待 → 不需要「快速模式」
-2. 簡化架構 → 只需一層即可
-3. 與 clinerules 完美對齊 → 規範要求在 commit 前執行所有檢查
-
----
-
-## 🤖 AI Agent 使用指南
-
-### Hook 是備用保險，不是替代
-
-**你仍然必須主動執行測試！**
-
+**安裝** (一次性設置):
 ```bash
-# 1. 完成代碼修改後，主動執行測試
-ruff check . --fix && ruff format . && ruff check .
-pytest tests/ --ignore=tests/e2e/ -v
-pytest tests/e2e/ -v
-pytest tests/ --cov=src --cov-report=xml
-diff-cover coverage.xml --compare-branch=main --fail-under=80
-
-# 2. 向用戶報告結果
-「所有測試通過，覆蓋率 88%」
-
-# 3. 建議 commit
-git add .
-git commit -m "feat: implement feature X"
-
-# 4. Hook 自動執行（備用驗證）
-# [Hook 運行 2-5 分鐘]
-# ✅ 所有檢查通過！代碼已準備好 commit
-```
-
-### 為什麼要雙重執行？
-
-**主動執行的價值**：
-1. **第一道防線**：在建議 commit 前發現問題
-2. **用戶溝通**：向用戶報告測試結果是你的職責
-3. **提前修復**：比 hook 阻止 commit 後再修復更好
-
-**Hook 的價值**：
-1. **備用保險**：如果你忘記測試，hook 會捕捉
-2. **防止錯誤**：如果測試沒通過但你仍建議 commit，hook 會阻止
-3. **環境驗證**：確保測試環境正常運作
-
----
-
-## 🚫 跳過 Hook（不推薦）
-
-### 緊急情況
-
-如果確實需要跳過 hook（例如緊急 hotfix）：
-```bash
-git commit --no-verify -m "hotfix: emergency fix"
-```
-
-**⚠️ 警告**：
-- 只在緊急情況使用
-- 下次 commit 必須補回測試
-- 可能導致 CI/CD 失敗
-
-### AI Agent 不應建議跳過
-
-作為 AI agent，你**不應該**建議用戶使用 `--no-verify`，除非：
-1. 用戶明確要求
-2. 已經解釋了風險
-3. 用戶理解後果
-
----
-
-## 🔍 故障排除
-
-### Hook 執行失敗
-
-**症狀**：Commit 被阻止，顯示錯誤訊息
-
-**解決步驟**：
-1. 查看錯誤訊息，確定是哪一步失敗
-2. 在專案目錄手動執行失敗的命令
-3. 修復問題
-4. 重新 commit
-
-### 常見問題
-
-#### Q: E2E 測試被跳過
-**A**: 安裝測試依賴：
-```bash
-cd telegram-lambda
-pip install -r requirements-test.txt
-```
-
-#### Q: diff-cover 失敗
-**A**: Hook 會自動降級到檢查整體覆蓋率（70%）
-
-#### Q: Hook 太慢
-**A**: 這是設計如此（2-5 分鐘），因為主要執行者是 AI
-
-#### Q: 想要快速 commit
-**A**: 如果是人類開發者且需要快速保存進度，可以使用 `--no-verify`，但記得下次補測試
-
----
-
-## 📚 相關文檔
-
-- [CODE_QUALITY_WORKFLOW.md](../CODE_QUALITY_WORKFLOW.md) - Ruff 檢查規範
-- [TESTING_STANDARDS.md](../TESTING_STANDARDS.md) - 測試標準與規範（整合版）
-- [QUICK_REFERENCE.md](../QUICK_REFERENCE.md) - 測試快速參考
-- [QUICK_REFERENCE.md](../QUICK_REFERENCE.md) - 快速參考
-
----
-
-## 🔄 維護
-
-### 更新 Hook
-
-如果 hook 腳本有更新：
-```bash
-# 重新安裝
 ./setup-hooks.sh
 ```
 
-### 驗證 Hook 已安裝
-
+**檢查狀態**:
 ```bash
-ls -l .git/hooks/pre-commit
-# 應該顯示文件並且有執行權限（x）
+ls -la .git/hooks/pre-commit
 ```
+
+**臨時跳過** (不推薦):
+```bash
+git commit --no-verify
+```
+
+---
+
+### Cline Hooks
+
+**啟用方式**:
+1. 在 Cline 設置中啟用 Hooks 功能
+2. Hooks 會自動被 Cline 發現和使用
+3. 可在 Cline UI 的 Hooks 面板中管理
+
+**查看狀態**:
+- 在 Cline 中打開 Hooks 面板
+- 查看每個 hook 的啟用狀態
+- 可以切換開關來啟用/禁用
+
+**修改 Hook**:
+- 直接編輯 `.clinerules/hooks/PreToolUse` 等文件
+- Cline 會自動重新載入
+- 確保文件有執行權限（`chmod +x`）
+
+---
+
+## 🎓 開發指南
+
+### 修改現有 Hook
+
+1. 編輯對應的 hook 文件
+2. 測試修改（觸發相應操作）
+3. 確保 JSON 輸出格式正確
+
+**JSON 格式**:
+```json
+{
+  "cancel": false,
+  "contextModification": "YOUR_CONTEXT",
+  "errorMessage": "ERROR_IF_BLOCKING"
+}
+```
+
+---
+
+### 添加新的 Cline Hook
+
+**可用的 Hook 類型**:
+- PreToolUse - 工具執行前
+- PostToolUse - 工具執行後
+- TaskStart - 任務開始
+- TaskResume - 任務恢復
+- TaskCancel - 任務取消
+- TaskComplete - 任務完成
+- UserPromptSubmit - 用戶提交輸入
+
+**創建步驟**:
+1. 創建文件：`.clinerules/hooks/[HookType]`（無擴展名）
+2. 添加 shebang：`#!/usr/bin/env bash`
+3. 實現邏輯（接收 JSON，返回 JSON）
+4. 設置執行權限：`chmod +x`
+
+---
+
+## 📚 參考資料
+
+### Cline 官方文檔
+- [Hooks Overview](https://docs.cline.bot/features/hooks)
+- [Hook Reference](https://docs.cline.bot/features/hooks/hook-reference)
+- [Hook Samples](https://docs.cline.bot/features/hooks/samples)
+
+### 專案文檔
+- `setup-hooks.sh` - Git hooks 安裝腳本
+- `.clinerules/rules/` - 始終活動的規則
+- `.clinerules/workflows/` - 手動調用的任務腳本
+
+---
+
+## 💡 最佳實踐
+
+### 設計 Hook 時
+
+**應該做**:
+- ✅ 提供清晰的錯誤訊息
+- ✅ 使用描述性的上下文前綴（PERFORMANCE:, TESTING: 等）
+- ✅ 考慮性能（hooks 有 30 秒超時）
+- ✅ 處理邊界情況
+
+**避免**:
+- ❌ 過於嚴格（阻止所有操作）
+- ❌ 模糊的錯誤訊息
+- ❌ 長時間運行的操作
+- ❌ 依賴不穩定的外部服務
+
+---
 
 ### 測試 Hook
 
+**手動測試**:
 ```bash
-# 創建測試 commit
-touch test-file.py
-git add test-file.py
-git commit -m "test: verify hook"
-# Hook 應該執行並通過
-git reset HEAD~1  # 取消測試 commit
-rm test-file.py
+# 模擬 Cline 輸入
+echo '{
+  "clineVersion": "1.0.0",
+  "hookName": "PreToolUse",
+  "preToolUse": {
+    "toolName": "write_to_file",
+    "parameters": {"path": "test.ts"}
+  }
+}' | .clinerules/hooks/PreToolUse
 ```
+
+**在實際使用中測試**:
+- 嘗試觸發 hook 的操作
+- 檢查 Cline UI 中的 hook 執行狀態
+- 驗證上下文注入是否有效
 
 ---
 
-**版本**: v1.0  
-**創建日期**: 2026-01-08  
-**維護者**: AgentCoreNexus Team  
-**適用範圍**: 所有貢獻者（AI agents 和人類開發者）
+## ⚠️ 注意事項
+
+### 安全性
+- Hooks 以 VS Code 權限執行
+- 可以訪問整個文件系統
+- 謹慎對待從不信任來源的 hooks
+
+### 維護
+- 定期檢查 hooks 是否仍然適用
+- 根據專案演進更新規則
+- 記錄重要的修改
+
+### 故障排除
+- 如果 hook 失敗，Cline 會繼續執行（不會中斷任務）
+- 只有 `"cancel": true` 才會阻止操作
+- 檢查 Cline UI 的 Hooks 面板查看執行狀態
+
+---
+
+**目錄版本**: v1.0  
+**最後更新**: 2026-01-14  
+**維護者**: AgentCoreNexus Team
+
+**重要提醒**: 這兩種 hooks 互補而非替代，共同確保代碼質量！

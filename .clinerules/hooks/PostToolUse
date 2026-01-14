@@ -1,0 +1,122 @@
+#!/usr/bin/env bash
+# PostToolUse Hook - 操作後監控和學習
+#
+# 這是 Cline Hook（非 Git Hook）
+# 在 Cline 使用工具後觸發，用於監控性能、學習模式和提供建議
+
+input=$(cat)
+
+tool_name=$(echo "$input" | jq -r '.postToolUse.toolName')
+execution_time=$(echo "$input" | jq -r '.postToolUse.executionTimeMs // 0')
+success=$(echo "$input" | jq -r '.postToolUse.success')
+file_path=$(echo "$input" | jq -r '.postToolUse.parameters.path // empty')
+
+context=""
+
+# ============================================
+# 規則 1: 監控慢操作（> 5 秒）
+# ============================================
+if (( execution_time > 5000 )); then
+  context="PERFORMANCE: 操作 $tool_name 耗時 ${execution_time}ms（超過 5 秒）。"
+  context+=" 如果這經常發生，考慮優化或使用更高效的方法。"
+  
+  # 提供具體建議
+  if [[ "$tool_name" == "search_files" ]]; then
+    context+=" 建議：縮小搜索範圍或使用更具體的 regex 模式。"
+  elif [[ "$tool_name" == "execute_command" ]]; then
+    context+=" 建議：檢查命令是否可以優化或並行執行。"
+  fi
+fi
+
+# ============================================
+# 規則 2: Python 文件修改後提醒測試
+# ============================================
+if [[ "$tool_name" == "write_to_file" ]] || [[ "$tool_name" == "replace_in_file" ]]; then
+  if [[ "$success" == "true" ]] && [[ "$file_path" == *.py ]]; then
+    # 排除測試文件本身
+    if [[ "$file_path" != *"test_"* ]]; then
+      context+=" REMINDER: 已修改 Python 文件 $file_path。"
+      context+=" 完成所有修改後，記得執行測試驗證：使用 /test-full.md 或 'make test'。"
+    fi
+  fi
+fi
+
+# ============================================
+# 規則 3: 追蹤文件修改模式
+# ============================================
+if [[ "$tool_name" == "write_to_file" ]] || [[ "$tool_name" == "replace_in_file" ]]; then
+  if [[ "$success" == "true" ]] && [[ -n "$file_path" ]]; then
+    # Lambda handler 修改
+    if [[ "$file_path" == *"handler.py" ]] || [[ "$file_path" == *"_handler.py" ]]; then
+      context+=" DEPLOYMENT: 修改了 Lambda handler。"
+      context+=" 完成後需要重新部署：使用 /deploy-lambda.md。"
+    fi
+    
+    # Template 修改
+    if [[ "$file_path" == *"template.yaml" ]]; then
+      context+=" INFRASTRUCTURE: 修改了 CloudFormation template。"
+      context+=" 部署前確保執行 'sam validate' 驗證配置正確。"
+    fi
+    
+    # Requirements 修改
+    if [[ "$file_path" == *"requirements.txt" ]]; then
+      context+=" DEPENDENCIES: 修改了依賴清單。"
+      context+=" 記得在本地安裝新依賴，部署後 Lambda 會自動安裝。"
+    fi
+  fi
+fi
+
+# ============================================
+# 規則 4: 命令執行失敗時提供建議
+# ============================================
+if [[ "$tool_name" == "execute_command" ]] && [[ "$success" != "true" ]]; then
+  command=$(echo "$input" | jq -r '.postToolUse.parameters.command // empty')
+  
+  # pytest 失敗
+  if echo "$command" | grep -q "pytest"; then
+    context+=" TESTING: 測試執行失敗。"
+    context+=" 建議：使用 'pytest tests/test_file.py -v --tb=long' 查看詳細錯誤。"
+  fi
+  
+  # ruff 檢查失敗
+  if echo "$command" | grep -q "ruff check"; then
+    context+=" CODE_QUALITY: Ruff 檢查失敗。"
+    context+=" 建議：使用 /fix-linting.md 快速修復常見問題。"
+  fi
+  
+  # sam deploy 失敗
+  if echo "$command" | grep -q "sam deploy"; then
+    context+=" DEPLOYMENT: SAM 部署失敗。"
+    context+=" 建議：檢查 CloudFormation 錯誤訊息，可能是權限或配置問題。"
+    context+=" 參考：.clinerules/deployment/aws-lambda-telegram-bot-deployment-issues.md"
+  fi
+fi
+
+# ============================================
+# 規則 5: 成功操作的學習和建議
+# ============================================
+if [[ "$tool_name" == "execute_command" ]] && [[ "$success" == "true" ]]; then
+  command=$(echo "$input" | jq -r '.postToolUse.parameters.command // empty')
+  
+  # 成功部署後提醒驗證
+  if echo "$command" | grep -q "sam deploy"; then
+    context+=" DEPLOYMENT_SUCCESS: SAM 部署成功完成。"
+    context+=" 建議：使用 /check-status.md 驗證所有資源狀態正常。"
+  fi
+  
+  # 成功測試後提醒可以提交
+  if echo "$command" | grep -q "make test"; then
+    context+=" TESTING_SUCCESS: 測試全部通過。"
+    context+=" 如果代碼質量檢查也通過，現在可以安全提交代碼。"
+  fi
+fi
+
+# ============================================
+# 輸出結果
+# ============================================
+
+if [[ -n "$context" ]]; then
+  jq -n --arg ctx "$context" '{"cancel": false, "contextModification": $ctx}'
+else
+  echo '{"cancel": false}'
+fi

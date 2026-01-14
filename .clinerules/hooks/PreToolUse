@@ -1,0 +1,74 @@
+#!/usr/bin/env bash
+# PreToolUse Hook - 操作前驗證和安全檢查
+#
+# 這是 Cline Hook（非 Git Hook）
+# 在 Cline 使用任何工具前觸發，用於驗證操作和注入上下文
+
+input=$(cat)
+
+tool_name=$(echo "$input" | jq -r '.preToolUse.toolName')
+file_path=$(echo "$input" | jq -r '.preToolUse.parameters.path // empty')
+
+# ============================================
+# 規則 1: 阻止在 Python 專案創建 TypeScript 文件
+# ============================================
+if [[ "$tool_name" == "write_to_file" ]]; then
+  # 檢查是否為 Python 專案
+  if [[ -f "requirements.txt" ]] || [[ -f "pyproject.toml" ]]; then
+    # 阻止創建 .ts/.tsx 文件
+    if [[ "$file_path" == *.ts ]] || [[ "$file_path" == *.tsx ]]; then
+      echo '{"cancel": true, "errorMessage": "❌ 這是 Python 專案，不應創建 TypeScript 文件。請使用 .py 擴展名。"}'
+      exit 0
+    fi
+  fi
+fi
+
+# ============================================
+# 規則 2: 檢測測試文件中的 print() 語句
+# ============================================
+if [[ "$tool_name" == "write_to_file" ]] && [[ "$file_path" == *"test_"* ]]; then
+  content=$(echo "$input" | jq -r '.preToolUse.parameters.content // empty')
+  if [[ -n "$content" ]] && echo "$content" | grep -q "print("; then
+    context="CODING_STANDARD: 檢測到測試文件中使用 print()。測試文件中應使用 logger 而非 print()，以便正確記錄和測試輸出。建議使用 'from utils.logger import get_logger' 然後 'logger.info()'。"
+    jq -n --arg ctx "$context" '{"cancel": false, "contextModification": $ctx}'
+    exit 0
+  fi
+fi
+
+# ============================================
+# 規則 3: 確保測試命令使用 Python 3.11
+# ============================================
+if [[ "$tool_name" == "execute_command" ]]; then
+  command=$(echo "$input" | jq -r '.preToolUse.parameters.command // empty')
+  
+  # 檢查是否為 pytest 命令
+  if echo "$command" | grep -q "pytest" && ! echo "$command" | grep -q "python3.11"; then
+    context="TESTING_STANDARD: 測試必須使用 python3.11 執行。檢測到直接使用 pytest 命令。正確格式應為：'python3.11 -m pytest ...'。這確保使用正確的 Python 版本和測試依賴。"
+    jq -n --arg ctx "$context" '{"cancel": false, "contextModification": $ctx}'
+    exit 0
+  fi
+fi
+
+# ============================================
+# 規則 4: 警告直接修改 deployment/ 目錄
+# ============================================
+if [[ "$tool_name" == "write_to_file" ]] || [[ "$tool_name" == "replace_in_file" ]]; then
+  if [[ "$file_path" == *"deployment/"* ]]; then
+    context="DOCUMENTATION: 您正在修改 deployment/ 目錄中的專案專屬知識文檔。這些是重要的實戰經驗記錄，修改時請確保保留關鍵信息並更新版本號。"
+    jq -n --arg ctx "$context" '{"cancel": false, "contextModification": $ctx}'
+    exit 0
+  fi
+fi
+
+# ============================================
+# 規則 5: 提醒在 telegram-lambda 使用 Python 而非 Node.js
+# ============================================
+if [[ "$tool_name" == "write_to_file" ]]; then
+  if [[ "$file_path" == "telegram-lambda/"* ]] && [[ "$file_path" == *.js ]]; then
+    echo '{"cancel": true, "errorMessage": "❌ telegram-lambda 是 Python 專案，不應包含 .js 文件。如果需要 Node.js 功能，請考慮創建單獨的組件。"}'
+    exit 0
+  fi
+fi
+
+# 所有檢查通過
+echo '{"cancel": false}'

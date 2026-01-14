@@ -1,16 +1,14 @@
-# ⚠️ DEPRECATED - 此文件已廢棄
-
-**此文件已被 `.clinerules/rules/documentation.md` 替代。**
-
-**遷移日期**: 2026-01-14  
-**新文件位置**: [.clinerules/rules/documentation.md](./rules/documentation.md)  
-**保留期限**: 2-4 週觀察期後將刪除
-
-**請使用新文件！** 新文件內容相同，但符合 Cline 官方結構標準。
-
+---
+name: documentation
+description: 文檔管理規則，定義開發文件的生命週期和協作規範
+priority: high
+enforcement: strict
+always_active: true
 ---
 
-# 📚 文檔管理與整理規範
+# Documentation Management Rules
+
+**這是始終活動的規則** - 所有 Cline agents 必須遵循這些文檔管理規範。
 
 此規範定義了 AgentCoreNexus 專案的文檔管理工作流程，確保所有 agents 遵循一致的文檔撰寫和整理標準。
 
@@ -76,15 +74,14 @@ AgentCoreNexus/
 
 ### 允許的內容
 
-✅ **規則文件**（agents/*/）
-- engineering/*.md - 工程開發規則
-- testing/*.md - 測試規則
-- studio-operations/*.md - 運維規則
+✅ **規則文件**（rules/、agents/）
+- rules/*.md - 始終活動的規則
+- agents/*/*.md - 角色定義規則
+- workflows/*.md - 任務腳本
 
 ✅ **工作流文檔**
-- DOCUMENTATION_WORKFLOW.md - 文檔管理規範
 - README.md - 目錄說明
-- 其他工作流規範文件
+- QUICK_REFERENCE.md - 快速參考
 
 ✅ **專案專屬知識**（deployment/）
 - 部署問題清單
@@ -561,8 +558,9 @@ git push
 
 ---
 
-**規範版本**: v1.0  
-**最後更新**: 2026-01-07  
+**規範版本**: v1.1  
+**最後更新**: 2026-01-14  
+**創建日期**: 2026-01-07  
 **維護者**: AgentCoreNexus Team  
 **適用範圍**: 所有 agents 和貢獻者
 

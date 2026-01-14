@@ -5,6 +5,18 @@ priority: critical
 enforcement: strict
 ---
 
+# ⚠️ DEPRECATED - 此文件已廢棄
+
+**此文件已被 `.clinerules/rules/testing-standards.md` 替代。**
+
+**遷移日期**: 2026-01-14  
+**新文件位置**: [.clinerules/rules/testing-standards.md](./rules/testing-standards.md)  
+**保留期限**: 2-4 週觀察期後將刪除
+
+**請使用新文件！** 新文件內容相同，但符合 Cline 官方結構標準。
+
+---
+
 # 測試標準與規範
 
 本規範整合了測試執行工作流和強制檢查清單，提供完整的測試標準和 AI Agent 操作指南。
