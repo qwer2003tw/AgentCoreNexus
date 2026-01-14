@@ -120,10 +120,12 @@ Resources:
             - Effect: Allow
               Action:
                 - s3:GetObject
-              Resource: !Sub
-                - '${BucketArn}/*'
-                - BucketArn: !ImportValue 
-                    Fn::Sub: '${ReceiverStackName}-FileStorageBucketArn'
+              Resource: 
+                - !Sub
+                  - '${BucketArn}/*'
+                  - BucketArn: !ImportValue 
+                      Fn::Sub: '${ReceiverStackName}-FileStorageBucketArn'
+                - 'arn:aws:s3:::agentcore-web-channel-attachments-190825685292/*'
       Tags:
         Service: telegram-agentcore-bot
         Component: processor
