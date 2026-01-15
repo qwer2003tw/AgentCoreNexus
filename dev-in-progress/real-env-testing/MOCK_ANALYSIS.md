@@ -9,12 +9,12 @@
 
 ### 1. ✅ 單元測試（正常使用 Mock）
 
-#### telegram-agentcore-bot/tests/
+#### ai-processor/tests/
 - **Mock 行數**: 160+ 行
 - **Mock 內容**: Bedrock, AgentCore, AWS services
 - **評估**: ✅ 正常（單元測試應該 Mock）
 
-#### telegram-lambda/tests/（非 e2e）
+#### telegram-adapter/tests/（非 e2e）
 - **Mock 內容**: DynamoDB, SQS, EventBridge, Secrets
 - **評估**: ✅ 正常（單元測試應該 Mock）
 
@@ -24,7 +24,7 @@
 
 ### 2. ⚠️ "E2E 測試"（實際用 Mock，問題！）
 
-#### A. web-channel/e2e-tests/ ✅ 已解決
+#### A. web-adapter/e2e-tests/ ✅ 已解決
 
 **問題**: 
 - 使用 Mock API（不連接真實 AWS）
@@ -37,7 +37,7 @@
 
 ---
 
-#### B. telegram-lambda/tests/e2e/ ⚠️ 發現問題
+#### B. telegram-adapter/tests/e2e/ ⚠️ 發現問題
 
 **Mock 內容**（從 conftest.py）:
 ```python
@@ -62,13 +62,13 @@
 - 測試代碼邏輯流程
 - **不測試真實系統整合**
 
-**類似於**: web-channel 的 Mock E2E（相同問題）
+**類似於**: web-adapter 的 Mock E2E（相同問題）
 
 ---
 
 ## ⚠️ 問題嚴重性評估
 
-### telegram-lambda E2E Mock 的風險
+### telegram-adapter E2E Mock 的風險
 
 **無法驗證的部分**：
 1. ❌ 真實 Telegram webhook 格式是否正確處理
@@ -85,7 +85,7 @@
 - Secrets 權限問題
 
 **實際風險**: 🟡 **中等**
-- 不如 web-channel 嚴重（因為 Telegram 已在生產使用）
+- 不如 web-adapter 嚴重（因為 Telegram 已在生產使用）
 - 但仍有真實環境未驗證的風險
 
 ---
@@ -94,11 +94,11 @@
 
 | 測試類型 | 位置 | Mock 使用 | 是否合理 | 風險 |
 |---------|------|----------|---------|------|
-| **單元測試** | telegram-agentcore-bot/tests | ✅ 是 | ✅ 是 | 🟢 無 |
-| **單元測試** | telegram-lambda/tests | ✅ 是 | ✅ 是 | 🟢 無 |
-| **"E2E"** | telegram-lambda/tests/e2e | ✅ 是 | ❌ 否 | 🟡 中 |
-| **E2E** | web-channel/e2e-tests (Mock) | ✅ 是 | ❌ 否 | 🟢 已解決 |
-| **E2E** | web-channel/e2e-tests (AWS) | ❌ 否 | ✅ 是 | 🟢 無 |
+| **單元測試** | ai-processor/tests | ✅ 是 | ✅ 是 | 🟢 無 |
+| **單元測試** | telegram-adapter/tests | ✅ 是 | ✅ 是 | 🟢 無 |
+| **"E2E"** | telegram-adapter/tests/e2e | ✅ 是 | ❌ 否 | 🟡 中 |
+| **E2E** | web-adapter/e2e-tests (Mock) | ✅ 是 | ❌ 否 | 🟢 已解決 |
+| **E2E** | web-adapter/e2e-tests (AWS) | ❌ 否 | ✅ 是 | 🟢 無 |
 
 ---
 
@@ -107,7 +107,7 @@
 ### 🔴 高優先級：建立 Telegram 真實環境測試
 
 **原因**：
-- telegram-lambda 也有相同的 Mock 問題
+- telegram-adapter 也有相同的 Mock 問題
 - 雖然已在生產運行，但缺少自動化驗證
 - 應該建立真實環境的回歸測試
 
@@ -161,7 +161,7 @@ def test_real_telegram_webhook():
 ### 🟡 中優先級：重新命名測試
 
 **建議**：
-- telegram-lambda/tests/e2e/ → `tests/integration/`
+- telegram-adapter/tests/e2e/ → `tests/integration/`
 - 更準確反映實際測試範圍
 - 避免誤導（E2E 應該測試真實整合）
 
@@ -169,7 +169,7 @@ def test_real_telegram_webhook():
 
 ### 🟢 低優先級：文檔說明
 
-在 telegram-lambda/tests/e2e/README.md 中添加：
+在 telegram-adapter/tests/e2e/README.md 中添加：
 ```markdown
 ⚠️ 注意：這些測試使用 Mock AWS 服務和 Mock Telegram API。
 它們測試代碼邏輯和訊息流程，但不驗證真實的 AWS 整合。
@@ -182,8 +182,8 @@ def test_real_telegram_webhook():
 
 ### 本週內（如果要完整解決）
 
-1. ✅ web-channel 真實 E2E（已完成）
-2. ⭐ telegram-lambda 真實 API 測試（選項 2，2-3h）
+1. ✅ web-adapter 真實 E2E（已完成）
+2. ⭐ telegram-adapter 真實 API 測試（選項 2，2-3h）
 3. 📝 文檔說明更新（30min）
 
 ### 可選（下個月）
@@ -193,9 +193,9 @@ def test_real_telegram_webhook():
 
 ---
 
-## 📋 telegram-lambda 真實測試計劃
+## 📋 telegram-adapter 真實測試計劃
 
-需要我**繼續執行** telegram-lambda 的真實環境測試設置嗎？
+需要我**繼續執行** telegram-adapter 的真實環境測試設置嗎？
 
 **我會**：
 1. 創建真實 API Gateway 測試腳本
@@ -215,7 +215,7 @@ def test_real_telegram_webhook():
 <needs_more_exploration>false</needs_more_exploration>
 <task_progress>
 - [x] 檢查所有測試的 Mock 使用
-- [x] 識別 telegram-lambda E2E 也用 Mock
+- [x] 識別 telegram-adapter E2E 也用 Mock
 - [x] 評估問題嚴重性（中等）
 - [x] 提供解決方案（2個選項）
 - [ ] 等待用戶決定是否繼續處理

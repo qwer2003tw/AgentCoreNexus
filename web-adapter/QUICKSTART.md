@@ -36,7 +36,7 @@ make update-frontend
 
 ```bash
 # 運行用戶創建腳本
-./dev-in-progress/web-channel-expansion/scripts/create-admin-user.sh admin@example.com
+./dev-in-progress/web-adapter-expansion/scripts/create-admin-user.sh admin@example.com
 ```
 
 ---
@@ -49,7 +49,7 @@ make update-frontend
 
 ```bash
 cd /home/ec2-user/Projects/AgentCoreNexus
-cd dev-in-progress/web-channel-expansion
+cd dev-in-progress/web-adapter-expansion
 
 # 1. 安裝 Lambda 依賴
 cd lambdas/websocket && pip3.11 install -r requirements.txt -t . && cd ../..
@@ -58,16 +58,16 @@ cd lambdas/router && pip3.11 install -r requirements.txt -t . && cd ../..
 
 # 2. 建構和部署
 cd infrastructure
-sam build -t web-channel-template.yaml
+sam build -t web-adapter-template.yaml
 sam deploy \
-  --template-file web-channel-template.yaml \
-  --stack-name agentcore-web-channel \
+  --template-file web-adapter-template.yaml \
+  --stack-name agentcore-web-adapter \
   --region us-west-2 \
   --capabilities CAPABILITY_IAM \
   --resolve-s3 \
   --parameter-overrides \
     Environment=dev \
-    ExistingEventBusName=telegram-lambda-receiver-events \
+    ExistingEventBusName=telegram-adapter-receiver-events \
   --no-confirm-changeset
 
 # 這會創建：
@@ -86,19 +86,19 @@ cd ../frontend
 # 1. 獲取 API endpoints 和 bucket 名稱
 BUCKET_NAME=$(aws cloudformation describe-stacks \
   --region us-west-2 \
-  --stack-name agentcore-web-channel \
+  --stack-name agentcore-web-adapter \
   --query 'Stacks[0].Outputs[?OutputKey==`FrontendBucketName`].OutputValue' \
   --output text)
 
 REST_API=$(aws cloudformation describe-stacks \
   --region us-west-2 \
-  --stack-name agentcore-web-channel \
+  --stack-name agentcore-web-adapter \
   --query 'Stacks[0].Outputs[?OutputKey==`RestApiEndpoint`].OutputValue' \
   --output text)
 
 WS_API=$(aws cloudformation describe-stacks \
   --region us-west-2 \
-  --stack-name agentcore-web-channel \
+  --stack-name agentcore-web-adapter \
   --query 'Stacks[0].Outputs[?OutputKey==`WebSocketApiEndpoint`].OutputValue' \
   --output text)
 
@@ -116,7 +116,7 @@ aws s3 sync dist/ s3://$BUCKET_NAME/ --delete
 # 5. 獲取前端 URL
 FRONTEND_URL=$(aws cloudformation describe-stacks \
   --region us-west-2 \
-  --stack-name agentcore-web-channel \
+  --stack-name agentcore-web-adapter \
   --query 'Stacks[0].Outputs[?OutputKey==`FrontendUrl`].OutputValue' \
   --output text)
 
@@ -129,7 +129,7 @@ echo "Frontend URL: $FRONTEND_URL"
 # 獲取 table 名稱
 WEB_USERS_TABLE=$(aws cloudformation describe-stacks \
   --region us-west-2 \
-  --stack-name agentcore-web-channel \
+  --stack-name agentcore-web-adapter \
   --query 'Stacks[0].Outputs[?OutputKey==`WebUsersTableName`].OutputValue' \
   --output text)
 
@@ -170,7 +170,7 @@ echo "Password: Admin123!"
 ```bash
 REST_API=$(aws cloudformation describe-stacks \
   --region us-west-2 \
-  --stack-name agentcore-web-channel \
+  --stack-name agentcore-web-adapter \
   --query 'Stacks[0].Outputs[?OutputKey==`RestApiEndpoint`].OutputValue' \
   --output text)
 
@@ -200,7 +200,7 @@ npm install -g wscat
 # 連接
 WS_API=$(aws cloudformation describe-stacks \
   --region us-west-2 \
-  --stack-name agentcore-web-channel \
+  --stack-name agentcore-web-adapter \
   --query 'Stacks[0].Outputs[?OutputKey==`WebSocketApiEndpoint`].OutputValue' \
   --output text)
 
@@ -231,18 +231,18 @@ http://<bucket-name>.s3-website-us-west-2.amazonaws.com
 # 檢查 stack 狀態
 aws cloudformation describe-stacks \
   --region us-west-2 \
-  --stack-name agentcore-web-channel \
+  --stack-name agentcore-web-adapter \
   --query 'Stacks[0].StackStatus'
 
 # 檢查所有 Lambda 狀態
 aws lambda list-functions --region us-west-2 \
-  --query 'Functions[?contains(FunctionName,`agentcore-web-channel`)].{Name:FunctionName,State:State}' \
+  --query 'Functions[?contains(FunctionName,`agentcore-web-adapter`)].{Name:FunctionName,State:State}' \
   --output table
 
 # 檢查 API endpoints
 aws cloudformation describe-stacks \
   --region us-west-2 \
-  --stack-name agentcore-web-channel \
+  --stack-name agentcore-web-adapter \
   --query 'Stacks[0].Outputs[?contains(OutputKey,`Endpoint`)].{Key:OutputKey,Value:OutputValue}' \
   --output table
 ```
@@ -254,7 +254,7 @@ aws cloudformation describe-stacks \
 ### Lambda 錯誤
 ```bash
 # 查看最近日誌
-FUNCTION_NAME="agentcore-web-channel-ws-connect"
+FUNCTION_NAME="agentcore-web-adapter-ws-connect"
 aws logs tail /aws/lambda/$FUNCTION_NAME --region us-west-2 --since 5m
 ```
 

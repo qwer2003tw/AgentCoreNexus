@@ -56,7 +56,7 @@
 ### 4. /new 命令實作 ✅
 
 **已創建文件**：
-- `telegram-lambda/src/commands/handlers/new_handler.py`
+- `telegram-adapter/src/commands/handlers/new_handler.py`
 - 已註冊到 `handler.py` 的命令路由器
 
 **功能**：
@@ -68,7 +68,7 @@
 
 **已部署的 Stacks**：
 - `telegram-unified-bot` - Processor Lambda（包含 Memory 整合）
-- `telegram-lambda-receiver` - Receiver Lambda（包含 /new 命令）
+- `telegram-adapter-receiver` - Receiver Lambda（包含 /new 命令）
 
 ---
 
@@ -210,10 +210,10 @@ Bot: 回應（記得長期資訊，但不記得上個 session 的短期對話）
 - `dev-in-progress/memory-implementation/COMPLETION_SUMMARY.md` - 本文件
 
 ### 腳本和代碼
-- `telegram-agentcore-bot/scripts/create_agentcore_memory.py` - Memory 創建腳本
-- `telegram-agentcore-bot/processor_entry.py` - Memory 整合邏輯
-- `telegram-lambda/src/commands/handlers/new_handler.py` - /new 命令
-- `telegram-agentcore-bot/template.yaml` - IAM 權限配置
+- `ai-processor/scripts/create_agentcore_memory.py` - Memory 創建腳本
+- `ai-processor/processor_entry.py` - Memory 整合邏輯
+- `telegram-adapter/src/commands/handlers/new_handler.py` - /new 命令
+- `ai-processor/template.yaml` - IAM 權限配置
 
 ---
 

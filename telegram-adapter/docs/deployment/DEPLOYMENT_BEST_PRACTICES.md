@@ -128,7 +128,7 @@
 
 ```bash
 # 配置
-STACK_NAME="telegram-lambda"      # CloudFormation stack 名稱
+STACK_NAME="telegram-adapter"      # CloudFormation stack 名稱
 REGION="ap-northeast-1"           # AWS 區域
 PARAM_FILE="deploy-parameters.json"  # 參數檔案路徑
 ```
@@ -165,7 +165,7 @@ git commit -m "Update handler logic"
 ```bash
 # 如果想要更新 bot token，確保 deploy-parameters.json 有新值
 # 然後刪除現有 stack 後重新部署（會重新生成 secret token）
-aws cloudformation delete-stack --stack-name telegram-lambda
+aws cloudformation delete-stack --stack-name telegram-adapter
 ./deploy.sh
 ```
 
@@ -184,7 +184,7 @@ sam build
 
 # 部署
 sam deploy \
-  --stack-name telegram-lambda \
+  --stack-name telegram-adapter \
   --region ap-northeast-1 \
   --capabilities CAPABILITY_IAM \
   --parameter-overrides \
@@ -212,14 +212,14 @@ sam deploy \
 ```bash
 # 讀取現有 bot token
 BOT_TOKEN=$(aws secretsmanager get-secret-value \
-  --secret-id telegram-lambda-bot-token \
+  --secret-id telegram-adapter-bot-token \
   --region ap-northeast-1 \
   --query 'SecretString' --output text | jq -r .token)
 
 # 部署（secret token 由 CloudFormation 管理，無需提供）
 sam build
 sam deploy \
-  --stack-name telegram-lambda \
+  --stack-name telegram-adapter \
   --region ap-northeast-1 \
   --capabilities CAPABILITY_IAM \
   --parameter-overrides \
@@ -249,7 +249,7 @@ sam deploy \
    ```bash
    # 更新 Secrets Manager 中的 token
    aws secretsmanager update-secret \
-     --secret-id telegram-lambda-bot-token \
+     --secret-id telegram-adapter-bot-token \
      --secret-string '{"token": "NEW_TOKEN"}'
    ```
 
@@ -324,7 +324,7 @@ sam deploy \
 **方法 1：直接更新 Secrets Manager（推薦）**
 ```bash
 aws secretsmanager update-secret \
-  --secret-id telegram-lambda-bot-token \
+  --secret-id telegram-adapter-bot-token \
   --secret-string '{"token": "NEW_TOKEN"}'
 ```
 不需要重新部署 stack。
@@ -367,7 +367,7 @@ aws secretsmanager update-secret \
 - name: Get bot token from AWS Secrets Manager
   run: |
     BOT_TOKEN=$(aws secretsmanager get-secret-value \
-      --secret-id telegram-lambda-bot-token \
+      --secret-id telegram-adapter-bot-token \
       --query 'SecretString' --output text | jq -r .token)
     echo "::add-mask::$BOT_TOKEN"
     echo "BOT_TOKEN=$BOT_TOKEN" >> $GITHUB_ENV
@@ -413,7 +413,7 @@ aws secretsmanager update-secret \
 5. **查看 CloudFormation Events**
    ```bash
    aws cloudformation describe-stack-events \
-     --stack-name telegram-lambda \
+     --stack-name telegram-adapter \
      --max-items 20
    ```
 
@@ -447,13 +447,13 @@ AWS_ACCESS_KEY_ID=xxx AWS_SECRET_ACCESS_KEY=yyy ./deploy.sh
 ```bash
 # 從 Secrets Manager 讀取
 aws secretsmanager get-secret-value \
-  --secret-id telegram-lambda-secret-token \
+  --secret-id telegram-adapter-secret-token \
   --region ap-northeast-1 \
   --query 'SecretString' --output text | jq -r .token
 
 # 或使用 CloudFormation 輸出（部署後會自動顯示）
 aws cloudformation describe-stacks \
-  --stack-name telegram-lambda \
+  --stack-name telegram-adapter \
   --query 'Stacks[0].Outputs[?OutputKey==`WebhookSecretTokenArn`].OutputValue' \
   --output text
 ```
@@ -466,20 +466,20 @@ aws cloudformation describe-stacks \
 
 ```bash
 # 1. 檢查 Lambda 函數
-aws lambda get-function --function-name telegram-lambda-receiver
+aws lambda get-function --function-name telegram-adapter-receiver
 
 # 2. 檢查環境變數（應該只有 ARN，沒有 token）
 aws lambda get-function-configuration \
-  --function-name telegram-lambda-receiver \
+  --function-name telegram-adapter-receiver \
   --query 'Environment.Variables'
 
 # 3. 測試 Secrets Manager 存取
 aws secretsmanager get-secret-value \
-  --secret-id telegram-lambda-bot-token \
+  --secret-id telegram-adapter-bot-token \
   --query 'SecretString' --output text | jq .
 
 # 4. 檢查 CloudWatch Logs
-aws logs tail /aws/lambda/telegram-lambda-receiver --follow
+aws logs tail /aws/lambda/telegram-adapter-receiver --follow
 
 # 5. 測試 webhook
 curl -X POST https://YOUR_API_GATEWAY_URL/Prod/webhook \

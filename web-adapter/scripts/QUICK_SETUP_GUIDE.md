@@ -11,7 +11,7 @@
 ### 方法 1：使用自動化腳本（推薦）⭐
 
 ```bash
-cd web-channel/scripts
+cd web-adapter/scripts
 
 # 1. 先用管理員帳號登入獲取 token
 ADMIN_TOKEN=$(curl -s -X POST https://dr614rh1s6.execute-api.us-west-2.amazonaws.com/prod/auth/login \

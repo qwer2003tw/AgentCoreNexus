@@ -11,18 +11,18 @@
 
 **DynamoDB 表（5個）**：
 - ✅ telegram-allowlist（73 行）
-- ✅ agentcore-web-channel-web-users
-- ✅ agentcore-web-channel-user-bindings
-- ✅ agentcore-web-channel-conversations
-- ✅ agentcore-web-channel-conversation-history（前1000項）
+- ✅ agentcore-web-adapter-web-users
+- ✅ agentcore-web-adapter-user-bindings
+- ✅ agentcore-web-adapter-conversations
+- ✅ agentcore-web-adapter-conversation-history（前1000項）
 
 **CloudFormation Stacks（3個）**：
-- ✅ telegram-lambda-receiver
+- ✅ telegram-adapter-receiver
 - ✅ telegram-unified-bot
-- ✅ agentcore-web-channel
+- ✅ agentcore-web-adapter
 
 **Secrets Manager（1個）**：
-- ✅ telegram-lambda-receiver-secrets
+- ✅ telegram-adapter-receiver-secrets
 
 **備份位置**：`dev-in-progress/naming-overhaul/backup/`
 

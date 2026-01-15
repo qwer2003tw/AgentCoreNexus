@@ -40,7 +40,7 @@ waiting for locator('textarea') to be visible
 ```
 Error getting unified_user_id: AccessDeniedException
 User is not authorized to perform: dynamodb:PutItem 
-on table: agentcore-web-channel-user-bindings
+on table: agentcore-web-adapter-user-bindings
 ```
 
 **結論**：WebSocket 連接建立了，但權限錯誤導致前端無法正確識別連接狀態。
@@ -87,9 +87,9 @@ WebSocketConnectFunction:
 
 ### 部署命令
 ```bash
-cd web-channel/infrastructure
-sam build -t web-channel-template.yaml
-sam deploy --stack-name agentcore-web-channel --region us-west-2
+cd web-adapter/infrastructure
+sam build -t web-adapter-template.yaml
+sam deploy --stack-name agentcore-web-adapter --region us-west-2
 ```
 
 ### 部署結果
@@ -259,14 +259,14 @@ textarea disabled = true
 
 ### 後端修復
 ```
-web-channel/infrastructure/web-channel-template.yaml
+web-adapter/infrastructure/web-adapter-template.yaml
 └── WebSocketConnectFunction.Policies
     └── UserBindingsTable: DynamoDBReadPolicy → DynamoDBCrudPolicy
 ```
 
 ### E2E 測試修復（之前的 commits）
 ```
-web-channel/e2e-tests/setup/fixtures.ts
+web-adapter/e2e-tests/setup/fixtures.ts
 ├── URL 導航驗證
 ├── 對話載入等待
 └── Lambda 超時調整

@@ -5,7 +5,7 @@
 ### 啟動本地開發伺服器
 
 ```bash
-cd web-channel/frontend
+cd web-adapter/frontend
 npm run dev
 ```
 
@@ -49,7 +49,7 @@ npm run dev
 npm run build
 
 # 部署到 S3
-aws s3 sync dist/ s3://agentcore-web-channel-frontend-190825685292 \
+aws s3 sync dist/ s3://agentcore-web-adapter-frontend-190825685292 \
   --delete --region us-west-2
 
 # 失效 CloudFront 緩存
@@ -63,7 +63,7 @@ aws cloudfront create-invalidation \
 
 等待 3-5 分鐘後訪問：
 - **CloudFront**: https://d3hplgekizttn1.cloudfront.net
-- **S3 直接**（繞過緩存）: https://agentcore-web-channel-frontend-190825685292.s3.us-west-2.amazonaws.com/index.html
+- **S3 直接**（繞過緩存）: https://agentcore-web-adapter-frontend-190825685292.s3.us-west-2.amazonaws.com/index.html
 
 ## 🧪 測試當前修復（多對話路由）
 

@@ -21,8 +21,8 @@
 - [x] **目標達成**: 單元測試通過率 100% ✅（超越 95% 目標）
 
 **成果**：
-- ✅ telegram-agentcore-bot: 305/305 (100%)
-- ✅ web-channel: 42/43 (97.7%)
+- ✅ ai-processor: 305/305 (100%)
+- ✅ web-adapter: 42/43 (97.7%)
 - ✅ 核心穩定性驗證完成
 - ⏱️ 節省時間：3.5-5 小時
 
@@ -53,8 +53,8 @@
 
 **結果**：99.7% 通過率（347/348）
 
-- telegram-agentcore-bot: **305/305 passed (100%)** ✅
-- web-channel E2E: **42/43 passed (97.7%)** ✅
+- ai-processor: **305/305 passed (100%)** ✅
+- web-adapter E2E: **42/43 passed (97.7%)** ✅
 
 **關鍵發現**：
 - ✅ 測試穩定性遠超預期

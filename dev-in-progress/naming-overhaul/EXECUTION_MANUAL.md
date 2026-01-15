@@ -18,9 +18,9 @@
 - ✅ 位置：dev-in-progress/naming-overhaul/backup/
 
 ### Phase 2: 目錄重組
-- ✅ telegram-agentcore-bot → ai-processor
-- ✅ telegram-lambda → telegram-adapter
-- ✅ web-channel → web-adapter
+- ✅ ai-processor → ai-processor
+- ✅ telegram-adapter → telegram-adapter
+- ✅ web-adapter → web-adapter
 - ✅ tests/e2e → tests/integration
 - ✅ Makefile 完全更新
 - ✅ 兩個 template.yaml 更新
@@ -34,15 +34,15 @@
 #### 3.1 run_all_tests.sh（需手動執行 sed）
 ```bash
 cd /home/ec2-user/Projects/AgentCoreNexus
-sed -i 's/telegram-agentcore-bot/ai-processor/g' run_all_tests.sh
-sed -i 's/telegram-lambda/telegram-adapter/g' run_all_tests.sh
-sed -i 's/web-channel/web-adapter/g' run_all_tests.sh
+sed -i 's/ai-processor/ai-processor/g' run_all_tests.sh
+sed -i 's/telegram-adapter/telegram-adapter/g' run_all_tests.sh
+sed -i 's/web-adapter/web-adapter/g' run_all_tests.sh
 ```
 
 #### 3.2 README.md 更新（所有組件路徑）
 - 搜尋並替換所有舊路徑
 
-#### 3.3 web-adapter/infrastructure/web-channel-template.yaml
+#### 3.3 web-adapter/infrastructure/web-adapter-template.yaml
 - Stack 名稱：agentcore-web-adapter
 - 所有 Function 名稱
 - Exports 名稱
@@ -175,9 +175,9 @@ Permission is hereby granted...
 ## [0.9.0] - 2026-01-15
 ### Changed
 - Major refactoring: Complete naming overhaul
-- telegram-agentcore-bot → ai-processor
-- telegram-lambda → telegram-adapter
-- web-channel → web-adapter
+- ai-processor → ai-processor
+- telegram-adapter → telegram-adapter
+- web-adapter → web-adapter
 - All Stacks renamed with agentcore- prefix
 ```
 
@@ -229,8 +229,8 @@ validate:
 ```bash
 # 1. Disable EventBridge Rules
 aws events disable-rule \
-  --name telegram-lambda-receiver-message-received \
-  --event-bus-name telegram-lambda-receiver-events \
+  --name telegram-adapter-receiver-message-received \
+  --event-bus-name telegram-adapter-receiver-events \
   --region us-west-2
 
 # 2. 最終備份確認

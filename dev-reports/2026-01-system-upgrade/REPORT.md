@@ -26,11 +26,11 @@
 
 **雙 Stack 架構**：
 ```
-telegram-lambda-receiver (接收層)
+telegram-adapter-receiver (接收層)
    ├─ API Gateway (webhook 入口)
-   ├─ telegram-lambda-receiver (接收器 Lambda)
-   ├─ telegram-lambda-response-router (響應路由 Lambda)
-   └─ EventBridge: telegram-lambda-receiver-events
+   ├─ telegram-adapter-receiver (接收器 Lambda)
+   ├─ telegram-adapter-response-router (響應路由 Lambda)
+   └─ EventBridge: telegram-adapter-receiver-events
        ↓
 telegram-unified-bot (處理層)
    └─ telegram-unified-bot-processor (AI 處理器 Lambda)
@@ -187,7 +187,7 @@ AI 處理性能：
 
 1. **部署順序**
    - 先部署處理層（telegram-unified-bot）
-   - 再部署接收層（telegram-lambda-receiver）
+   - 再部署接收層（telegram-adapter-receiver）
    - 使用 ImportValue 建立連接
 
 2. **配置管理**
@@ -240,12 +240,12 @@ AI 處理性能：
 
 ### CloudFormation Stacks
 - telegram-unified-bot: UPDATE_COMPLETE
-- telegram-lambda-receiver: UPDATE_COMPLETE
+- telegram-adapter-receiver: UPDATE_COMPLETE
 
 ### Lambda 函數
 - telegram-unified-bot-processor: Active（AI + Browser）
-- telegram-lambda-receiver: Active（Webhook 接收）
-- telegram-lambda-response-router: Active（響應路由）
+- telegram-adapter-receiver: Active（Webhook 接收）
+- telegram-adapter-response-router: Active（響應路由）
 
 ### 性能指標
 - 系統處理：< 500ms ✅ 優秀

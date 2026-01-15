@@ -169,9 +169,9 @@ AWS Browser Sandbox 服務
 - [docs/browser-implementation.md](../../docs/browser-implementation.md) - Browser Sandbox 使用指南
 
 ### 程式碼位置
-- `telegram-agentcore-bot/services/browser_service.py` - Browser 服務實現
-- `telegram-agentcore-bot/tools/browser.py` - Browser 工具函數
-- `telegram-agentcore-bot/template.yaml` - IAM 權限配置
+- `ai-processor/services/browser_service.py` - Browser 服務實現
+- `ai-processor/tools/browser.py` - Browser 工具函數
+- `ai-processor/template.yaml` - IAM 權限配置
 
 ---
 

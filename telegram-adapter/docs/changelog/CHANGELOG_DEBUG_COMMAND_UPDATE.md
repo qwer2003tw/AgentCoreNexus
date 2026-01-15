@@ -138,5 +138,5 @@ text.strip() == '/debug' or text.strip().startswith('/debug ')
 
 - **部署時間**: 2025-11-04 14:45
 - **區域**: us-west-2
-- **Lambda**: telegram-lambda-receiver
+- **Lambda**: telegram-adapter-receiver
 - **狀態**: ✅ UPDATE_COMPLETE

@@ -170,10 +170,10 @@ Bedrock AgentCore Memory API
 ## 🔗 相關文檔
 
 ### 程式碼位置
-- `telegram-agentcore-bot/services/memory_service.py` - Memory 服務實現
-- `telegram-agentcore-bot/processor_entry.py` - Memory 整合點
-- `telegram-agentcore-bot/template.yaml` - IAM 權限配置
-- `telegram-agentcore-bot/create_memory.py` - Memory 資源創建腳本
+- `ai-processor/services/memory_service.py` - Memory 服務實現
+- `ai-processor/processor_entry.py` - Memory 整合點
+- `ai-processor/template.yaml` - IAM 權限配置
+- `ai-processor/create_memory.py` - Memory 資源創建腳本
 
 ---
 

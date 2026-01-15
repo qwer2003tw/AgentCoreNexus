@@ -119,7 +119,7 @@ def test_my_feature(full_mock_env, lambda_context):
 
 ```bash
 # 1. 安裝依賴
-cd telegram-lambda
+cd telegram-adapter
 pip install -r requirements-test.txt
 
 # 2. 運行測試
@@ -370,6 +370,6 @@ pytest tests/e2e/ -m "e2e and not slow"
 
 **下一步**: 運行測試驗證框架！
 ```bash
-cd telegram-lambda
+cd telegram-adapter
 pip install -r requirements-test.txt
 pytest tests/e2e/ -v

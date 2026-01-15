@@ -6,7 +6,7 @@
 
 ### 已完成的開發工作 ✅
 
-**telegram-lambda (Universal Message Adapter)**
+**telegram-adapter (Universal Message Adapter)**
 - ✅ EventBridge 事件匯流排（UniversalEventBus）
 - ✅ 通道檢測邏輯（detect_channel）
 - ✅ 訊息標準化（Universal Message Schema）
@@ -14,7 +14,7 @@
 - ✅ 雙軌運行（EventBridge + SQS）
 - 📦 Commits: b46c0c7, 415ff15
 
-**telegram-agentcore-bot (Agent Processor)**
+**ai-processor (Agent Processor)**
 - ✅ EventBridge 事件處理器（processor_entry.py）
 - ✅ 標準化訊息處理
 - ✅ SQS 向後兼容
@@ -31,7 +31,7 @@
        │ HTTPS Webhook
        ▼
 ┌──────────────────────────────────┐
-│ Universal Message Adapter        │ ← telegram-lambda
+│ Universal Message Adapter        │ ← telegram-adapter
 │ - API Gateway                    │   Stack 1
 │ - Lambda (通道檢測/標準化)         │
 │ - EventBridge 發布                │
@@ -50,15 +50,15 @@
 
 ## 🚀 部署步驟
 
-### 步驟 1: 部署 Adapter (telegram-lambda)
+### 步驟 1: 部署 Adapter (telegram-adapter)
 
 ```bash
-cd /home/ec2-user/Projects/AgentCoreNexus/telegram-lambda
+cd /home/ec2-user/Projects/AgentCoreNexus/telegram-adapter
 
 # 構建並部署
 sam build
 sam deploy \
-  --stack-name telegram-lambda-dev \
+  --stack-name telegram-adapter-dev \
   --parameter-overrides TelegramBotToken="YOUR_BOT_TOKEN" \
   --capabilities CAPABILITY_IAM \
   --region us-west-2 \
@@ -66,7 +66,7 @@ sam deploy \
 
 # 記錄輸出的 EventBus 資訊
 aws cloudformation describe-stacks \
-  --stack-name telegram-lambda-dev \
+  --stack-name telegram-adapter-dev \
   --query 'Stacks[0].Outputs' \
   --output table
 ```
@@ -76,14 +76,14 @@ aws cloudformation describe-stacks \
 - `EventBusArn`: 用於 Processor 部署
 - `WebhookUrl`: 用於設置 Telegram webhook
 
-### 步驟 2: 部署 Processor (telegram-agentcore-bot)
+### 步驟 2: 部署 Processor (ai-processor)
 
 ```bash
-cd /home/ec2-user/Projects/AgentCoreNexus/telegram-agentcore-bot
+cd /home/ec2-user/Projects/AgentCoreNexus/ai-processor
 
 # 使用 Step 1 的輸出值
-EVENT_BUS_NAME="telegram-lambda-dev-events"
-EVENT_BUS_ARN="arn:aws:events:us-west-2:ACCOUNT_ID:event-bus/telegram-lambda-dev-events"
+EVENT_BUS_NAME="telegram-adapter-dev-events"
+EVENT_BUS_ARN="arn:aws:events:us-west-2:ACCOUNT_ID:event-bus/telegram-adapter-dev-events"
 
 # 構建並部署
 sam build
@@ -110,7 +110,7 @@ echo "Processor ARN: $PROCESSOR_ARN"
 
 ```bash
 # 取得 Rule 名稱
-RULE_NAME="telegram-lambda-dev-message-received"
+RULE_NAME="telegram-adapter-dev-message-received"
 
 # 為 Rule 添加 Processor 作為目標
 aws events put-targets \
@@ -130,13 +130,13 @@ aws events list-targets-by-rule \
 ```bash
 # 取得 Webhook URL
 WEBHOOK_URL=$(aws cloudformation describe-stacks \
-  --stack-name telegram-lambda-dev \
+  --stack-name telegram-adapter-dev \
   --query 'Stacks[0].Outputs[?OutputKey==`WebhookUrl`].OutputValue' \
   --output text)
 
 # 取得 Bot Token
 BOT_TOKEN=$(aws secretsmanager get-secret-value \
-  --secret-id telegram-lambda-dev-secrets \
+  --secret-id telegram-adapter-dev-secrets \
   --query SecretString \
   --output text | jq -r .bot_token)
 
@@ -154,7 +154,7 @@ curl -X POST "https://api.telegram.org/bot${BOT_TOKEN}/setWebhook" \
 
 ```bash
 # 查看 Adapter Lambda 日誌
-aws logs tail /aws/lambda/telegram-lambda-receiver --follow
+aws logs tail /aws/lambda/telegram-adapter-receiver --follow
 
 # 檢查關鍵日誌：
 # - "Detected channel: telegram"
@@ -170,7 +170,7 @@ aws logs tail /aws/lambda/telegram-lambda-receiver --follow
 aws cloudwatch get-metric-statistics \
   --namespace AWS/Events \
   --metric-name Invocations \
-  --dimensions Name=RuleName,Value=telegram-lambda-dev-message-received \
+  --dimensions Name=RuleName,Value=telegram-adapter-dev-message-received \
   --start-time $(date -u -d '5 minutes ago' +%Y-%m-%dT%H:%M:%S) \
   --end-time $(date -u +%Y-%m-%dT%H:%M:%S) \
   --period 300 \
@@ -246,13 +246,13 @@ fields @timestamp, user_id, @message
 如需回滾到整合前狀態：
 
 ```bash
-# telegram-lambda
-cd /home/ec2-user/Projects/AgentCoreNexus/telegram-lambda
+# telegram-adapter
+cd /home/ec2-user/Projects/AgentCoreNexus/telegram-adapter
 git checkout backup-before-eventbridge-integration
-sam deploy --stack-name telegram-lambda-dev
+sam deploy --stack-name telegram-adapter-dev
 
-# telegram-agentcore-bot  
-cd /home/ec2-user/Projects/AgentCoreNexus/telegram-agentcore-bot
+# ai-processor  
+cd /home/ec2-user/Projects/AgentCoreNexus/ai-processor
 git checkout backup-before-eventbridge-integration
 # 刪除新部署的 Processor stack
 aws cloudformation delete-stack --stack-name telegram-processor-dev
@@ -269,9 +269,9 @@ aws cloudformation delete-stack --stack-name telegram-processor-dev
 
 ## ✅ 部署檢查清單
 
-- [ ] telegram-lambda 部署成功
+- [ ] telegram-adapter 部署成功
 - [ ] EventBridge 事件匯流排已建立
-- [ ] telegram-agentcore-bot Processor 部署成功
+- [ ] ai-processor Processor 部署成功
 - [ ] EventBridge Rule Target 已設定
 - [ ] Telegram webhook 已更新
 - [ ] 測試訊息成功流轉
@@ -288,7 +288,7 @@ aws cloudformation delete-stack --stack-name telegram-processor-dev
 ## 📞 支援
 
 如有問題，請檢查：
-1. CloudWatch Logs: `/aws/lambda/telegram-lambda-receiver` 和 `/aws/lambda/telegram-processor-dev-processor`
+1. CloudWatch Logs: `/aws/lambda/telegram-adapter-receiver` 和 `/aws/lambda/telegram-processor-dev-processor`
 2. EventBridge 規則狀態和目標配置
 3. IAM 權限設定
 4. 環境變數配置

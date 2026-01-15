@@ -9,8 +9,8 @@
 - **Webhook URL**: `https://19168bj3c7.execute-api.us-west-2.amazonaws.com/Prod/webhook`
 
 ### Lambda Function
-- **名稱**: `telegram-lambda-receiver`
-- **ARN**: `arn:aws:lambda:us-west-2:190825685292:function:telegram-lambda-receiver`
+- **名稱**: `telegram-adapter-receiver`
+- **ARN**: `arn:aws:lambda:us-west-2:190825685292:function:telegram-adapter-receiver`
 
 ### 其他資源
 - **SQS Queue**: `https://sqs.us-west-2.amazonaws.com/190825685292/telegram-inbound`
@@ -25,13 +25,13 @@
 ```bash
 # 取得當前環境變數
 aws lambda get-function-configuration \
-  --function-name telegram-lambda-receiver \
+  --function-name telegram-adapter-receiver \
   --region us-west-2 \
   --query 'Environment.Variables'
 
 # 更新環境變數（將 YOUR_BOT_TOKEN 替換為實際 token）
 aws lambda update-function-configuration \
-  --function-name telegram-lambda-receiver \
+  --function-name telegram-adapter-receiver \
   --region us-west-2 \
   --environment Variables="{
     TELEGRAM_SECRET_TOKEN='',
@@ -44,7 +44,7 @@ aws lambda update-function-configuration \
 
 **或使用 AWS Console**：
 1. 前往 Lambda 控制台
-2. 選擇 `telegram-lambda-receiver`
+2. 選擇 `telegram-adapter-receiver`
 3. Configuration → Environment variables → Edit
 4. 設定 `TELEGRAM_BOT_TOKEN` = 您的 Bot Token
 5. Save
@@ -54,7 +54,7 @@ aws lambda update-function-configuration \
 **取得 Secret Token**：
 ```bash
 aws secretsmanager get-secret-value \
-  --secret-id telegram-lambda-secret-token \
+  --secret-id telegram-adapter-secret-token \
   --region us-west-2 \
   --query 'SecretString' \
   --output text | jq -r .token
@@ -99,7 +99,7 @@ aws dynamodb put-item \
 
 3. 如果沒有回應，檢查日誌：
    ```bash
-   aws logs tail /aws/lambda/telegram-lambda-receiver \
+   aws logs tail /aws/lambda/telegram-adapter-receiver \
      --region us-west-2 \
      --follow
    ```
@@ -108,7 +108,7 @@ aws dynamodb put-item \
 
 ### 查看 Lambda 日誌
 ```bash
-aws logs tail /aws/lambda/telegram-lambda-receiver \
+aws logs tail /aws/lambda/telegram-adapter-receiver \
   --region us-west-2 \
   --follow
 ```
@@ -144,7 +144,7 @@ aws sqs get-queue-attributes \
 
 如需更新程式碼：
 ```bash
-cd /home/ec2-user/telegram-lambda
+cd /home/ec2-user/telegram-adapter
 sam build
 sam deploy
 ```
@@ -161,12 +161,12 @@ sam deploy
 ```bash
 # 檢查 Lambda 狀態
 aws lambda get-function \
-  --function-name telegram-lambda-receiver \
+  --function-name telegram-adapter-receiver \
   --region us-west-2
 
 # 檢查最近的錯誤
 aws logs filter-log-events \
-  --log-group-name /aws/lambda/telegram-lambda-receiver \
+  --log-group-name /aws/lambda/telegram-adapter-receiver \
   --region us-west-2 \
   --filter-pattern "ERROR"
 ```

@@ -21,7 +21,7 @@ pwd  # 應該在 AgentCoreNexus 根目錄
 ### 2. 安裝依賴（如果還沒裝）
 ```bash
 # 安裝前端依賴
-cd web-channel/frontend
+cd web-adapter/frontend
 npm install
 
 # 安裝 E2E 測試依賴
@@ -38,10 +38,10 @@ npx playwright install --with-deps
 
 ### 步驟 1：配置 API 端點
 
-創建 `web-channel/frontend/.env.local`：
+創建 `web-adapter/frontend/.env.local`：
 
 ```bash
-cd web-channel/frontend
+cd web-adapter/frontend
 
 # 如果使用測試環境（AWS）
 cat > .env.local << 'EOF'
@@ -85,7 +85,7 @@ export TEST_USER_4_PASSWORD=Test123!
 ### 方法 1：快速測試（Headless）
 
 ```bash
-cd web-channel/e2e-tests
+cd web-adapter/e2e-tests
 npm test
 ```
 
@@ -207,7 +207,7 @@ npm run test:report
 
 如果測試失敗，截圖會保存在：
 ```
-web-channel/e2e-tests/test-results/
+web-adapter/e2e-tests/test-results/
 ├── auth-failure-worker-0.png  # 診斷截圖
 └── test-results/
     └── [test-name]/
@@ -243,7 +243,7 @@ Error: Failed to start webServer
 **解決**：
 ```bash
 # 手動啟動 frontend（在另一個終端）
-cd web-channel/frontend
+cd web-adapter/frontend
 npm run dev
 
 # 然後在原終端執行測試，配置跳過 webServer
@@ -257,7 +257,7 @@ npm run dev
 **解決**：
 ```bash
 # 檢查 .env.local
-cat web-channel/frontend/.env.local
+cat web-adapter/frontend/.env.local
 
 # 確認 API 端點可訪問
 curl https://your-api-endpoint.amazonaws.com/health
@@ -286,7 +286,7 @@ browserType.launch: Executable doesn't exist
 
 **解決**：
 ```bash
-cd web-channel/e2e-tests
+cd web-adapter/e2e-tests
 npx playwright install --with-deps
 ```
 

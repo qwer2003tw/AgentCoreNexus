@@ -32,7 +32,7 @@
 ### Step 1: 部署 Adapter + Router Stack
 
 ```bash
-cd /home/ec2-user/Projects/AgentCoreNexus/telegram-lambda
+cd /home/ec2-user/Projects/AgentCoreNexus/telegram-adapter
 
 # 建置
 sam build
@@ -41,7 +41,7 @@ sam build
 sam deploy --guided
 
 # 部署時會詢問：
-# Stack Name: telegram-lambda (或自訂名稱)
+# Stack Name: telegram-adapter (或自訂名稱)
 # AWS Region: us-east-1 (或您選擇的區域)
 # Parameter TelegramBotToken: [您的 Bot Token]
 # Confirm changes before deploy: Y
@@ -52,7 +52,7 @@ sam deploy --guided
 **重要輸出（記錄下來）：**
 ```
 Outputs:
-- EventBusName: telegram-lambda-events
+- EventBusName: telegram-adapter-events
 - EventBusArn: arn:aws:events:...
 - WebhookUrl: https://....execute-api....amazonaws.com/Prod/webhook
 - ResponseRouterFunctionArn: arn:aws:lambda:...
@@ -61,7 +61,7 @@ Outputs:
 ### Step 2: 部署 Processor Stack
 
 ```bash
-cd /home/ec2-user/Projects/AgentCoreNexus/telegram-agentcore-bot
+cd /home/ec2-user/Projects/AgentCoreNexus/ai-processor
 
 # 建置
 sam build
@@ -74,7 +74,7 @@ sam deploy --guided \
     BedrockModelId="anthropic.claude-3-5-sonnet-20241022-v2:0"
 
 # 部署時會詢問：
-# Stack Name: telegram-agentcore-bot (或自訂名稱)
+# Stack Name: ai-processor (或自訂名稱)
 # AWS Region: [與 Step 1 相同]
 # Confirm changes before deploy: Y
 # Allow SAM CLI IAM role creation: Y
@@ -93,14 +93,14 @@ Outputs:
 ```bash
 # 使用 Step 2 輸出中的 DeploymentInstructions
 aws events put-targets \
-  --rule telegram-lambda-message-received \
-  --event-bus-name telegram-lambda-events \
+  --rule telegram-adapter-message-received \
+  --event-bus-name telegram-adapter-events \
   --targets "Id"="AgentProcessor","Arn"="<ProcessorFunctionArn>"
 
 # 驗證 Rule 已連接
 aws events list-targets-by-rule \
-  --rule telegram-lambda-message-received \
-  --event-bus-name telegram-lambda-events
+  --rule telegram-adapter-message-received \
+  --event-bus-name telegram-adapter-events
 ```
 
 ### Step 4: 配置 Telegram Webhook
@@ -125,13 +125,13 @@ curl "https://api.telegram.org/bot<YOUR_BOT_TOKEN>/getWebhookInfo"
 # 在 Telegram 中找到您的 Bot 並發送: "Hello"
 
 # 2. 檢查 Adapter Lambda 日誌
-aws logs tail /aws/lambda/telegram-lambda-receiver --follow
+aws logs tail /aws/lambda/telegram-adapter-receiver --follow
 
 # 3. 檢查 Processor Lambda 日誌
-aws logs tail /aws/lambda/telegram-agentcore-bot-processor --follow
+aws logs tail /aws/lambda/ai-processor-processor --follow
 
 # 4. 檢查 Router Lambda 日誌
-aws logs tail /aws/lambda/telegram-lambda-response-router --follow
+aws logs tail /aws/lambda/telegram-adapter-response-router --follow
 
 # 5. 應該在 Telegram 收到 AI 回應
 ```
@@ -144,17 +144,17 @@ aws logs tail /aws/lambda/telegram-lambda-response-router --follow
 ```bash
 aws lambda list-functions --query "Functions[?contains(FunctionName, 'telegram')].FunctionName"
 # 應該看到：
-# - telegram-lambda-receiver
-# - telegram-lambda-response-router
-# - telegram-agentcore-bot-processor
+# - telegram-adapter-receiver
+# - telegram-adapter-response-router
+# - ai-processor-processor
 ```
 
 ### 檢查點 2: EventBridge Rules
 ```bash
-aws events list-rules --event-bus-name telegram-lambda-events
+aws events list-rules --event-bus-name telegram-adapter-events
 # 應該看到：
-# - telegram-lambda-message-received
-# - telegram-lambda-message-completed
+# - telegram-adapter-message-received
+# - telegram-adapter-message-completed
 ```
 
 ### 檢查點 3: SQS Queues
@@ -192,13 +192,13 @@ aws sqs list-queues --queue-name-prefix telegram
 ```bash
 # 檢查 EventBridge 規則
 aws events describe-rule \
-  --name telegram-lambda-message-received \
-  --event-bus-name telegram-lambda-events
+  --name telegram-adapter-message-received \
+  --event-bus-name telegram-adapter-events
 
 # 檢查 Target
 aws events list-targets-by-rule \
-  --rule telegram-lambda-message-received \
-  --event-bus-name telegram-lambda-events
+  --rule telegram-adapter-message-received \
+  --event-bus-name telegram-adapter-events
 ```
 
 ### 問題 3: Lambda 超時
@@ -221,13 +221,13 @@ aws events list-targets-by-rule \
 
 ```bash
 # Adapter 日誌
-aws logs tail /aws/lambda/telegram-lambda-receiver --since 1h
+aws logs tail /aws/lambda/telegram-adapter-receiver --since 1h
 
 # Processor 日誌
-aws logs tail /aws/lambda/telegram-agentcore-bot-processor --since 1h
+aws logs tail /aws/lambda/ai-processor-processor --since 1h
 
 # Router 日誌
-aws logs tail /aws/lambda/telegram-lambda-response-router --since 1h
+aws logs tail /aws/lambda/telegram-adapter-response-router --since 1h
 ```
 
 ### CloudWatch Insights 查詢
@@ -253,7 +253,7 @@ fields @timestamp, event_type, @message
 aws cloudwatch get-metric-statistics \
   --namespace AWS/Events \
   --metric-name Invocations \
-  --dimensions Name=RuleName,Value=telegram-lambda-message-completed \
+  --dimensions Name=RuleName,Value=telegram-adapter-message-completed \
   --start-time 2026-01-06T00:00:00Z \
   --end-time 2026-01-06T23:59:59Z \
   --period 3600 \
@@ -266,7 +266,7 @@ aws cloudwatch get-metric-statistics \
 
 ### 更新 Lambda 代碼
 ```bash
-cd telegram-lambda
+cd telegram-adapter
 sam build
 sam deploy  # 使用已保存的配置
 ```
@@ -274,7 +274,7 @@ sam deploy  # 使用已保存的配置
 ### 回滾到前一版本
 ```bash
 aws lambda update-function-code \
-  --function-name telegram-lambda-response-router \
+  --function-name telegram-adapter-response-router \
   --s3-bucket <deployment-bucket> \
   --s3-key <previous-version-key>
 ```
@@ -286,11 +286,11 @@ aws lambda update-function-code \
 ```bash
 # 刪除 Processor Stack
 aws cloudformation delete-stack \
-  --stack-name telegram-agentcore-bot
+  --stack-name ai-processor
 
 # 刪除 Adapter + Router Stack
 aws cloudformation delete-stack \
-  --stack-name telegram-lambda
+  --stack-name telegram-adapter
 
 # 注意：DynamoDB AllowlistTable 有 DeletionPolicy: Retain
 # 需要手動刪除（如果需要）

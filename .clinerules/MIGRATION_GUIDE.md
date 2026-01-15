@@ -192,7 +192,7 @@ Cline: 執行完整測試流程...
 
 **測試 PreToolUse**：
 ```
-用戶: "在 telegram-lambda 創建一個 test.ts 文件"
+用戶: "在 telegram-adapter 創建一個 test.ts 文件"
 預期: Hook 阻止此操作，顯示錯誤訊息
 ```
 

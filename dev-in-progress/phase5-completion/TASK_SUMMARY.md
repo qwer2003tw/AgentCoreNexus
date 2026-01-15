@@ -27,7 +27,7 @@
 **使用工具**: Sequential Thinking（第一輪 22 步）
 
 **發現的關鍵問題**：
-1. ❌ **架構術語根本錯誤**：telegram-lambda 被稱為 "Universal Message Adapter"
+1. ❌ **架構術語根本錯誤**：telegram-adapter 被稱為 "Universal Message Adapter"
 2. ❌ **實際狀況**：它只處理 Telegram，是 Telegram-specific Adapter
 3. ✅ **真相**：Universal 的是 EventBridge + Message Schema
 
@@ -97,9 +97,9 @@
 - 更新架構圖為實際實現
 
 **docs/README.md 修正**：
-- telegram-lambda → Telegram Channel Adapter
-- telegram-agentcore-bot → AI Processor (Channel-Agnostic)
-- web-channel → Web Channel Adapter + Frontend
+- telegram-adapter → Telegram Channel Adapter
+- ai-processor → AI Processor (Channel-Agnostic)
+- web-adapter → Web Channel Adapter + Frontend
 - 添加各組件職責說明
 
 ---
@@ -286,12 +286,12 @@
 ## 📊 測試執行狀態（進行中）
 
 **當前進度**：
-- ✅ telegram-agentcore-bot: 305 passed（完成）
+- ✅ ai-processor: 305 passed（完成）
 - 🔄 Web E2E 測試執行中
-- ⏳ telegram-lambda 測試待執行
+- ⏳ telegram-adapter 測試待執行
 
 **初步觀察**：
-- telegram-agentcore-bot 測試表現優異（305 passed）
+- ai-processor 測試表現優異（305 passed）
 - 之前報告的 19% 失敗可能是誤解（ERROR 日誌是測試錯誤處理的預期行為）
 - Web E2E 測試較慢但進展順利
 

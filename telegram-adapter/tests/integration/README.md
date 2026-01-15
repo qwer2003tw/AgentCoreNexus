@@ -11,7 +11,7 @@
 ## 📦 安裝依賴
 
 ```bash
-cd telegram-lambda
+cd telegram-adapter
 pip install -r requirements-test.txt
 ```
 
@@ -225,11 +225,11 @@ jobs:
           python-version: '3.11'
       - name: Install dependencies
         run: |
-          cd telegram-lambda
+          cd telegram-adapter
           pip install -r requirements-test.txt
       - name: Run E2E tests
         run: |
-          cd telegram-lambda
+          cd telegram-adapter
           pytest tests/e2e/ -v --cov=src --cov-report=xml
       - name: Upload coverage
         uses: codecov/codecov-action@v2

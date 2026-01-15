@@ -11,7 +11,7 @@
 
 **目的**: 防止 actor_id 被猜測，增強用戶隔離安全性
 
-**實作文件**: `telegram-agentcore-bot/utils/security.py`
+**實作文件**: `ai-processor/utils/security.py`
 
 **核心函數**:
 ```python
@@ -45,7 +45,7 @@ Memory Namespace:
 
 **目的**: 追蹤所有 Memory 操作，便於發現異常行為
 
-**實作文件**: `telegram-agentcore-bot/utils/audit.py`
+**實作文件**: `ai-processor/utils/audit.py`
 
 **核心類別**: `MemoryAuditLogger`
 
@@ -228,7 +228,7 @@ aws logs filter-log-events \
 ```bash
 BEDROCK_AGENTCORE_MEMORY_ID=TelegramBotMemory-6UH9fyDyIf
 MEMORY_ACTOR_SECRET=Nm5jd2fCJd3lc0-hEDX6dQXRnodZsGF2tPC-xnZdQcU
-EVENT_BUS_NAME=telegram-lambda-receiver-events
+EVENT_BUS_NAME=telegram-adapter-receiver-events
 BEDROCK_MODEL_ID=anthropic.claude-3-5-sonnet-20241022-v2:0
 BROWSER_ENABLED=true
 LOG_LEVEL=INFO

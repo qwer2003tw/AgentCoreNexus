@@ -111,7 +111,7 @@
 2. 檢測測試文件中的 print() 語句
 3. 確保測試命令使用 Python 3.11
 4. 警告直接修改 deployment/ 目錄
-5. 阻止在 telegram-lambda 使用 .js 文件
+5. 阻止在 telegram-adapter 使用 .js 文件
 
 **功能**：
 - 可以阻止操作（`cancel: true`）

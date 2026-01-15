@@ -36,10 +36,10 @@ AgentCoreNexus 專案的完整文檔目錄。
 
 ## 📦 組件文檔
 
-### telegram-lambda (Telegram Channel Adapter)
+### telegram-adapter (Telegram Channel Adapter)
 Telegram webhook 接收與訊息適配組件：
-- [README](../telegram-lambda/README.md) - 組件概覽
-- [完整文檔目錄](../telegram-lambda/docs/README.md) - 詳細技術文檔
+- [README](../telegram-adapter/README.md) - 組件概覽
+- [完整文檔目錄](../telegram-adapter/docs/README.md) - 詳細技術文檔
   - Changelog（變更記錄）
   - Deployment（部署指南）
   - Features（功能說明）
@@ -53,9 +53,9 @@ Telegram webhook 接收與訊息適配組件：
 - 命令處理（/info, /bind, /new 等）
 - Telegram Response Router（格式化與送達）
 
-### telegram-agentcore-bot (AI Processor - Channel-Agnostic)
+### ai-processor (AI Processor - Channel-Agnostic)
 通道無關的 AI 處理引擎：
-- [README](../telegram-agentcore-bot/README.md) - 組件概覽與使用
+- [README](../ai-processor/README.md) - 組件概覽與使用
 
 **職責**：
 - 接收來自**所有通道**的訊息（via EventBridge）
@@ -66,10 +66,10 @@ Telegram webhook 接收與訊息適配組件：
 
 **重要**：雖然名稱包含 "telegram"，但它處理來自所有通道的訊息
 
-### web-channel (Web Channel Adapter + Frontend)
+### web-adapter (Web Channel Adapter + Frontend)
 Web 入口與適配器：
-- [README](../web-channel/README.md) - 組件完整說明
-- [QUICKSTART](../web-channel/QUICKSTART.md) - 5分鐘快速開始
+- [README](../web-adapter/README.md) - 組件完整說明
+- [QUICKSTART](../web-adapter/QUICKSTART.md) - 5分鐘快速開始
 
 **職責**：
 - WebSocket 即時通訊

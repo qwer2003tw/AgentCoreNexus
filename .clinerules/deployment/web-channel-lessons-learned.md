@@ -115,7 +115,7 @@ AttachmentsBucket:
 **完整流程**：
 ```bash
 # 1. Build（跳過 TS 類型檢查可加速）
-cd web-channel/frontend
+cd web-adapter/frontend
 npx vite build  # 或 npm run build
 
 # 2. 上傳到 S3
@@ -164,7 +164,7 @@ aws cloudfront create-invalidation \
 def convert_web_attachments(web_attachments: list, user_message: str = "") -> list:
     """轉換 Web 格式為統一格式"""
     result = []
-    bucket = "agentcore-web-channel-attachments-190825685292"
+    bucket = "agentcore-web-adapter-attachments-190825685292"
     
     for att in web_attachments:
         # 1. 構建完整 S3 URL（關鍵！）
@@ -225,7 +225,7 @@ Policies:
         Action: s3:GetObject
         Resource:
           - 'arn:aws:s3:::telegram-bot-files-*/*'
-          - 'arn:aws:s3:::agentcore-web-channel-attachments-*/*'
+          - 'arn:aws:s3:::agentcore-web-adapter-attachments-*/*'
 ```
 
 **原則**：

@@ -182,7 +182,7 @@
 
 ```bash
 # 1. 確保後端服務運行
-cd web-channel/lambdas
+cd web-adapter/lambdas
 # 啟動後端...
 
 # 2. 執行 E2E 測試

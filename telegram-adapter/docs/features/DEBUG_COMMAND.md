@@ -12,7 +12,7 @@
 
 ```bash
 aws lambda update-function-configuration \
-  --function-name telegram-lambda-receiver \
+  --function-name telegram-adapter-receiver \
   --environment Variables="{
     TELEGRAM_SECRET_TOKEN='',
     TELEGRAM_BOT_TOKEN='YOUR_BOT_TOKEN_HERE',
@@ -103,7 +103,7 @@ pytest tests/test_handler.py::TestLambdaHandler::test_debug_command -v
 1. 檢查 `TELEGRAM_BOT_TOKEN` 是否設定正確
 2. 檢查 Lambda 日誌：
    ```bash
-   aws logs tail /aws/lambda/telegram-lambda-receiver --follow
+   aws logs tail /aws/lambda/telegram-adapter-receiver --follow
    ```
 
 ### 回應格式錯誤

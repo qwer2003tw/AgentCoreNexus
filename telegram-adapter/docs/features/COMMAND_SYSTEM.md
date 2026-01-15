@@ -2,7 +2,7 @@
 
 ## 📋 概述
 
-telegram-lambda 實作了模組化的指令處理系統，使用 Command Handler Pattern 和 Python Decorators 來管理 Telegram 指令。
+telegram-adapter 實作了模組化的指令處理系統，使用 Command Handler Pattern 和 Python Decorators 來管理 Telegram 指令。
 
 ## 🏗️ 架構設計
 
@@ -309,10 +309,10 @@ CommandHandler 介面簡潔明確，只包含必要的方法。
 📊 系統資訊
 
 🚀 最後部署時間：2025-01-05 11:00:23 UTC
-📦 Stack 名稱：telegram-lambda
+📦 Stack 名稱：telegram-adapter
 🌍 Region：us-west-2
 ✅ Stack 狀態：UPDATE_COMPLETE
-⚙️ Lambda 函數：telegram-lambda-receiver
+⚙️ Lambda 函數：telegram-adapter-receiver
 ```
 
 **技術實作：**

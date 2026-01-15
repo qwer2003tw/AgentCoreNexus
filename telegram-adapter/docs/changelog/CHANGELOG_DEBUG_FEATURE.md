@@ -104,7 +104,7 @@ Environment:
 1. **設定 Bot Token**:
    ```bash
    aws lambda update-function-configuration \
-     --function-name telegram-lambda-receiver \
+     --function-name telegram-adapter-receiver \
      --environment Variables="{...TELEGRAM_BOT_TOKEN='YOUR_TOKEN'...}"
    ```
 

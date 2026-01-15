@@ -5,7 +5,7 @@
 ## 1️⃣ 安裝依賴（1 分鐘）
 
 ```bash
-cd telegram-lambda
+cd telegram-adapter
 pip install -r requirements-test.txt
 ```
 
@@ -107,7 +107,7 @@ pytest tests/ --cov=src --cov-report=term-missing
 pip install -r requirements-test.txt
 
 # 確保在正確的目錄
-cd telegram-lambda
+cd telegram-adapter
 ```
 
 ### Q: Import 錯誤
@@ -146,9 +146,9 @@ ptw tests/e2e/ -- -v
 在 `~/.bashrc` 或 `~/.zshrc` 添加：
 
 ```bash
-alias test-e2e='cd telegram-lambda && pytest tests/e2e/ -v'
-alias test-fast='cd telegram-lambda && pytest tests/e2e/ -m "not slow" -v'
-alias test-cov='cd telegram-lambda && pytest tests/e2e/ --cov=src --cov-report=html'
+alias test-e2e='cd telegram-adapter && pytest tests/e2e/ -v'
+alias test-fast='cd telegram-adapter && pytest tests/e2e/ -m "not slow" -v'
+alias test-cov='cd telegram-adapter && pytest tests/e2e/ --cov=src --cov-report=html'
 ```
 
 ### 3. VS Code 整合

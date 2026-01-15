@@ -8,7 +8,7 @@
 ## ✅ 已完成的準備工作
 
 ### 1. 部署狀態確認
-- ✅ Stack: agentcore-web-channel
+- ✅ Stack: agentcore-web-adapter
 - ✅ 狀態: UPDATE_COMPLETE
 - ✅ 更新時間: 2026-01-14 14:46 UTC
 

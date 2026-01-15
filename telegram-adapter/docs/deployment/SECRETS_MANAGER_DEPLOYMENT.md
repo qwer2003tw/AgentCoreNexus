@@ -125,7 +125,7 @@ sam build
 sam deploy \
   --parameter-overrides file://deploy-parameters.json \
   --capabilities CAPABILITY_IAM \
-  --stack-name telegram-lambda
+  --stack-name telegram-adapter
 
 # 首次部署可能需要 --guided
 sam deploy --guided \
@@ -139,7 +139,7 @@ sam deploy \
   --parameter-overrides \
     TelegramBotToken="YOUR_BOT_TOKEN" \
   --capabilities CAPABILITY_IAM \
-  --stack-name telegram-lambda
+  --stack-name telegram-adapter
 ```
 
 **注意**：Secret token 會自動生成，無需提供參數。
@@ -150,7 +150,7 @@ sam deploy \
 
 ```bash
 aws cloudformation describe-stacks \
-  --stack-name telegram-lambda \
+  --stack-name telegram-adapter \
   --query 'Stacks[0].Outputs' \
   --output table
 ```
@@ -173,7 +173,7 @@ aws cloudformation describe-stacks \
 ```bash
 # 取得當前的 Lambda 環境變數
 aws lambda get-function-configuration \
-  --function-name telegram-lambda-receiver \
+  --function-name telegram-adapter-receiver \
   --query 'Environment.Variables' \
   --output json > current-env-vars.json
 
@@ -208,7 +208,7 @@ sam deploy --parameter-overrides file://deploy-parameters.json
 ```bash
 # 檢查新的環境變數（應該只有 ARN）
 aws lambda get-function-configuration \
-  --function-name telegram-lambda-receiver \
+  --function-name telegram-adapter-receiver \
   --query 'Environment.Variables'
 
 # 測試 Lambda 函數
@@ -223,23 +223,23 @@ sam local invoke TelegramReceiverFunction \
 ```bash
 # 列出 secrets
 aws secretsmanager list-secrets \
-  --filters Key=name,Values=telegram-lambda
+  --filters Key=name,Values=telegram-adapter
 
 # 取得完整的 secret（包含所有 tokens）
 aws secretsmanager get-secret-value \
-  --secret-id telegram-lambda-secrets \
+  --secret-id telegram-adapter-secrets \
   --query 'SecretString' \
   --output text | jq
 
 # 取得 bot token
 aws secretsmanager get-secret-value \
-  --secret-id telegram-lambda-secrets \
+  --secret-id telegram-adapter-secrets \
   --query 'SecretString' \
   --output text | jq -r .bot_token
 
 # 取得 webhook secret token
 aws secretsmanager get-secret-value \
-  --secret-id telegram-lambda-secrets \
+  --secret-id telegram-adapter-secrets \
   --query 'SecretString' \
   --output text | jq -r .webhook_secret_token
 ```
@@ -249,7 +249,7 @@ aws secretsmanager get-secret-value \
 ```bash
 # 檢查 Lambda 的 IAM 角色
 aws lambda get-function \
-  --function-name telegram-lambda-receiver \
+  --function-name telegram-adapter-receiver \
   --query 'Configuration.Role'
 
 # 檢查角色的權限（應包含 secretsmanager:GetSecretValue）
@@ -262,7 +262,7 @@ aws iam get-role-policy \
 
 ```bash
 # 檢查 CloudWatch Logs
-aws logs tail /aws/lambda/telegram-lambda-receiver --follow
+aws logs tail /aws/lambda/telegram-adapter-receiver --follow
 
 # 發送測試 webhook（需要先設定 webhook URL）
 curl -X POST https://[API_GATEWAY_URL]/Prod/webhook \
@@ -277,7 +277,7 @@ curl -X POST https://[API_GATEWAY_URL]/Prod/webhook \
 
 **方法 A：透過 AWS Console**
 1. 前往 AWS Secrets Manager
-2. 選擇 secret (telegram-lambda-bot-token 或 telegram-lambda-secret-token)
+2. 選擇 secret (telegram-adapter-bot-token 或 telegram-adapter-secret-token)
 3. 點擊「Retrieve secret value」
 4. 點擊「Edit」
 5. 更新 token 值
@@ -288,7 +288,7 @@ curl -X POST https://[API_GATEWAY_URL]/Prod/webhook \
 ```bash
 # 更新整個 secret（需要同時提供兩個 tokens）
 aws secretsmanager update-secret \
-  --secret-id telegram-lambda-secrets \
+  --secret-id telegram-adapter-secrets \
   --secret-string '{
     "bot_token": "NEW_BOT_TOKEN_HERE",
     "webhook_secret_token": "NEW_WEBHOOK_SECRET_TOKEN_HERE"
@@ -296,12 +296,12 @@ aws secretsmanager update-secret \
 
 # 或者只更新 bot token（先取得現有值）
 CURRENT_WEBHOOK_TOKEN=$(aws secretsmanager get-secret-value \
-  --secret-id telegram-lambda-secrets \
+  --secret-id telegram-adapter-secrets \
   --query 'SecretString' \
   --output text | jq -r .webhook_secret_token)
 
 aws secretsmanager update-secret \
-  --secret-id telegram-lambda-secrets \
+  --secret-id telegram-adapter-secrets \
   --secret-string "{
     \"bot_token\": \"NEW_BOT_TOKEN_HERE\",
     \"webhook_secret_token\": \"$CURRENT_WEBHOOK_TOKEN\"
@@ -316,7 +316,7 @@ aws secretsmanager update-secret \
 2. **更新 Lambda 環境變數**（觸發重新部署）：
    ```bash
    aws lambda update-function-configuration \
-     --function-name telegram-lambda-receiver \
+     --function-name telegram-adapter-receiver \
      --environment "Variables={FORCE_REFRESH=$(date +%s)}"
    ```
 
@@ -327,7 +327,7 @@ aws secretsmanager update-secret \
 ```bash
 # 為 secret 設定輪替
 aws secretsmanager rotate-secret \
-  --secret-id telegram-lambda-secrets \
+  --secret-id telegram-adapter-secrets \
   --rotation-lambda-arn [ROTATION_FUNCTION_ARN] \
   --rotation-rules AutomaticallyAfterDays=90
 ```
@@ -348,7 +348,7 @@ Failed to retrieve secret: AccessDeniedException
 **解決方案：**
 ```bash
 # 檢查 IAM 權限
-aws lambda get-policy --function-name telegram-lambda-receiver
+aws lambda get-policy --function-name telegram-adapter-receiver
 
 # 確認 template.yaml 中的權限設定正確
 # 必須包含：
@@ -372,7 +372,7 @@ ResourceNotFoundException: Secrets Manager can't find the specified secret
 ```bash
 # 檢查 secret 是否存在
 aws secretsmanager list-secrets \
-  --filters Key=name,Values=telegram-lambda
+  --filters Key=name,Values=telegram-adapter
 
 # 如果不存在，重新部署 stack
 sam deploy --parameter-overrides file://deploy-parameters.json
@@ -389,14 +389,14 @@ Failed to parse secret JSON
 ```bash
 # 檢查 secret 格式
 aws secretsmanager get-secret-value \
-  --secret-id telegram-lambda-secrets \
+  --secret-id telegram-adapter-secrets \
   --query 'SecretString' \
   --output text
 
 # 應該是有效的 JSON: {"bot_token": "...", "webhook_secret_token": "..."}
 # 如果格式錯誤，更新：
 aws secretsmanager update-secret \
-  --secret-id telegram-lambda-secrets \
+  --secret-id telegram-adapter-secrets \
   --secret-string '{
     "bot_token": "YOUR_BOT_TOKEN",
     "webhook_secret_token": "YOUR_WEBHOOK_SECRET_TOKEN"
@@ -414,7 +414,7 @@ TELEGRAM_SECRETS_ARN environment variable not set
 ```bash
 # 檢查 Lambda 環境變數
 aws lambda get-function-configuration \
-  --function-name telegram-lambda-receiver \
+  --function-name telegram-adapter-receiver \
   --query 'Environment.Variables'
 
 # 應該包含 TELEGRAM_SECRETS_ARN
@@ -484,6 +484,6 @@ API 呼叫：(1,000 requests/day × 30 days) / 100 reuse × $0.05/10,000 = $0.01
 ## 支援
 
 如遇到問題，請檢查：
-1. CloudWatch Logs：`/aws/lambda/telegram-lambda-receiver`
+1. CloudWatch Logs：`/aws/lambda/telegram-adapter-receiver`
 2. CloudFormation Events
 3. Secrets Manager Audit Logs（透過 CloudTrail）

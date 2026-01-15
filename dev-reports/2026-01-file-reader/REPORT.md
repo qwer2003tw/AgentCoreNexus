@@ -37,7 +37,7 @@
 ```
 Telegram 用戶上傳檔案 + Caption（可選）
          ↓
-API Gateway → Receiver Lambda (telegram-lambda)
+API Gateway → Receiver Lambda (telegram-adapter)
          ↓
 1. Token 驗證（Secrets Manager）
 2. Allowlist 檢查（DynamoDB）
@@ -54,7 +54,7 @@ API Gateway → Receiver Lambda (telegram-lambda)
          ↓
 7. 發送到 EventBridge（message.received）
          ↓
-Processor Lambda (telegram-agentcore-bot)
+Processor Lambda (ai-processor)
          ↓
 8. process_file_attachments() 提取附件
 9. 從 S3 讀取檔案內容
@@ -70,7 +70,7 @@ Processor Lambda (telegram-agentcore-bot)
 
 ### 核心組件
 
-#### 1. **Receiver Lambda 檔案處理** (`telegram-lambda/`)
+#### 1. **Receiver Lambda 檔案處理** (`telegram-adapter/`)
 
 **file_handler.py** (新增 232 行)
 - `get_bot_token()`: 從 Secrets Manager 獲取 token
@@ -88,7 +88,7 @@ Processor Lambda (telegram-agentcore-bot)
 - 根據權限決定是否處理附件
 - 支援 4 種附件類型（photo, document, video, audio）
 
-#### 2. **Processor Lambda 檔案處理** (`telegram-agentcore-bot/`)
+#### 2. **Processor Lambda 檔案處理** (`ai-processor/`)
 
 **services/file_service.py** (新增 340 行)
 - `FileService`: 主要服務類
@@ -109,7 +109,7 @@ Processor Lambda (telegram-agentcore-bot)
 
 #### 3. **基礎設施更新**
 
-**telegram-lambda/template.yaml**
+**telegram-adapter/template.yaml**
 - S3 Bucket 資源（FileStorageBucket）
   - 命名：`telegram-bot-files-{AccountId}-{Environment}`
   - 加密：AES256
@@ -119,7 +119,7 @@ Processor Lambda (telegram-agentcore-bot)
 - 環境變數：FILE_STORAGE_BUCKET, ENVIRONMENT
 - Outputs：導出 bucket 名稱和 ARN
 
-**telegram-agentcore-bot/template.yaml**
+**ai-processor/template.yaml**
 - Parameters：ReceiverStackName
 - ImportValue：引用 S3 bucket
 - Code Interpreter 權限
@@ -148,11 +148,11 @@ Processor Lambda (telegram-agentcore-bot)
 ### 實際測試日誌
 ```bash
 # SAM 驗證結果
-$ cd telegram-lambda && sam validate
-✅ telegram-lambda/template.yaml is a valid SAM Template
+$ cd telegram-adapter && sam validate
+✅ telegram-adapter/template.yaml is a valid SAM Template
 
-$ cd telegram-agentcore-bot && sam validate
-✅ telegram-agentcore-bot/template.yaml is a valid SAM Template
+$ cd ai-processor && sam validate
+✅ ai-processor/template.yaml is a valid SAM Template
 
 # Git 提交統計
 60 files changed, 8456 insertions(+), 2869 deletions(-)
@@ -410,10 +410,10 @@ def read_file(description):
 - [docs/deployment-guide.md](../../docs/deployment-guide.md) - 需要添加 S3 bucket 部署步驟
 
 ### 程式碼位置
-- `telegram-lambda/src/file_handler.py` - 檔案下載和 S3 上傳
-- `telegram-lambda/src/allowlist.py` - 權限檢查（新增 2 函數）
-- `telegram-agentcore-bot/services/file_service.py` - Code Interpreter 整合
-- `telegram-agentcore-bot/tools/file_reader.py` - 檔案讀取工具
+- `telegram-adapter/src/file_handler.py` - 檔案下載和 S3 上傳
+- `telegram-adapter/src/allowlist.py` - 權限檢查（新增 2 函數）
+- `ai-processor/services/file_service.py` - Code Interpreter 整合
+- `ai-processor/tools/file_reader.py` - 檔案讀取工具
 
 ---
 

@@ -169,7 +169,7 @@ test-frontend:
     # ...
     - name: Run E2E tests
       run: |
-        cd web-channel/e2e-tests
+        cd web-adapter/e2e-tests
         npx playwright test --shard=${{ matrix.shard }}
 ```
 
@@ -181,7 +181,7 @@ test-frontend:
 ```yaml
 - name: Run E2E tests
   run: |
-    cd web-channel/e2e-tests
+    cd web-adapter/e2e-tests
     if [ "${{ github.event_name }}" == "push" ]; then
       npm test -- --grep @smoke
     else

@@ -331,7 +331,7 @@ ID: 123456789
 
 ### 查看日誌
 ```bash
-aws logs tail /aws/lambda/telegram-lambda-receiver \
+aws logs tail /aws/lambda/telegram-adapter-receiver \
   --region us-west-2 \
   --filter-pattern "admin_command"
 ```
@@ -396,9 +396,9 @@ aws logs tail /aws/lambda/telegram-lambda-receiver \
 ## 📞 技術支持
 
 如有問題，請查看：
-- CloudWatch Logs: `/aws/lambda/telegram-lambda-receiver`
+- CloudWatch Logs: `/aws/lambda/telegram-adapter-receiver`
 - DynamoDB Table: `telegram-allowlist`
-- EventBridge Bus: `telegram-lambda-events`
+- EventBridge Bus: `telegram-adapter-events`
 
 **系統狀態：** ✅ 完全運作  
 **最後更新：** 2026-01-06  

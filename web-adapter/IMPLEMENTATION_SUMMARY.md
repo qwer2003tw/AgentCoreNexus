@@ -103,13 +103,13 @@
 
 ### Integration (20%)
 
-#### telegram-agentcore-bot 修改
+#### ai-processor 修改
 - [ ] 修改 `memory_service.py` 支援 dict 格式 user_info
 - [ ] 修改 `processor_entry.py` 添加 unified_user_id 查詢
 - [ ] 添加 BINDINGS_TABLE 環境變數
 - [ ] 測試 Memory 跨通道共享
 
-#### telegram-lambda 修改  
+#### telegram-adapter 修改  
 - [ ] 複製 `bind_handler.py` 到 commands/handlers/
 - [ ] 在 command router 註冊 /bind 指令
 - [ ] 添加 BINDINGS_TABLE 和 BINDING_CODES_TABLE 環境變數
@@ -165,7 +165,7 @@
 ### Infrastructure
 ```
 infrastructure/
-└── web-channel-template.yaml (400+ lines)
+└── web-adapter-template.yaml (400+ lines)
 ```
 
 ### Backend Lambdas
@@ -245,8 +245,8 @@ docs/
 1. **部署 Backend**
    ```bash
    cd infrastructure
-   sam build -t web-channel-template.yaml
-   sam deploy --stack-name agentcore-web-channel ...
+   sam build -t web-adapter-template.yaml
+   sam deploy --stack-name agentcore-web-adapter ...
    ```
 
 2. **測試 API**
@@ -274,8 +274,8 @@ docs/
    - AdminPanel 實現（如果是 admin）
 
 2. **系統整合**（2-3天）
-   - 修改 telegram-agentcore-bot
-   - 修改 telegram-lambda
+   - 修改 ai-processor
+   - 修改 telegram-adapter
    - 端到端測試
 
 3. **部署和文檔**（1-2天）

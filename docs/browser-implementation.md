@@ -56,7 +56,7 @@ AWS Browser Sandbox 服務
 
 ### 修復 1: 正確初始化 Browser Service
 
-**文件**: `telegram-agentcore-bot/services/browser_service.py`
+**文件**: `ai-processor/services/browser_service.py`
 
 **修改前**（錯誤的導入）：
 ```python

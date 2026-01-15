@@ -32,7 +32,7 @@ waiting for locator('textarea') to be visible
 ## 🔧 修復方案
 
 ### 修改的文件
-`web-channel/e2e-tests/setup/fixtures.ts`
+`web-adapter/e2e-tests/setup/fixtures.ts`
 
 ### 核心改進
 
@@ -181,7 +181,7 @@ Error: Timeout waiting for login API response
 
 ### 本地測試
 ```bash
-cd web-channel/e2e-tests
+cd web-adapter/e2e-tests
 export TEST_USER_1_EMAIL=test1@test.com
 export TEST_USER_1_PASSWORD=Test123!
 npm test -- --headed  # 可以看到瀏覽器行為

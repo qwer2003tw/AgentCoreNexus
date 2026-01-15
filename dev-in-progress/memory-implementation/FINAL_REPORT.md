@@ -31,7 +31,7 @@
 - ✅ 用戶友好的回應
 
 **實作位置**:
-- `telegram-lambda/src/commands/handlers/new_handler.py`
+- `telegram-adapter/src/commands/handlers/new_handler.py`
 - 已註冊到命令路由器
 
 ### 3. Actor ID 雜湊化（資安改進）✅
@@ -48,7 +48,7 @@
 ```
 
 **實作文件**:
-- `telegram-agentcore-bot/utils/security.py`
+- `ai-processor/utils/security.py`
 
 ### 4. 存取審計日誌（資安改進）✅
 
@@ -66,7 +66,7 @@ Status: success
 ```
 
 **實作文件**:
-- `telegram-agentcore-bot/utils/audit.py`
+- `ai-processor/utils/audit.py`
 
 ---
 
@@ -160,10 +160,10 @@ User B (999888777):
 - `FINAL_REPORT.md` - 本完整報告
 
 **代碼文件**:
-- `telegram-agentcore-bot/utils/security.py` - 安全工具
-- `telegram-agentcore-bot/utils/audit.py` - 審計日誌
-- `telegram-agentcore-bot/scripts/create_agentcore_memory.py` - Memory 創建腳本
-- `telegram-lambda/src/commands/handlers/new_handler.py` - /new 命令
+- `ai-processor/utils/security.py` - 安全工具
+- `ai-processor/utils/audit.py` - 審計日誌
+- `ai-processor/scripts/create_agentcore_memory.py` - Memory 創建腳本
+- `telegram-adapter/src/commands/handlers/new_handler.py` - /new 命令
 
 ---
 
@@ -234,7 +234,7 @@ aws logs filter-log-events \
 ```
 BEDROCK_AGENTCORE_MEMORY_ID=TelegramBotMemory-6UH9fyDyIf
 MEMORY_ACTOR_SECRET=Nm5jd2fCJd3lc0-hEDX6dQXRnodZsGF2tPC-xnZdQcU
-EVENT_BUS_NAME=telegram-lambda-receiver-events
+EVENT_BUS_NAME=telegram-adapter-receiver-events
 BEDROCK_MODEL_ID=anthropic.claude-3-5-sonnet-20241022-v2:0
 BROWSER_ENABLED=true
 LOG_LEVEL=INFO
@@ -407,7 +407,7 @@ aws logs filter-log-events \
 
 **部署狀態**:
 - ✅ telegram-unified-bot (Processor)
-- ✅ telegram-lambda-receiver (Receiver + /new)
+- ✅ telegram-adapter-receiver (Receiver + /new)
 - ✅ 所有環境變數已設定
 - ✅ 所有權限已配置
 

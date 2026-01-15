@@ -149,7 +149,7 @@ npx playwright show-trace test-results/.../trace.zip
 
 **在本地環境測試**：
 ```bash
-cd web-channel/frontend
+cd web-adapter/frontend
 echo "VITE_API_ENDPOINT=https://dr614rh1s6..." > .env.local
 echo "VITE_WS_ENDPOINT=wss://c8921qtrs8..." >> .env.local
 npm run dev
@@ -225,7 +225,7 @@ await page.waitForSelector('textarea', { timeout: 10000 })
 
 ### 修復方案：明確的 URL 導航驗證 + 手動兜底
 
-**修改文件**: `web-channel/e2e-tests/setup/fixtures.ts`
+**修改文件**: `web-adapter/e2e-tests/setup/fixtures.ts`
 
 **核心修復**：
 1. 添加明確的 URL 檢查 - 不再假設自動導航成功
@@ -248,7 +248,7 @@ if (!currentUrl.includes('/chat')) {
 }
 ```
 
-**詳細報告**: 查看 `web-channel/e2e-tests/E2E_FIX_REPORT.md`
+**詳細報告**: 查看 `web-adapter/e2e-tests/E2E_FIX_REPORT.md`
 
 **測試驗證**: 需要 push 代碼後在 GitHub Actions 中驗證
 

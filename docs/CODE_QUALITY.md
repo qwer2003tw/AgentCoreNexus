@@ -234,15 +234,15 @@ git push
 ruff check . --statistics
 
 # 查看特定子專案
-cd telegram-lambda && ruff check . --statistics
-cd telegram-agentcore-bot && ruff check . --statistics
+cd telegram-adapter && ruff check . --statistics
+cd ai-processor && ruff check . --statistics
 ```
 
 ### 改善記錄
 
 **初始導入（2026-01-07）**:
-- telegram-lambda: 1369 → 5 問題（改善 99.6%）
-- telegram-agentcore-bot: 874 → 12 問題（改善 98.6%）
+- telegram-adapter: 1369 → 5 問題（改善 99.6%）
+- ai-processor: 874 → 12 問題（改善 98.6%）
 - 總改善: **2243 → 17 問題（改善 99.2%）**
 
 ## 🔗 相關資源

@@ -10,9 +10,9 @@ AgentCoreNexus 由三個獨立組件組成，每個組件都有完整的測試�
 
 | 組件 | 測試框架 | 測試類型 | 覆蓋率要求 |
 |------|---------|---------|-----------|
-| **telegram-agentcore-bot** | pytest | 單元測試 | 新代碼 ≥ 80% |
-| **telegram-lambda** | pytest | 單元 + E2E | 新代碼 ≥ 80% |
-| **web-channel** | Playwright | E2E 測試 | N/A |
+| **ai-processor** | pytest | 單元測試 | 新代碼 ≥ 80% |
+| **telegram-adapter** | pytest | 單元 + E2E | 新代碼 ≥ 80% |
+| **web-adapter** | Playwright | E2E 測試 | N/A |
 
 ---
 
@@ -42,7 +42,7 @@ make test-quick
 
 ## 📦 組件測試
 
-### 1. telegram-agentcore-bot（AI 處理器）
+### 1. ai-processor（AI 處理器）
 
 **測試內容**：
 - 配置管理測試
@@ -55,7 +55,7 @@ make test-quick
 **執行測試**：
 
 ```bash
-cd telegram-agentcore-bot
+cd ai-processor
 
 # 方法 1: 使用覆蓋率腳本（推薦）
 ./run_tests_with_coverage.sh
@@ -83,7 +83,7 @@ xdg-open htmlcov/index.html  # Linux
 
 ---
 
-### 2. telegram-lambda（Webhook 接收器）
+### 2. telegram-adapter（Webhook 接收器）
 
 **測試內容**：
 - 單元測試：Handler、Allowlist、Commands、Secrets Manager 等
@@ -92,7 +92,7 @@ xdg-open htmlcov/index.html  # Linux
 **執行測試**：
 
 ```bash
-cd telegram-lambda
+cd telegram-adapter
 
 # 完整測試（推薦）
 ./run_all_tests.sh --cov
@@ -113,7 +113,7 @@ python3.11 -m pytest tests/e2e/test_commands.py -v
 
 ---
 
-### 3. web-channel（Web 前端）
+### 3. web-adapter（Web 前端）
 
 **測試內容**：
 - 認證測試（登入、登出、Session）
@@ -123,7 +123,7 @@ python3.11 -m pytest tests/e2e/test_commands.py -v
 **執行測試**：
 
 ```bash
-cd web-channel/e2e-tests
+cd web-adapter/e2e-tests
 
 # 首次執行需要安裝依賴
 npm install
@@ -186,21 +186,21 @@ make help
 # 確保已安裝 diff-cover
 pip install diff-cover
 
-# telegram-agentcore-bot
-cd telegram-agentcore-bot
+# ai-processor
+cd ai-processor
 pytest tests/ --cov=. --cov-report=xml
 diff-cover coverage.xml --compare-branch=main --fail-under=80
 
-# telegram-lambda
-cd telegram-lambda
+# telegram-adapter
+cd telegram-adapter
 pytest tests/ --cov=src --cov-report=xml
 diff-cover coverage.xml --compare-branch=main --fail-under=80
 ```
 
 ### 覆蓋率報告位置
 
-- telegram-agentcore-bot: `htmlcov/index.html`
-- telegram-lambda: `htmlcov/index.html`
+- ai-processor: `htmlcov/index.html`
+- telegram-adapter: `htmlcov/index.html`
 - XML 報告: `coverage.xml`（用於 CI/CD）
 
 ---
@@ -249,10 +249,10 @@ pytest tests/ --pdb
 
 ```bash
 # 解決：安裝測試依賴
-cd telegram-lambda
+cd telegram-adapter
 pip install -r requirements-test.txt
 
-cd telegram-agentcore-bot
+cd ai-processor
 pip install pytest pytest-cov pytest-asyncio
 ```
 
@@ -271,7 +271,7 @@ python3.11 -m pytest tests/ -v
 #### 問題 3: Playwright 瀏覽器未安裝
 
 ```bash
-cd web-channel/e2e-tests
+cd web-adapter/e2e-tests
 npx playwright install
 ```
 
@@ -279,7 +279,7 @@ npx playwright install
 
 ## 📝 撰寫新測試
 
-### telegram-agentcore-bot 範例
+### ai-processor 範例
 
 ```python
 # tests/test_new_feature.py
@@ -297,7 +297,7 @@ def test_my_new_feature():
     assert result == expected_output
 ```
 
-### telegram-lambda 範例
+### telegram-adapter 範例
 
 ```python
 # tests/test_new_handler.py
@@ -317,7 +317,7 @@ def test_new_command(full_mock_env, lambda_context):
     assert response["statusCode"] == 200
 ```
 
-### web-channel 範例
+### web-adapter 範例
 
 ```typescript
 // tests/new-feature.spec.ts
@@ -414,7 +414,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-node@v3
-      - run: cd web-channel/e2e-tests && npm test
+      - run: cd web-adapter/e2e-tests && npm test
 ```
 
 ---
@@ -423,8 +423,8 @@ jobs:
 
 ### 組件測試文檔
 
-- [telegram-lambda E2E 測試](../telegram-lambda/tests/e2e/README.md)
-- [web-channel E2E 測試](../web-channel/e2e-tests/README.md)
+- [telegram-adapter E2E 測試](../telegram-adapter/tests/e2e/README.md)
+- [web-adapter E2E 測試](../web-adapter/e2e-tests/README.md)
 
 ### 工作流規範
 

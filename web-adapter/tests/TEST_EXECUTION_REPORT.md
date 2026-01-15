@@ -126,7 +126,7 @@ await page.locator('button').filter({ hasText: /新對話|開始對話/ }).first
 
 ### Step 1: 查看失敗截圖
 ```bash
-cd web-channel/e2e-tests
+cd web-adapter/e2e-tests
 open test-results/chat-Chat-Core-Functionali-97da6-essage-and-receive-AI-reply-chromium/test-failed-1.png
 ```
 

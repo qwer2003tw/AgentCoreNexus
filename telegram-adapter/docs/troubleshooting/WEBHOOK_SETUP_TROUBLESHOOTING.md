@@ -30,7 +30,7 @@
 
 ```bash
 aws secretsmanager get-secret-value \
-  --secret-id telegram-lambda-secret-token \
+  --secret-id telegram-adapter-secret-token \
   --region us-west-2 \
   --query 'SecretString' \
   --output text | jq -r .token
@@ -139,7 +139,7 @@ curl -X POST https://19168bj3c7.execute-api.us-west-2.amazonaws.com/Prod/webhook
 
 ```bash
 aws lambda update-function-configuration \
-  --function-name telegram-lambda-receiver \
+  --function-name telegram-adapter-receiver \
   --region us-west-2 \
   --environment Variables="{
     TELEGRAM_SECRET_TOKEN='',
@@ -179,7 +179,7 @@ aws lambda update-function-configuration \
 
 ### 檢查 Lambda 日誌
 ```bash
-aws logs tail /aws/lambda/telegram-lambda-receiver \
+aws logs tail /aws/lambda/telegram-adapter-receiver \
   --region us-west-2 \
   --follow
 ```

@@ -234,7 +234,7 @@
 ## 📂 重要文件索引
 
 ### 立即可用
-- **執行測試**：`npm test`（在 web-channel/e2e-tests）
+- **執行測試**：`npm test`（在 web-adapter/e2e-tests）
 - **查看報告**：`npm run test:report`
 - **本地開發**：http://localhost:5173
 

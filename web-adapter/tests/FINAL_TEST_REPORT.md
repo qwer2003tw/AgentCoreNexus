@@ -175,7 +175,7 @@
 
 ### 快速執行
 ```bash
-cd web-channel/e2e-tests
+cd web-adapter/e2e-tests
 npm run test:chat  # 2.5 分鐘，5/5 通過
 ```
 

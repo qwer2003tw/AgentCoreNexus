@@ -13,20 +13,20 @@ us-west-2 (Oregon)
 | Stack 名稱 | 用途 | 主要資源 |
 |-----------|------|----------|
 | `telegram-unified-bot` | AI 處理器 | telegram-unified-bot-processor |
-| `telegram-lambda-receiver` | Webhook 接收 | telegram-lambda-receiver<br>telegram-lambda-response-router |
+| `telegram-adapter-receiver` | Webhook 接收 | telegram-adapter-receiver<br>telegram-adapter-response-router |
 
 ### Lambda 函數
 | 函數名稱 | 用途 | 內存 | 超時 |
 |---------|------|------|------|
 | telegram-unified-bot-processor | AI 處理 + Browser | 1024 MB | 300s |
-| telegram-lambda-receiver | Webhook 接收 | 256 MB | 30s |
-| telegram-lambda-response-router | 響應路由 | 256 MB | 30s |
+| telegram-adapter-receiver | Webhook 接收 | 256 MB | 30s |
+| telegram-adapter-response-router | 響應路由 | 256 MB | 30s |
 
 ### 其他資源
 - **API Gateway**: jpyhj26jw9.execute-api.us-west-2.amazonaws.com
-- **EventBus**: telegram-lambda-receiver-events
+- **EventBus**: telegram-adapter-receiver-events
 - **DynamoDB**: telegram-allowlist
-- **Secrets**: telegram-lambda-receiver-secrets
+- **Secrets**: telegram-adapter-receiver-secrets
 
 ---
 
@@ -36,7 +36,7 @@ us-west-2 (Oregon)
 
 #### 1. 部署處理器 Lambda
 ```bash
-cd telegram-agentcore-bot
+cd ai-processor
 sam build
 sam deploy --stack-name telegram-unified-bot \
   --resolve-s3 \
@@ -46,9 +46,9 @@ sam deploy --stack-name telegram-unified-bot \
 
 #### 2. 部署接收器和路由器
 ```bash
-cd telegram-lambda
+cd telegram-adapter
 sam build
-sam deploy --stack-name telegram-lambda-receiver \
+sam deploy --stack-name telegram-adapter-receiver \
   --resolve-s3 \
   --capabilities CAPABILITY_IAM \
   --region us-west-2
@@ -82,12 +82,12 @@ aws logs tail /aws/lambda/telegram-unified-bot-processor \
   --follow
 
 # 接收器日誌（webhook 和命令處理）
-aws logs tail /aws/lambda/telegram-lambda-receiver \
+aws logs tail /aws/lambda/telegram-adapter-receiver \
   --region us-west-2 \
   --follow
 
 # 響應路由日誌
-aws logs tail /aws/lambda/telegram-lambda-response-router \
+aws logs tail /aws/lambda/telegram-adapter-response-router \
   --region us-west-2 \
   --follow
 ```
@@ -182,7 +182,7 @@ curl -X POST https://jpyhj26jw9.execute-api.us-west-2.amazonaws.com/Prod/webhook
 # 獲取 bot token
 BOT_TOKEN=$(aws secretsmanager get-secret-value \
   --region us-west-2 \
-  --secret-id telegram-lambda-receiver-secrets \
+  --secret-id telegram-adapter-receiver-secrets \
   --query SecretString --output text | jq -r .bot_token)
 
 # 檢查 webhook 信息
@@ -194,7 +194,7 @@ curl -X POST "https://api.telegram.org/bot${BOT_TOKEN}/getWebhookInfo"
 # 獲取 webhook secret
 WEBHOOK_SECRET=$(aws secretsmanager get-secret-value \
   --region us-west-2 \
-  --secret-id telegram-lambda-receiver-secrets \
+  --secret-id telegram-adapter-receiver-secrets \
   --query SecretString --output text | jq -r .webhook_secret_token)
 
 # 設置 webhook
@@ -254,13 +254,13 @@ aws secretsmanager list-secrets --region us-west-2 \
 # 獲取 bot token
 aws secretsmanager get-secret-value \
   --region us-west-2 \
-  --secret-id telegram-lambda-receiver-secrets \
+  --secret-id telegram-adapter-receiver-secrets \
   --query SecretString --output text | jq -r .bot_token
 
 # 獲取 webhook secret
 aws secretsmanager get-secret-value \
   --region us-west-2 \
-  --secret-id telegram-lambda-receiver-secrets \
+  --secret-id telegram-adapter-receiver-secrets \
   --query SecretString --output text | jq -r .webhook_secret_token
 ```
 
@@ -268,13 +268,13 @@ aws secretsmanager get-secret-value \
 ```bash
 # 列出 Event Bus 上的 rules
 aws events list-rules --region us-west-2 \
-  --event-bus-name telegram-lambda-receiver-events
+  --event-bus-name telegram-adapter-receiver-events
 
 # 檢查 rule targets
 aws events list-targets-by-rule \
   --region us-west-2 \
   --rule RULE_NAME \
-  --event-bus-name telegram-lambda-receiver-events
+  --event-bus-name telegram-adapter-receiver-events
 ```
 
 ### 檢查 DynamoDB Allowlist
@@ -303,7 +303,7 @@ aws lambda update-function-configuration \
   --environment "Variables={
     BEDROCK_MODEL_ID=anthropic.claude-3-5-sonnet-20241022-v2:0,
     BROWSER_ENABLED=true,
-    EVENT_BUS_NAME=telegram-lambda-receiver-events,
+    EVENT_BUS_NAME=telegram-adapter-receiver-events,
     LOG_LEVEL=INFO
   }"
 ```
@@ -334,19 +334,19 @@ aws dynamodb put-item --region us-west-2 \
 # 獲取現有 webhook secret
 WEBHOOK_SECRET=$(aws secretsmanager get-secret-value \
   --region us-west-2 \
-  --secret-id telegram-lambda-receiver-secrets \
+  --secret-id telegram-adapter-receiver-secrets \
   --query SecretString --output text | jq -r .webhook_secret_token)
 
 # 更新包含新 bot token
 aws secretsmanager update-secret \
   --region us-west-2 \
-  --secret-id telegram-lambda-receiver-secrets \
+  --secret-id telegram-adapter-receiver-secrets \
   --secret-string "{\"bot_token\":\"NEW_TOKEN\",\"webhook_secret_token\":\"$WEBHOOK_SECRET\"}"
 
 # 清除 Lambda 緩存（必須）
 aws lambda update-function-code \
   --region us-west-2 \
-  --function-name telegram-lambda-receiver \
+  --function-name telegram-adapter-receiver \
   --s3-bucket aws-sam-cli-managed-default-samclisourcebucket-tephzsvbizdo \
   --s3-key LATEST_KEY \
   --publish
@@ -367,8 +367,8 @@ aws lambda get-function --region us-west-2 \
 
 # 2. 檢查 EventBridge rule targets
 aws events list-targets-by-rule --region us-west-2 \
-  --rule telegram-lambda-receiver-message-received \
-  --event-bus-name telegram-lambda-receiver-events
+  --rule telegram-adapter-receiver-message-received \
+  --event-bus-name telegram-adapter-receiver-events
 
 # 3. 檢查環境變數
 aws lambda get-function-configuration --region us-west-2 \
@@ -427,7 +427,7 @@ aws logs filter-log-events \
 
 ### CloudWatch Dashboard
 ```
-Dashboard 名稱: telegram-lambda-monitoring
+Dashboard 名稱: telegram-adapter-monitoring
 位置: CloudWatch Console > Dashboards
 ```
 
@@ -475,7 +475,7 @@ aws lambda list-functions --region us-west-2 \
   --output table
 
 # 2. 檢查錯誤日誌
-for func in telegram-unified-bot-processor telegram-lambda-receiver telegram-lambda-response-router; do
+for func in telegram-unified-bot-processor telegram-adapter-receiver telegram-adapter-response-router; do
   echo "=== $func ==="
   aws logs filter-log-events \
     --region us-west-2 \
@@ -528,7 +528,7 @@ aws logs describe-log-groups --region us-west-2 \
 # 獲取 secret token
 aws secretsmanager get-secret-value \
   --region us-west-2 \
-  --secret-id telegram-lambda-receiver-secrets \
+  --secret-id telegram-adapter-receiver-secrets \
   --query SecretString --output text | jq -r .webhook_secret_token
 ```
 
@@ -563,7 +563,7 @@ aws dynamodb delete-item --region us-west-2 \
 ```bash
 BOT_TOKEN=$(aws secretsmanager get-secret-value \
   --region us-west-2 \
-  --secret-id telegram-lambda-receiver-secrets \
+  --secret-id telegram-adapter-receiver-secrets \
   --query SecretString --output text | jq -r .bot_token)
 
 # 獲取 bot 基本信息
@@ -576,7 +576,7 @@ curl -X POST "https://api.telegram.org/bot${BOT_TOKEN}/getMe"
 
 ```
 AgentCoreNexus/
-├── telegram-agentcore-bot/        # AI 處理器
+├── ai-processor/        # AI 處理器
 │   ├── template.yaml              # SAM template
 │   ├── processor_entry.py         # Lambda 入口
 │   ├── agents/                    # Agent 邏輯
@@ -584,7 +584,7 @@ AgentCoreNexus/
 │   ├── tools/                     # 工具函數
 │   └── requirements.txt           # Python 依賴
 │
-├── telegram-lambda/               # Webhook 接收器
+├── telegram-adapter/               # Webhook 接收器
 │   ├── template.yaml              # SAM template
 │   ├── src/                       # 接收器代碼
 │   │   ├── handler.py             # 主處理器
@@ -622,7 +622,7 @@ AgentCoreNexus/
 
 ### 部署順序
 1. ✅ 先部署 telegram-unified-bot（處理器）
-2. ✅ 再部署 telegram-lambda-receiver（接收器）
+2. ✅ 再部署 telegram-adapter-receiver（接收器）
 3. ✅ 使用 ImportValue 建立連接
 
 ### 權限要點

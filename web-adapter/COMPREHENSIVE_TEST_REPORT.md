@@ -128,7 +128,7 @@
 ## 📁 測試文件結構
 
 ```
-web-channel/
+web-adapter/
 ├── e2e-tests/
 │   ├── tests/ (5 個測試文件，17 個測試)
 │   └── setup/fixtures.ts

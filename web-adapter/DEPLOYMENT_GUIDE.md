@@ -9,10 +9,10 @@
 ### 1. 確認現有系統正常運作
 
 ```bash
-# 檢查 telegram-lambda stack
+# 檢查 telegram-adapter stack
 aws cloudformation describe-stacks \
   --region us-west-2 \
-  --stack-name telegram-lambda-receiver \
+  --stack-name telegram-adapter-receiver \
   --query 'Stacks[0].StackStatus'
 
 # 檢查 telegram-unified-bot stack  
@@ -43,7 +43,7 @@ aws lambda list-functions --region us-west-2 \
 ### Step 1.1: 準備 Lambda 代碼
 
 ```bash
-cd /home/ec2-user/Projects/AgentCoreNexus/dev-in-progress/web-channel-expansion
+cd /home/ec2-user/Projects/AgentCoreNexus/dev-in-progress/web-adapter-expansion
 
 # 為每個 Lambda 目錄安裝依賴
 cd lambdas/websocket
@@ -60,23 +60,23 @@ pip3.11 install -r requirements.txt -t .
 
 ```bash
 cd infrastructure
-sam validate -t web-channel-template.yaml
+sam validate -t web-adapter-template.yaml
 ```
 
 ### Step 1.3: 建構和部署
 
 ```bash
-sam build -t web-channel-template.yaml
+sam build -t web-adapter-template.yaml
 
 sam deploy \
-  --template-file web-channel-template.yaml \
-  --stack-name agentcore-web-channel \
+  --template-file web-adapter-template.yaml \
+  --stack-name agentcore-web-adapter \
   --region us-west-2 \
   --capabilities CAPABILITY_IAM \
   --resolve-s3 \
   --parameter-overrides \
     Environment=dev \
-    ExistingEventBusName=telegram-lambda-receiver-events \
+    ExistingEventBusName=telegram-adapter-receiver-events \
     ExistingProcessorFunctionName=telegram-unified-bot-processor
 ```
 
@@ -85,10 +85,10 @@ sam deploy \
 ```bash
 aws cloudformation describe-stacks \
   --region us-west-2 \
-  --stack-name agentcore-web-channel \
-  --query 'Stacks[0].Outputs' > web-channel-outputs.json
+  --stack-name agentcore-web-adapter \
+  --query 'Stacks[0].Outputs' > web-adapter-outputs.json
 
-cat web-channel-outputs.json
+cat web-adapter-outputs.json
 ```
 
 記下以下值：
@@ -99,11 +99,11 @@ cat web-channel-outputs.json
 
 ---
 
-## 🔄 Phase 2: 整合 telegram-agentcore-bot
+## 🔄 Phase 2: 整合 ai-processor
 
 ### Step 2.1: 修改 Memory Service
 
-**檔案**: `telegram-agentcore-bot/services/memory_service.py`
+**檔案**: `ai-processor/services/memory_service.py`
 
 ```python
 # 在 get_session_manager 方法中添加類型檢查
@@ -143,7 +143,7 @@ def get_session_manager(self, user_info: dict[str, Any] | Any) -> Any | None:
 
 ### Step 2.2: 修改 Processor Entry
 
-**檔案**: `telegram-agentcore-bot/processor_entry.py`
+**檔案**: `ai-processor/processor_entry.py`
 
 在檔案頂部添加：
 
@@ -256,7 +256,7 @@ def process(normalized):
 # 獲取 bindings table 名稱
 BINDINGS_TABLE=$(aws cloudformation describe-stacks \
   --region us-west-2 \
-  --stack-name agentcore-web-channel \
+  --stack-name agentcore-web-adapter \
   --query 'Stacks[0].Outputs[?OutputKey==`UserBindingsTableName`].OutputValue' \
   --output text)
 
@@ -267,7 +267,7 @@ aws lambda update-function-configuration \
   --environment Variables="{
     BEDROCK_MODEL_ID=anthropic.claude-3-5-sonnet-20241022-v2:0,
     BROWSER_ENABLED=true,
-    EVENT_BUS_NAME=telegram-lambda-receiver-events,
+    EVENT_BUS_NAME=telegram-adapter-receiver-events,
     LOG_LEVEL=INFO,
     BINDINGS_TABLE=$BINDINGS_TABLE
   }"
@@ -281,7 +281,7 @@ aws lambda wait function-updated \
 ### Step 2.4: 重新部署 processor（應用代碼變更）
 
 ```bash
-cd telegram-agentcore-bot
+cd ai-processor
 sam build
 sam deploy --stack-name telegram-unified-bot \
   --region us-west-2 \
@@ -292,18 +292,18 @@ sam deploy --stack-name telegram-unified-bot \
 
 ---
 
-## 📱 Phase 3: 整合 telegram-lambda
+## 📱 Phase 3: 整合 telegram-adapter
 
 ### Step 3.1: 複製 bind 指令處理器
 
 ```bash
-cp dev-in-progress/web-channel-expansion/telegram-integration/bind_handler.py \
-   telegram-lambda/src/commands/handlers/bind_handler.py
+cp dev-in-progress/web-adapter-expansion/telegram-integration/bind_handler.py \
+   telegram-adapter/src/commands/handlers/bind_handler.py
 ```
 
 ### Step 3.2: 註冊指令
 
-編輯 `telegram-lambda/src/commands/router.py`：
+編輯 `telegram-adapter/src/commands/router.py`：
 
 ```python
 from commands.handlers.bind_handler import handle_bind_command
@@ -326,13 +326,13 @@ COMMANDS = {
 ```bash
 BINDINGS_TABLE=$(aws cloudformation describe-stacks \
   --region us-west-2 \
-  --stack-name agentcore-web-channel \
+  --stack-name agentcore-web-adapter \
   --query 'Stacks[0].Outputs[?OutputKey==`UserBindingsTableName`].OutputValue' \
   --output text)
 
 BINDING_CODES_TABLE=$(aws cloudformation describe-stacks \
   --region us-west-2 \
-  --stack-name agentcore-web-channel \
+  --stack-name agentcore-web-adapter \
   --query 'Stacks[0].Outputs[?OutputKey==`BindingCodesTableName`].OutputValue' \
   --output text) 
 
@@ -340,7 +340,7 @@ echo "BINDINGS_TABLE=$BINDINGS_TABLE"
 echo "BINDING_CODES_TABLE=$BINDING_CODES_TABLE"
 ```
 
-修改 `telegram-lambda/template.yaml`：
+修改 `telegram-adapter/template.yaml`：
 
 ```yaml
 TelegramReceiverFunction:
@@ -351,28 +351,28 @@ TelegramReceiverFunction:
       Variables:
         # 現有變數
         TELEGRAM_SECRETS_ARN: !Ref TelegramSecrets
-        EVENT_BUS_NAME: telegram-lambda-receiver-events
+        EVENT_BUS_NAME: telegram-adapter-receiver-events
         ALLOWLIST_TABLE_NAME: !Ref AllowlistTable
         STACK_NAME: !Ref AWS::StackName
         # 新增變數
-        BINDINGS_TABLE: !ImportValue agentcore-web-channel-UserBindingsTable
-        BINDING_CODES_TABLE: !ImportValue agentcore-web-channel-BindingCodesTable
+        BINDINGS_TABLE: !ImportValue agentcore-web-adapter-UserBindingsTable
+        BINDING_CODES_TABLE: !ImportValue agentcore-web-adapter-BindingCodesTable
     
     Policies:
       # ... 現有策略
       # 新增 DynamoDB 權限
       - DynamoDBReadPolicy:
-          TableName: !ImportValue agentcore-web-channel-UserBindingsTable
+          TableName: !ImportValue agentcore-web-adapter-UserBindingsTable
       - DynamoDBCrudPolicy:
-          TableName: !ImportValue agentcore-web-channel-BindingCodesTable
+          TableName: !ImportValue agentcore-web-adapter-BindingCodesTable
 ```
 
-### Step 3.4: 重新部署 telegram-lambda
+### Step 3.4: 重新部署 telegram-adapter
 
 ```bash
-cd telegram-lambda
+cd telegram-adapter
 sam build
-sam deploy --stack-name telegram-lambda-receiver \
+sam deploy --stack-name telegram-adapter-receiver \
   --region us-west-2 \
   --resolve-s3 \
   --capabilities CAPABILITY_IAM \
@@ -386,7 +386,7 @@ sam deploy --stack-name telegram-lambda-receiver \
 ### Step 4.1: 配置環境變數
 
 ```bash
-cd dev-in-progress/web-channel-expansion/frontend
+cd dev-in-progress/web-adapter-expansion/frontend
 
 # 複製環境變數範本
 cp .env.example .env
@@ -394,13 +394,13 @@ cp .env.example .env
 # 獲取 API endpoints
 REST_API=$(aws cloudformation describe-stacks \
   --region us-west-2 \
-  --stack-name agentcore-web-channel \
+  --stack-name agentcore-web-adapter \
   --query 'Stacks[0].Outputs[?OutputKey==`RestApiEndpoint`].OutputValue' \
   --output text)
 
 WS_API=$(aws cloudformation describe-stacks \
   --region us-west-2 \
-  --stack-name agentcore-web-channel \
+  --stack-name agentcore-web-adapter \
   --query 'Stacks[0].Outputs[?OutputKey==`WebSocketApiEndpoint`].OutputValue' \
   --output text)
 
@@ -496,7 +496,7 @@ echo "前端 URL: https://$CLOUDFRONT_DOMAIN"
 # 手動創建第一個 admin 用戶
 WEB_USERS_TABLE=$(aws cloudformation describe-stacks \
   --region us-west-2 \
-  --stack-name agentcore-web-channel \
+  --stack-name agentcore-web-adapter \
   --query 'Stacks[0].Outputs[?OutputKey==`WebUsersTableName`].OutputValue' \
   --output text)
 
@@ -531,7 +531,7 @@ echo "Password: InitialAdmin123!"
 ### Test 2: 登入測試
 
 ```bash
-REST_API=$(cat web-channel-outputs.json | grep RestApiEndpoint)
+REST_API=$(cat web-adapter-outputs.json | grep RestApiEndpoint)
 
 # 登入
 curl -X POST "$REST_API/auth/login" \
@@ -551,7 +551,7 @@ curl -X POST "$REST_API/auth/login" \
 npm install -g wscat
 
 # 使用獲得的 token 連接
-WS_API=$(cat web-channel-outputs.json | grep WebSocketApiEndpoint)
+WS_API=$(cat web-adapter-outputs.json | grep WebSocketApiEndpoint)
 TOKEN="YOUR_JWT_TOKEN"
 
 wscat -c "$WS_API?token=$TOKEN"
@@ -632,7 +632,7 @@ sam deploy --debug
 
 # 常見問題：
 # 1. 權限不足
-# 2. ImportValue 找不到（檢查 telegram-lambda stack）
+# 2. ImportValue 找不到（檢查 telegram-adapter stack）
 # 3. 資源名稱衝突
 ```
 
@@ -673,7 +673,7 @@ curl "$REST_API/auth/login" -v
 **檢查**：
 ```bash
 # 查看 connect Lambda 日誌
-aws logs tail /aws/lambda/agentcore-web-channel-ws-connect \
+aws logs tail /aws/lambda/agentcore-web-adapter-ws-connect \
   --region us-west-2 --since 10m --follow
 
 # 常見原因：
@@ -689,14 +689,14 @@ aws logs tail /aws/lambda/agentcore-web-channel-ws-connect \
 如果需要回滾：
 
 ```bash
-# 1. 恢復 telegram-lambda（移除 bind 指令）
-cd telegram-lambda
+# 1. 恢復 telegram-adapter（移除 bind 指令）
+cd telegram-adapter
 git checkout HEAD~1 src/commands/handlers/bind_handler.py
 git checkout HEAD~1 src/commands/router.py
-sam deploy --stack-name telegram-lambda-receiver ...
+sam deploy --stack-name telegram-adapter-receiver ...
 
-# 2. 恢復 telegram-agentcore-bot（Memory Service）
-cd telegram-agentcore-bot
+# 2. 恢復 ai-processor（Memory Service）
+cd ai-processor
 git checkout HEAD~1 services/memory_service.py
 git checkout HEAD~1 processor_entry.py
 sam deploy --stack-name telegram-unified-bot ...
@@ -704,7 +704,7 @@ sam deploy --stack-name telegram-unified-bot ...
 # 3. 刪除 Web Channel Stack
 aws cloudformation delete-stack \
   --region us-west-2 \
-  --stack-name agentcore-web-channel
+  --stack-name agentcore-web-adapter
 
 # 4. 刪除前端 S3 bucket
 aws s3 rb s3://$BUCKET_NAME --force
@@ -735,7 +735,7 @@ curl -X POST "$REST_API/admin/users" \
 ```bash
 # Lambda 錯誤率告警
 aws cloudwatch put-metric-alarm \
-  --alarm-name web-channel-lambda-errors \
+  --alarm-name web-adapter-lambda-errors \
   --alarm-description "Web Channel Lambda error rate > 1%" \
   --metric-name Errors \
   --namespace AWS/Lambda \

@@ -214,7 +214,7 @@
 
 ### JWT Secret
 
-**Secret Name**: `agentcore-nexus/web-channel/jwt-secret`
+**Secret Name**: `agentcore-nexus/web-adapter/jwt-secret`
 
 **Content**:
 ```json

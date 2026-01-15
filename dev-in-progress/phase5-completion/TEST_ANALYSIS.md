@@ -12,15 +12,15 @@
 
 | 組件 | 通過/總數 | 通過率 | 狀態 |
 |------|----------|--------|------|
-| telegram-agentcore-bot | 305/305 | **100%** | ✅ 完美 |
-| web-channel E2E | 42/43 | **97.7%** | ✅ 優秀 |
+| ai-processor | 305/305 | **100%** | ✅ 完美 |
+| web-adapter E2E | 42/43 | **97.7%** | ✅ 優秀 |
 | **總計** | **347/348** | **99.7%** | ✅ 優秀 |
 
 ---
 
 ## 📊 詳細分析
 
-### telegram-agentcore-bot: ✅ 100% 通過
+### ai-processor: ✅ 100% 通過
 
 **結果**：
 - 單元測試：290 passed
@@ -45,7 +45,7 @@
 
 ---
 
-### web-channel E2E: ✅ 97.7% 通過
+### web-adapter E2E: ✅ 97.7% 通過
 
 **結果**：
 - 通過：42 tests
@@ -94,15 +94,15 @@ await page.click('button:has-text("確定")')
 
 ---
 
-### telegram-lambda: 未包含在本次測試
+### telegram-adapter: 未包含在本次測試
 
 **原因**：
 - run_all_tests.sh 執行了 agentcore 和 web
-- 但沒有執行 telegram-lambda 測試
+- 但沒有執行 telegram-adapter 測試
 
 **下一步**：
 ```bash
-cd telegram-lambda
+cd telegram-adapter
 python3.11 -m pytest tests/ -v
 ```
 
@@ -112,12 +112,12 @@ python3.11 -m pytest tests/ -v
 
 ### 1. 測試穩定性優異
 
-**telegram-agentcore-bot**：
+**ai-processor**：
 - ✅ 100% 通過率（305/305）
 - ✅ 核心功能完全穩定
 - ✅ 之前的「19% 失敗」報告是誤解
 
-**web-channel**：
+**web-adapter**：
 - ✅ 97.7% 通過率（42/43）
 - ✅ 核心對話功能穩定
 - ✅ 認證、WebSocket、歷史查詢都通過
@@ -126,13 +126,13 @@ python3.11 -m pytest tests/ -v
 ### 2. 實際問題遠少於預期
 
 **預期**：
-- telegram-lambda: 7/160 失敗（4.4%）
-- telegram-agentcore-bot: 19% 失敗
+- telegram-adapter: 7/160 失敗（4.4%）
+- ai-processor: 19% 失敗
 
 **實際**：
-- telegram-agentcore-bot: **0% 失敗** ✅
-- web-channel: 2.3% 失敗（1個 E2E timing issue）
-- telegram-lambda: 未測試（需要單獨執行）
+- ai-processor: **0% 失敗** ✅
+- web-adapter: 2.3% 失敗（1個 E2E timing issue）
+- telegram-adapter: 未測試（需要單獨執行）
 
 ### 3. 開發優先級調整
 
@@ -141,7 +141,7 @@ python3.11 -m pytest tests/ -v
 
 **實際需求**：
 - 🟡 Web E2E timing 修復（30 分鐘）
-- 🟢 telegram-lambda 測試驗證（30 分鐘）
+- 🟢 telegram-adapter 測試驗證（30 分鐘）
 
 **時間節省**：3.5-5 小時！
 
@@ -198,7 +198,7 @@ python3.11 -m pytest tests/ -v
 - [x] 完整測試執行
 - [x] 結果分析
 - [ ] Web E2E timing 修復（30min）
-- [ ] telegram-lambda 測試驗證（30min）
+- [ ] telegram-adapter 測試驗證（30min）
 
 **Day 2-3**：
 - [ ] Web 附件功能完成（7-8h）
@@ -219,14 +219,14 @@ python3.11 -m pytest tests/ -v
 
 1. **修復 Web E2E timing issue**（30 分鐘）
 ```bash
-cd web-channel/e2e-tests/tests
+cd web-adapter/e2e-tests/tests
 # 修改 conversations.spec.ts line 70
 # 使用 force: true 或更好的 selector
 ```
 
-2. **驗證 telegram-lambda 測試**（30 分鐘）
+2. **驗證 telegram-adapter 測試**（30 分鐘）
 ```bash
-cd telegram-lambda
+cd telegram-adapter
 python3.11 -m pytest tests/ -v > test_results.txt
 ```
 
@@ -247,8 +247,8 @@ git push
 - 單元測試通過率 > 95%
 
 **實際成績**：
-- telegram-agentcore-bot: **100%** ✅✅
-- web-channel: **97.7%** ✅✅
+- ai-processor: **100%** ✅✅
+- web-adapter: **97.7%** ✅✅
 
 **結論**：**大幅超越目標** 🎉
 

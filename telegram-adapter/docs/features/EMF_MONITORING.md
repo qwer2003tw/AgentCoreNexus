@@ -77,7 +77,7 @@
 
 ## CloudWatch Dashboard
 
-部署後會自動創建名為 `telegram-lambda-monitoring` 的 Dashboard，包含以下 widgets：
+部署後會自動創建名為 `telegram-adapter-monitoring` 的 Dashboard，包含以下 widgets：
 
 ### 1. Security Events（安全事件）
 顯示 Invalid Token 嘗試和 Allowlist 拒絕的趨勢圖。
@@ -157,7 +157,7 @@ sam deploy
 部署完成後：
 
 1. 前往 AWS Console → CloudWatch → Dashboards
-2. 選擇 `telegram-lambda-monitoring`
+2. 選擇 `telegram-adapter-monitoring`
 3. Dashboard 會在 Lambda 開始處理請求後顯示數據
 
 ## 查看指標
@@ -194,7 +194,7 @@ aws cloudwatch list-metrics \
 HighErrorRateAlarm:
   Type: AWS::CloudWatch::Alarm
   Properties:
-    AlarmName: telegram-lambda-high-error-rate
+    AlarmName: telegram-adapter-high-error-rate
     MetricName: LambdaError
     Namespace: TelegramLambda
     Statistic: Sum
@@ -264,7 +264,7 @@ EMF 指標的成本：
 查看 CloudWatch Logs 中的錯誤訊息：
 
 ```bash
-aws logs tail /aws/lambda/telegram-lambda-receiver --follow
+aws logs tail /aws/lambda/telegram-adapter-receiver --follow
 ```
 
 ## 參考資料

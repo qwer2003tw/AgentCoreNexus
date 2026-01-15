@@ -192,7 +192,7 @@ aws lambda update-function-configuration \
 ```
 
 **4. 實現 /new 命令**
-- 在 `telegram-lambda/src/commands/handlers/` 創建 `new_handler.py`
+- 在 `telegram-adapter/src/commands/handlers/` 創建 `new_handler.py`
 - 生成新的 session_id
 - 通過 EventBridge 傳遞新的 session_id
 
@@ -305,7 +305,7 @@ response = agent.process_message(text)
 ### /new 命令實作
 
 ```python
-# telegram-lambda/src/commands/handlers/new_handler.py
+# telegram-adapter/src/commands/handlers/new_handler.py
 
 class NewCommandHandler(CommandHandler):
     def handle(self, update, event):
@@ -401,7 +401,7 @@ aws lambda update-function-configuration \
   --function-name telegram-unified-bot-processor \
   --environment "Variables={
     BEDROCK_AGENTCORE_MEMORY_ID=<實際獲得的 memory_id>,
-    EVENT_BUS_NAME=telegram-lambda-receiver-events,
+    EVENT_BUS_NAME=telegram-adapter-receiver-events,
     BEDROCK_MODEL_ID=anthropic.claude-3-5-sonnet-20241022-v2:0,
     BROWSER_ENABLED=true,
     LOG_LEVEL=INFO
@@ -410,7 +410,7 @@ aws lambda update-function-configuration \
 
 ### 步驟 3：實現 /new 命令（30 分鐘）
 
-創建文件：`telegram-lambda/src/commands/handlers/new_handler.py`
+創建文件：`telegram-adapter/src/commands/handlers/new_handler.py`
 
 ```python
 """

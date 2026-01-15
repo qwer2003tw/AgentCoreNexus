@@ -205,7 +205,7 @@
 
 ### 本地開發環境
 ```bash
-cd web-channel/frontend
+cd web-adapter/frontend
 npm run dev
 ```
 

@@ -19,8 +19,8 @@ AgentCore Nexus 是一個**事件驅動的多通道 AI 助理平台**，讓您�
 
 #### 通道適配器層（Channel Adapters）
 各通道獨立的訊息接收與適配：
-- **telegram-lambda**: Telegram webhook 接收、白名單驗證、訊息標準化
-- **web-channel**: Web REST/WebSocket API、認證系統、訊息標準化
+- **telegram-adapter**: Telegram webhook 接收、白名單驗證、訊息標準化
+- **web-adapter**: Web REST/WebSocket API、認證系統、訊息標準化
 - 未來擴展：Discord、Slack 等通道適配器
 
 #### 統一事件層（Universal Layer）
@@ -30,7 +30,7 @@ AgentCore Nexus 是一個**事件驅動的多通道 AI 助理平台**，讓您�
 - 所有通道都發送相同格式的 `message.received` 事件
 
 #### AI 處理層（Channel-Agnostic Processor）
-- **telegram-agentcore-bot**: AI 智能處理引擎
+- **ai-processor**: AI 智能處理引擎
   - 處理來自**所有通道**的訊息（via EventBridge）
   - 跨通道 Memory 管理（AgentCore）
   - Browser/File 工具整合
@@ -52,7 +52,7 @@ AgentCore Nexus 是一個**事件驅動的多通道 AI 助理平台**，讓您�
 ┌──────────────┐    ┌──────────────┐
 │ Telegram     │    │ Web Channel  │
 │ Adapter      │    │ Adapter      │
-│(telegram-    │    │(web-channel) │
+│(telegram-    │    │(web-adapter) │
 │ lambda)      │    │              │
 └──────┬───────┘    └──────┬───────┘
        │ EventBridge       │
@@ -67,7 +67,7 @@ AgentCore Nexus 是一個**事件驅動的多通道 AI 助理平台**，讓您�
                   ▼
      ┌──────────────────────────┐
      │  AI Processor            │
-     │ (telegram-agentcore-bot) │
+     │ (ai-processor) │
      │ - AgentCore + Bedrock    │
      │ - 跨通道 Memory          │
      │ - Browser/File Tools     │
@@ -101,7 +101,7 @@ AgentCoreNexus/
 ├── dev-in-progress/                       # 開發中文檔
 ├── dev-reports/                           # 開發報告歸檔
 │
-├── telegram-lambda/                       # Telegram Channel Adapter
+├── telegram-adapter/                       # Telegram Channel Adapter
 │   ├── src/                               # Lambda 函數代碼
 │   │   ├── handler.py                     # 主處理器
 │   │   │                                  # - Telegram webhook 接收
@@ -115,10 +115,10 @@ AgentCoreNexus/
 │   ├── router/                            # Telegram Response Router
 │   │   └── response_router.py            # 接收 EventBridge，格式化並發送到 Telegram
 │   ├── tests/                             # 測試套件（153/160 通過 96%）
-│   ├── template.yaml                      # SAM 部署模板（Stack: telegram-lambda-receiver）
+│   ├── template.yaml                      # SAM 部署模板（Stack: telegram-adapter-receiver）
 │   └── docs/                              # 詳細文件
 │
-├── telegram-agentcore-bot/                # AI Processor (Channel-Agnostic)
+├── ai-processor/                # AI Processor (Channel-Agnostic)
 │   ├── agents/                            # AgentCore 對話代理
 │   │   └── conversation_agent.py
 │   ├── services/                          # 核心服務
@@ -137,7 +137,7 @@ AgentCoreNexus/
 │   ├── template.yaml                      # SAM 部署模板（Stack: telegram-unified-bot）
 │   └── requirements.txt                   # Python 依賴
 │
-└── web-channel/                           # Web Channel (Frontend + Backend)
+└── web-adapter/                           # Web Channel (Frontend + Backend)
     ├── frontend/                          # React PWA 前端
     │   ├── src/
     │   │   ├── pages/                     # 頁面（Login/Chat/ChangePassword）
@@ -155,7 +155,7 @@ AgentCoreNexus/
     │   └── router/                        # Web Response Router
     │       └── router.py                  # 接收 EventBridge，推送到 WebSocket
     ├── infrastructure/
-    │   └── web-channel-template.yaml      # SAM 部署模板（Stack: agentcore-web-channel）
+    │   └── web-adapter-template.yaml      # SAM 部署模板（Stack: agentcore-web-adapter）
     ├── e2e-tests/                         # Playwright E2E
     ├── scripts/                           # 部署腳本
     ├── README.md                          # 組件說明
@@ -205,14 +205,14 @@ AgentCoreNexus/
 
 ```bash
 # 安裝依賴
-cd telegram-agentcore-bot
+cd ai-processor
 pip install -r requirements.txt
 
 # 執行測試
-cd telegram-lambda
+cd telegram-adapter
 python3 -m pytest tests/ -v
 
-cd telegram-agentcore-bot
+cd ai-processor
 python3 run_tests.py
 ```
 
@@ -236,7 +236,7 @@ make deploy-web       # 只更新 Web 層
 ```
 
 **為什麼順序重要？**
-- telegram-lambda 創建 EventBridge Bus
+- telegram-adapter 創建 EventBridge Bus
 - processor 和 web 都依賴這個 Bus
 - 詳見 [Stack 管理指南](docs/STACK_MANAGEMENT.md)
 
@@ -259,16 +259,16 @@ make deploy-web
 make update-frontend
 
 # 3. 創建 Admin 用戶
-./web-channel/scripts/create-admin-user.sh admin@example.com
+./web-adapter/scripts/create-admin-user.sh admin@example.com
 
-# 詳細步驟請參閱 web-channel/QUICKSTART.md
+# 詳細步驟請參閱 web-adapter/QUICKSTART.md
 ```
 
 詳細部署指南：
 - `Makefile` - 統一部署管理指令
 - `docs/STACK_MANAGEMENT.md` - Multi-Stack 管理指南
 - `docs/deployment-guide.md` - AWS 完整部署步驟
-- `web-channel/QUICKSTART.md` - Web Channel 5分鐘快速開始
+- `web-adapter/QUICKSTART.md` - Web Channel 5分鐘快速開始
 
 ## 📋 功能特性
 
@@ -352,19 +352,19 @@ make update-frontend
 
 ## 🧪 測試
 
-### telegram-lambda (Telegram Adapter)
+### telegram-adapter (Telegram Adapter)
 - **總測試數**: 160 個
 - **通過率**: 96% (153/160)
 - **新增測試**: 18 個 EventBridge 整合測試（100% 通過）
 - **覆蓋範圍**: 白名單、命令路由、檔案處理、EventBridge 發布
 
-### telegram-agentcore-bot (AI Processor)
+### ai-processor (AI Processor)
 - **總測試數**: 47 個
 - **通過率**: 81% (26/32 原有 + 15 新增)
 - **覆蓋範圍**: Agent 邏輯、Memory 整合、工具函數、錯誤處理
 - **註**: 部分測試需要完整 AWS 環境（Bedrock, AgentCore）
 
-### web-channel (Web Channel)
+### web-adapter (Web Channel)
 - **Backend**: 完整單元測試（Lambda 函數）
 - **Frontend**: React 組件測試
 - **E2E**: Playwright 測試（開發中）
@@ -454,7 +454,7 @@ make coverage-report # 查看覆蓋率報告
 
 ### 已知問題
 
-- 部分 E2E 測試需要完善（telegram-lambda: 7/160 failing, 4.4%）
+- 部分 E2E 測試需要完善（telegram-adapter: 7/160 failing, 4.4%）
 - Web Channel 附件分析功能需要最終整合測試
 - 文檔持續更新中（本次已大幅改善）
 
@@ -471,19 +471,19 @@ make coverage-report # 查看覆蓋率報告
 - **[瀏覽器實現](docs/browser-implementation.md)** - Browser Sandbox 使用
 
 ### 組件文檔
-- **[telegram-lambda 文件](telegram-lambda/docs/)** - Telegram Adapter 文檔
-- **[telegram-agentcore-bot](telegram-agentcore-bot/)** - AI Processor 文檔
-- **[web-channel](web-channel/README.md)** - Web Channel 組件說明
-- **[web-channel 快速開始](web-channel/QUICKSTART.md)** - Web Channel 啟動指南
-- **[web-channel 前端](web-channel/frontend/README.md)** - Web UI 開發說明
-- **[web-channel E2E 測試](web-channel/e2e-tests/README.md)** - Playwright 測試指南
+- **[telegram-adapter 文件](telegram-adapter/docs/)** - Telegram Adapter 文檔
+- **[ai-processor](ai-processor/)** - AI Processor 文檔
+- **[web-adapter](web-adapter/README.md)** - Web Channel 組件說明
+- **[web-adapter 快速開始](web-adapter/QUICKSTART.md)** - Web Channel 啟動指南
+- **[web-adapter 前端](web-adapter/frontend/README.md)** - Web UI 開發說明
+- **[web-adapter E2E 測試](web-adapter/e2e-tests/README.md)** - Playwright 測試指南
 
 ### 開發報告
 - **[dev-reports](dev-reports/)** - 已完成功能的開發報告歸檔
   - [2026-01 Browser Sandbox](dev-reports/2026-01-browser-sandbox/REPORT.md)
   - [2026-01 Memory 功能](dev-reports/2026-01-memory-feature/REPORT.md)
   - [2026-01 系統升級](dev-reports/2026-01-system-upgrade/REPORT.md)
-  - [2026-01 Web Channel](dev-reports/2026-01-web-channel/REPORT.md)
+  - [2026-01 Web Channel](dev-reports/2026-01-web-adapter/REPORT.md)
 
 ### 開發中
 - **[dev-in-progress](dev-in-progress/)** - 正在開發的功能（多平台 agents 協作）
@@ -538,8 +538,8 @@ ruff format .
 詳細說明請參閱 [代碼質量指南](docs/CODE_QUALITY.md)
 
 **代碼改善成果**（2026-01-07）:
-- telegram-lambda: 1369 → 5 問題（改善 99.6%）
-- telegram-agentcore-bot: 874 → 12 問題（改善 98.6%）
+- telegram-adapter: 1369 → 5 問題（改善 99.6%）
+- ai-processor: 874 → 12 問題（改善 98.6%）
 - **總計**: 2243 → 17 問題（**改善 99.2%**）
 
 ## 📞 支援與貢獻

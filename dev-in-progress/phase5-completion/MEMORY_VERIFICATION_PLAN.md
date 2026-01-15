@@ -201,7 +201,7 @@ Environment:
     EVENT_BUS_NAME: !Ref EventBusName
     BEDROCK_MODEL_ID: !Ref BedrockModelId
     BEDROCK_AGENTCORE_MEMORY_ID: !Ref BedrockAgentCoreMemoryId
-    BINDINGS_TABLE: agentcore-web-channel-user-bindings  # 🆕 新增
+    BINDINGS_TABLE: agentcore-web-adapter-user-bindings  # 🆕 新增
     BROWSER_ENABLED: 'true'
     FILE_ENABLED: 'true'
 
@@ -213,8 +213,8 @@ Policies:
           - dynamodb:Query
           - dynamodb:GetItem
         Resource:
-          - 'arn:aws:dynamodb:*:*:table/agentcore-web-channel-user-bindings'
-          - 'arn:aws:dynamodb:*:*:table/agentcore-web-channel-user-bindings/index/*'
+          - 'arn:aws:dynamodb:*:*:table/agentcore-web-adapter-user-bindings'
+          - 'arn:aws:dynamodb:*:*:table/agentcore-web-adapter-user-bindings/index/*'
 ```
 
 ---
@@ -256,7 +256,7 @@ Policies:
 
 # Step 3: 資料庫驗證
 aws dynamodb get-item \
-  --table-name agentcore-web-channel-user-bindings \
+  --table-name agentcore-web-adapter-user-bindings \
   --key '{"unified_user_id":{"S":"[ID]"}}'
 ```
 

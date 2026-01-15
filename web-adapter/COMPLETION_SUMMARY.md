@@ -365,7 +365,7 @@ Web Frontend → WebSocket → Lambda → EventBridge → Processor → EventBri
 ## 📦 可交付成果清單
 
 ### Infrastructure as Code
-- [x] web-channel-template.yaml (完整 SAM template)
+- [x] web-adapter-template.yaml (完整 SAM template)
 - [x] 所有 DynamoDB tables 定義
 - [x] 所有 Lambda 函數和 API Gateway 配置
 - [x] IAM 權限和安全設置
@@ -395,7 +395,7 @@ Web Frontend → WebSocket → Lambda → EventBridge → Processor → EventBri
 1. **部署 Backend** (30 分鐘)
    ```bash
    cd infrastructure
-   sam deploy --stack-name agentcore-web-channel ...
+   sam deploy --stack-name agentcore-web-adapter ...
    ```
 
 2. **整合現有系統** (1-2 小時)
@@ -423,8 +423,8 @@ Web Frontend → WebSocket → Lambda → EventBridge → Processor → EventBri
 - [ ] 驗證歷史記錄保存
 
 **Week 2**:
-- [ ] 整合 telegram-agentcore-bot
-- [ ] 整合 telegram-lambda（/bind 指令）
+- [ ] 整合 ai-processor
+- [ ] 整合 telegram-adapter（/bind 指令）
 - [ ] 測試跨通道綁定
 - [ ] 驗證 Memory 共享
 

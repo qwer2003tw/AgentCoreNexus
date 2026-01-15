@@ -33,7 +33,7 @@ Playwright E2E 測試套件，用於自動化測試 AgentCore Web Channel 的核
 ### 安裝依賴
 
 ```bash
-cd web-channel/e2e-tests
+cd web-adapter/e2e-tests
 npm install
 npx playwright install
 ```

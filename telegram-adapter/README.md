@@ -1,4 +1,4 @@
-# telegram-lambda
+# telegram-adapter
 
 Telegram Webhook Receiver - 接收 Telegram webhook 並透過允許名單驗證後轉發到 SQS 佇列。
 
@@ -26,7 +26,7 @@ Telegram Webhook Receiver - 接收 Telegram webhook 並透過允許名單驗證�
                │
                ▼
 ┌─────────────────────────────────────────────────┐
-│   telegram-lambda (Receiver)                    │
+│   telegram-adapter (Receiver)                    │
 │                                                 │
 │  ┌─────────────────────────────────────────┐   │
 │  │  handler.py (入口)                      │   │
@@ -58,7 +58,7 @@ Telegram Webhook Receiver - 接收 Telegram webhook 並透過允許名單驗證�
 ## 📁 專案結構
 
 ```
-telegram-lambda/
+telegram-adapter/
 ├── src/                        # 原始碼
 │   ├── handler.py              # Lambda 入口函數
 │   ├── allowlist.py            # 允許名單驗證模組
@@ -152,14 +152,14 @@ sam deploy
 ```
 Outputs:
   WebhookUrl: https://xxxxx.execute-api.us-east-1.amazonaws.com/Prod/webhook
-  GetSecretTokenCommand: aws secretsmanager get-secret-value --secret-id telegram-lambda-secret-token-xxx --query 'SecretString' --output text | jq -r .token
+  GetSecretTokenCommand: aws secretsmanager get-secret-value --secret-id telegram-adapter-secret-token-xxx --query 'SecretString' --output text | jq -r .token
 ```
 
 執行命令取得 secret token：
 
 ```bash
 aws secretsmanager get-secret-value \
-  --secret-id telegram-lambda-secret-token \
+  --secret-id telegram-adapter-secret-token \
   --query 'SecretString' \
   --output text | jq -r .token
 ```
@@ -251,13 +251,13 @@ Lambda 會回傳完整的 API Gateway event（JSON 格式），包含：
 **方法 1：使用 AWS CLI 更新**
 ```bash
 aws lambda update-function-configuration \
-  --function-name telegram-lambda-receiver \
+  --function-name telegram-adapter-receiver \
   --environment "Variables={TELEGRAM_SECRET_TOKEN='',TELEGRAM_BOT_TOKEN='YOUR_BOT_TOKEN',SQS_QUEUE_URL='YOUR_QUEUE_URL',ALLOWLIST_TABLE_NAME='telegram-allowlist',LOG_LEVEL='INFO'}"
 ```
 
 **方法 2：使用 AWS Console**
 1. 進入 Lambda 控制台
-2. 選擇 `telegram-lambda-receiver` 函數
+2. 選擇 `telegram-adapter-receiver` 函數
 3. 點擊「Configuration」→「Environment variables」
 4. 編輯 `TELEGRAM_BOT_TOKEN` 變數
 5. 輸入您的 Bot Token（格式：`123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11`）
@@ -299,13 +299,13 @@ Lambda 函數使用以下環境變數：
 
 此專案會建立以下 AWS 資源：
 
-- **Secrets Manager**: telegram-lambda-secret-token (自動生成 secret token)
-- **Lambda Function**: telegram-lambda-receiver
+- **Secrets Manager**: telegram-adapter-secret-token (自動生成 secret token)
+- **Lambda Function**: telegram-adapter-receiver
 - **API Gateway**: telegram-webhook-api
 - **SQS Queue**: telegram-inbound
 - **SQS DLQ**: telegram-inbound-dlq
 - **DynamoDB Table**: telegram-allowlist
-- **CloudWatch Log Group**: /aws/lambda/telegram-lambda-receiver
+- **CloudWatch Log Group**: /aws/lambda/telegram-adapter-receiver
 - **CloudWatch Alarms**: 
   - Lambda 錯誤告警
   - SQS 佇列深度告警
@@ -344,7 +344,7 @@ Lambda 函數使用以下環境變數：
 sam logs -n TelegramReceiverFunction --tail
 
 # 或使用 AWS CLI
-aws logs tail /aws/lambda/telegram-lambda-receiver --follow
+aws logs tail /aws/lambda/telegram-adapter-receiver --follow
 ```
 
 ## 🔍 故障排除
@@ -353,7 +353,7 @@ aws logs tail /aws/lambda/telegram-lambda-receiver --follow
 
 ```bash
 # 檢查 Lambda 日誌
-aws logs tail /aws/lambda/telegram-lambda-receiver --follow
+aws logs tail /aws/lambda/telegram-adapter-receiver --follow
 
 # 檢查 API Gateway 日誌
 aws logs tail /aws/apigateway/telegram-webhook-api --follow
@@ -394,7 +394,7 @@ pytest tests/ -v
 ```bash
 # 先取得 secret token
 SECRET_TOKEN=$(aws secretsmanager get-secret-value \
-  --secret-id telegram-lambda-secret-token \
+  --secret-id telegram-adapter-secret-token \
   --query 'SecretString' \
   --output text | jq -r .token)
 
@@ -437,7 +437,7 @@ MIT License
 ## 🔗 相關專案
 
 - [telegram-processor](../telegram-processor) - 處理 SQS 訊息的 Lambda
-- [telegram-agentcore-bot](../telegram-agentcore-bot) - AgentCore 整合
+- [ai-processor](../ai-processor) - AgentCore 整合
 
 ## 📞 聯絡方式
 

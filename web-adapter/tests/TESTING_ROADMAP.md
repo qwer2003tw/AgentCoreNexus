@@ -293,7 +293,7 @@ test('API errors update store state')
 
 ### Phase 5: CI/CD 設置（1 天）
 
-**文件**：`.github/workflows/web-channel-tests.yml`
+**文件**：`.github/workflows/web-adapter-tests.yml`
 
 ```yaml
 name: Web Channel Tests
@@ -306,7 +306,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-node@v3
-      - run: cd web-channel/e2e-tests && npm ci
+      - run: cd web-adapter/e2e-tests && npm ci
       - run: npx playwright install
       - run: npm test
       - uses: actions/upload-artifact@v3
@@ -319,7 +319,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4
-      - run: cd web-channel/lambdas && pip install -r requirements-test.txt
+      - run: cd web-adapter/lambdas && pip install -r requirements-test.txt
       - run: pytest
   
   frontend-tests:
@@ -327,7 +327,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-node@v3
-      - run: cd web-channel/frontend && npm ci
+      - run: cd web-adapter/frontend && npm ci
       - run: npm test
 ```
 

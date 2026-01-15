@@ -56,7 +56,7 @@ cd scripts
 ## 📁 專案結構
 
 ```
-web-channel-expansion/
+web-adapter-expansion/
 ├── README.md                      # 本文件
 ├── QUICKSTART.md                  # 快速開始指南
 ├── PROGRESS.md                    # 進度追蹤
@@ -73,7 +73,7 @@ web-channel-expansion/
 │   └── cleanup.sh                 # 清理部署
 │
 ├── infrastructure/                # 基礎設施
-│   └── web-channel-template.yaml  # SAM template (400+ lines)
+│   └── web-adapter-template.yaml  # SAM template (400+ lines)
 │
 ├── lambdas/                       # Lambda 函數
 │   ├── websocket/                 # WebSocket handlers
@@ -220,12 +220,12 @@ web-channel-expansion/
 
 ### 需要修改的文件
 
-**telegram-agentcore-bot**:
+**ai-processor**:
 - `services/memory_service.py` - 支援 dict 格式 user_info
 - `processor_entry.py` - 添加 unified_user_id 查詢
 - `template.yaml` - 添加 BINDINGS_TABLE 環境變數
 
-**telegram-lambda**:
+**telegram-adapter**:
 - `src/commands/handlers/bind_handler.py` - 新增（複製提供的文件）
 - `src/commands/router.py` - 註冊 /bind 指令
 - `template.yaml` - 添加環境變數和權限
@@ -273,7 +273,7 @@ wscat -c "$WS_API?token=$TOKEN"
 aws logs tail /aws/lambda/FUNCTION_NAME --region us-west-2 --since 5m
 
 # 檢查 stack 狀態
-aws cloudformation describe-stacks --stack-name agentcore-web-channel --region us-west-2
+aws cloudformation describe-stacks --stack-name agentcore-web-adapter --region us-west-2
 ```
 
 ---

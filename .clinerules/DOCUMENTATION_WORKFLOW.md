@@ -65,8 +65,8 @@ AgentCoreNexus/
 │       ├── design.md          # 設計文檔
 │       └── test-results.md    # 測試記錄
 │
-├── telegram-agentcore-bot/    # 代碼組件
-├── telegram-lambda/           # 代碼組件
+├── ai-processor/    # 代碼組件
+├── telegram-adapter/           # 代碼組件
 └── .gitignore                 # Git 配置
 ```
 

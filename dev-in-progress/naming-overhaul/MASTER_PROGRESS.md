@@ -17,9 +17,9 @@
 ## 🎯 重構內容（19項）
 
 ### A. 核心命名（3項）
-- [ ] 1. telegram-agentcore-bot → ai-processor
-- [ ] 2. telegram-lambda → telegram-adapter
-- [ ] 3. web-channel → web-adapter
+- [ ] 1. ai-processor → ai-processor
+- [ ] 2. telegram-adapter → telegram-adapter
+- [ ] 3. web-adapter → web-adapter
 - [ ] Stack 名稱統一（agentcore- 前綴）
 
 ### B. 結構優化（4項）

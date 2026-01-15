@@ -25,7 +25,7 @@
 ## 🏗️ 技術實現
 
 ### Backend Infrastructure
-**CloudFormation Stack**: `agentcore-web-channel`
+**CloudFormation Stack**: `agentcore-web-adapter`
 
 **包含資源**:
 - 5 個 DynamoDB tables (web_users, user_bindings, conversation_history, websocket_connections, binding_codes)
@@ -157,15 +157,15 @@
 ## 📚 文檔
 
 ### 主要文檔（9個）
-1. `web-channel/README.md` - 專案概覽
-2. `web-channel/QUICKSTART.md` - 5分鐘快速開始
-3. `web-channel/ARCHITECTURE.md` - 系統架構
-4. `web-channel/DEPLOYMENT_GUIDE.md` - 詳細部署
-5. `web-channel/INTEGRATION_GUIDE.md` - 整合現有系統
-6. `web-channel/IMPLEMENTATION_SUMMARY.md` - 實施總結
-7. `web-channel/COMPLETION_SUMMARY.md` - 完成報告
-8. `web-channel/PROGRESS.md` - 進度追蹤
-9. `web-channel/frontend/README.md` - 前端指南
+1. `web-adapter/README.md` - 專案概覽
+2. `web-adapter/QUICKSTART.md` - 5分鐘快速開始
+3. `web-adapter/ARCHITECTURE.md` - 系統架構
+4. `web-adapter/DEPLOYMENT_GUIDE.md` - 詳細部署
+5. `web-adapter/INTEGRATION_GUIDE.md` - 整合現有系統
+6. `web-adapter/IMPLEMENTATION_SUMMARY.md` - 實施總結
+7. `web-adapter/COMPLETION_SUMMARY.md` - 完成報告
+8. `web-adapter/PROGRESS.md` - 進度追蹤
+9. `web-adapter/frontend/README.md` - 前端指南
 
 ### 根目錄文檔
 10. `Makefile` - 統一部署管理
@@ -280,9 +280,9 @@ make update-frontend  # 2-3 分鐘
 ```
 AgentCoreNexus/
 ├── Makefile                    (統一部署管理)
-├── telegram-lambda/            (Telegram 通道)
-├── telegram-agentcore-bot/     (AI 處理核心)
-└── web-channel/                (Web 通道) ⭐
+├── telegram-adapter/            (Telegram 通道)
+├── ai-processor/     (AI 處理核心)
+└── web-adapter/                (Web 通道) ⭐
     ├── infrastructure/         (SAM template)
     ├── lambdas/               (Backend code)
     ├── frontend/              (React app)
@@ -325,8 +325,8 @@ make logs STACK=web
 ```
 
 ### 文檔
-- `web-channel/README.md` - 入口文檔
-- `web-channel/QUICKSTART.md` - 快速開始
+- `web-adapter/README.md` - 入口文檔
+- `web-adapter/QUICKSTART.md` - 快速開始
 - `docs/STACK_MANAGEMENT.md` - Stack 管理
 
 ---
@@ -338,4 +338,4 @@ make logs STACK=web
 
 ---
 
-**結論**: Web Channel 功能已完整實現並移至根目錄 `web-channel/`，與其他組件保持一致的結構。所有核心功能就緒，文檔完整，可立即進行部署測試。
+**結論**: Web Channel 功能已完整實現並移至根目錄 `web-adapter/`，與其他組件保持一致的結構。所有核心功能就緒，文檔完整，可立即進行部署測試。

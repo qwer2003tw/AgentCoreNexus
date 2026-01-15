@@ -24,7 +24,7 @@
 ## 📋 Phase 1: 環境準備（30-45min）
 
 ### Task 1.1: 檢查部署狀態 ⭐
-- [ ] 檢查 agentcore-web-channel Stack
+- [ ] 檢查 agentcore-web-adapter Stack
 - [ ] 獲取前端 URL
 - [ ] 獲取 API endpoints
 - [ ] 驗證所有 Lambda 狀態

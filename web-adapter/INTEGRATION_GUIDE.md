@@ -1,6 +1,6 @@
 # Web Channel Integration Guide
 
-本文檔說明如何將 Web Channel 功能整合到現有的 telegram-lambda 和 telegram-agentcore-bot 專案中。
+本文檔說明如何將 Web Channel 功能整合到現有的 telegram-adapter 和 ai-processor 專案中。
 
 ---
 
@@ -8,11 +8,11 @@
 
 Web Channel 擴展需要對現有系統進行以下整合：
 
-1. **telegram-agentcore-bot（處理器）**
+1. **ai-processor（處理器）**
    - 修改 Memory Service 使用 unified_user_id
    - 更新 processor_entry.py 以支援 Web 消息
    
-2. **telegram-lambda（接收器）**
+2. **telegram-adapter（接收器）**
    - 添加 /bind 指令
    - 更新環境變數以訪問新的 DynamoDB tables
 
@@ -27,39 +27,39 @@ Web Channel 擴展需要對現有系統進行以下整合：
 ### Step 1: 部署 Web Channel Stack
 
 ```bash
-# 1. 進入 web-channel 目錄
-cd dev-in-progress/web-channel-expansion/infrastructure
+# 1. 進入 web-adapter 目錄
+cd dev-in-progress/web-adapter-expansion/infrastructure
 
 # 2. 驗證 template
-sam validate -t web-channel-template.yaml
+sam validate -t web-adapter-template.yaml
 
 # 3. 部署（首次部署）
-sam build -t web-channel-template.yaml
+sam build -t web-adapter-template.yaml
 sam deploy \
-  --template-file web-channel-template.yaml \
-  --stack-name agentcore-web-channel \
+  --template-file web-adapter-template.yaml \
+  --stack-name agentcore-web-adapter \
   --region us-west-2 \
   --capabilities CAPABILITY_IAM \
   --resolve-s3 \
   --parameter-overrides \
     Environment=dev \
-    ExistingEventBusName=telegram-lambda-receiver-events \
+    ExistingEventBusName=telegram-adapter-receiver-events \
     ExistingProcessorFunctionName=telegram-unified-bot-processor
 
 # 4. 記錄 Outputs
 aws cloudformation describe-stacks \
   --region us-west-2 \
-  --stack-name agentcore-web-channel \
+  --stack-name agentcore-web-adapter \
   --query 'Stacks[0].Outputs'
 ```
 
 ---
 
-### Step 2: 整合 telegram-agentcore-bot（處理器）
+### Step 2: 整合 ai-processor（處理器）
 
 #### 2.1 修改 Memory Service
 
-**檔案**: `telegram-agentcore-bot/services/memory_service.py`
+**檔案**: `ai-processor/services/memory_service.py`
 
 **目的**: 使用 unified_user_id 而非 chat_id
 
@@ -103,7 +103,7 @@ def get_session_manager(self, user_info: dict[str, Any]) -> Any | None:
 
 #### 2.2 修改 Processor Entry
 
-**檔案**: `telegram-agentcore-bot/processor_entry.py`
+**檔案**: `ai-processor/processor_entry.py`
 
 **添加**: 查詢 unified_user_id 邏輯
 
@@ -169,7 +169,7 @@ def process(normalized):
 
 #### 2.3 更新環境變數
 
-**檔案**: `telegram-agentcore-bot/template.yaml`
+**檔案**: `ai-processor/template.yaml`
 
 ```yaml
 Environment:
@@ -180,22 +180,22 @@ Environment:
     # ... 其他
     
     # 新增變數
-    BINDINGS_TABLE: !ImportValue agentcore-web-channel-UserBindingsTable
+    BINDINGS_TABLE: !ImportValue agentcore-web-adapter-UserBindingsTable
 ```
 
 ---
 
-### Step 3: 整合 telegram-lambda（接收器）
+### Step 3: 整合 telegram-adapter（接收器）
 
 #### 3.1 添加 /bind 指令處理器
 
-**檔案**: `telegram-lambda/src/commands/handlers/bind_handler.py`
+**檔案**: `telegram-adapter/src/commands/handlers/bind_handler.py`
 
-複製 `dev-in-progress/web-channel-expansion/telegram-integration/bind_handler.py` 到此位置。
+複製 `dev-in-progress/web-adapter-expansion/telegram-integration/bind_handler.py` 到此位置。
 
 #### 3.2 註冊 /bind 指令
 
-**檔案**: `telegram-lambda/src/commands/router.py`
+**檔案**: `telegram-adapter/src/commands/router.py`
 
 ```python
 from commands.handlers.bind_handler import handle_bind_command
@@ -216,7 +216,7 @@ COMMANDS = {
 
 #### 3.3 更新環境變數
 
-**檔案**: `telegram-lambda/template.yaml`
+**檔案**: `telegram-adapter/template.yaml`
 
 ```yaml
 # 在 TelegramReceiverFunction 中添加
@@ -227,8 +227,8 @@ Environment:
     # ... 其他
     
     # 新增變數（用於 /bind 指令）
-    BINDINGS_TABLE: !ImportValue agentcore-web-channel-UserBindingsTable
-    BINDING_CODES_TABLE: !ImportValue agentcore-web-channel-BindingCodesTable
+    BINDINGS_TABLE: !ImportValue agentcore-web-adapter-UserBindingsTable
+    BINDING_CODES_TABLE: !ImportValue agentcore-web-adapter-BindingCodesTable
 
 # 更新 Policies
 Policies:
@@ -237,9 +237,9 @@ Policies:
   
   # 新增：讀取 bindings 和 binding_codes
   - DynamoDBReadPolicy:
-      TableName: !ImportValue agentcore-web-channel-UserBindingsTable
+      TableName: !ImportValue agentcore-web-adapter-UserBindingsTable
   - DynamoDBCrudPolicy:
-      TableName: !ImportValue agentcore-web-channel-BindingCodesTable
+      TableName: !ImportValue agentcore-web-adapter-BindingCodesTable
 ```
 
 ---
@@ -248,14 +248,14 @@ Policies:
 
 **選項 A（推薦）**: 使用新的 Web Channel Response Router
 
-修改 `web-channel-template.yaml` 的 ResponseRouterFunction，使其監聽 message.completed 事件並同時：
+修改 `web-adapter-template.yaml` 的 ResponseRouterFunction，使其監聽 message.completed 事件並同時：
 - 保存歷史記錄（Telegram + Web 都保存）
 - 路由 Web 回應到 WebSocket
-- 保留 Telegram 回應給現有 telegram-lambda response router
+- 保留 Telegram 回應給現有 telegram-adapter response router
 
-**選項 B**: 修改現有 telegram-lambda response router
+**選項 B**: 修改現有 telegram-adapter response router
 
-在 `telegram-lambda/router/response_router.py` 中：
+在 `telegram-adapter/router/response_router.py` 中：
 1. 添加歷史記錄保存邏輯
 2. 添加 Web 消息路由邏輯
 
@@ -269,19 +269,19 @@ Policies:
 
 #### telegram-unified-bot-processor
 ```bash
-EVENT_BUS_NAME=telegram-lambda-receiver-events
+EVENT_BUS_NAME=telegram-adapter-receiver-events
 BEDROCK_MODEL_ID=anthropic.claude-3-5-sonnet-20241022-v2:0
 BROWSER_ENABLED=true
-BINDINGS_TABLE=agentcore-web-channel-user-bindings  # 新增
+BINDINGS_TABLE=agentcore-web-adapter-user-bindings  # 新增
 ```
 
-#### telegram-lambda-receiver
+#### telegram-adapter-receiver
 ```bash
 TELEGRAM_SECRETS_ARN=arn:aws:secretsmanager:...
-EVENT_BUS_NAME=telegram-lambda-receiver-events
+EVENT_BUS_NAME=telegram-adapter-receiver-events
 ALLOWLIST_TABLE_NAME=telegram-allowlist
-BINDINGS_TABLE=agentcore-web-channel-user-bindings  # 新增
-BINDING_CODES_TABLE=agentcore-web-channel-binding-codes  # 新增
+BINDINGS_TABLE=agentcore-web-adapter-user-bindings  # 新增
+BINDING_CODES_TABLE=agentcore-web-adapter-binding-codes  # 新增
 ```
 
 ---
@@ -407,18 +407,18 @@ def get_session_manager(self, user_info: dict[str, Any] | Any) -> Any | None:
 **重要**：必須按以下順序部署以避免依賴問題
 
 1. ✅ 先部署 Web Channel Stack（創建 tables 和 API）
-2. ✅ 再更新 telegram-agentcore-bot（添加 BINDINGS_TABLE 環境變數）
-3. ✅ 最後更新 telegram-lambda（添加 /bind 指令）
+2. ✅ 再更新 ai-processor（添加 BINDINGS_TABLE 環境變數）
+3. ✅ 最後更新 telegram-adapter（添加 /bind 指令）
 
 ### 4. 回滾計畫
 
 如果需要回滾：
 
 ```bash
-# 1. 移除 telegram-lambda 的 /bind 指令（可選）
-# 2. 恢復 telegram-agentcore-bot 的 Memory Service
+# 1. 移除 telegram-adapter 的 /bind 指令（可選）
+# 2. 恢復 ai-processor 的 Memory Service
 # 3. 刪除 Web Channel Stack
-aws cloudformation delete-stack --stack-name agentcore-web-channel --region us-west-2
+aws cloudformation delete-stack --stack-name agentcore-web-adapter --region us-west-2
 ```
 
 ---
@@ -472,13 +472,13 @@ aws lambda update-function-configuration \
 
 ### 問題 2: ImportValue 失敗
 
-**症狀**: `Export agentcore-web-channel-UserBindingsTable not found`
+**症狀**: `Export agentcore-web-adapter-UserBindingsTable not found`
 
 **解決**: 確認 Web Channel Stack 已成功部署且有 Outputs
 
 ```bash
 aws cloudformation describe-stacks \
-  --stack-name agentcore-web-channel \
+  --stack-name agentcore-web-adapter \
   --query 'Stacks[0].Outputs'
 ```
 
@@ -492,7 +492,7 @@ aws cloudformation describe-stacks \
 3. 查看 connect Lambda 日誌
 
 ```bash
-aws logs tail /aws/lambda/agentcore-web-channel-ws-connect \
+aws logs tail /aws/lambda/agentcore-web-adapter-ws-connect \
   --region us-west-2 --since 5m
 ```
 
@@ -502,7 +502,7 @@ aws logs tail /aws/lambda/agentcore-web-channel-ws-connect \
 
 - `ARCHITECTURE.md` - 完整架構設計
 - `PROGRESS.md` - 實施進度追蹤
-- `web-channel-template.yaml` - CloudFormation template
+- `web-adapter-template.yaml` - CloudFormation template
 - Lambda 函數代碼在 `lambdas/` 目錄
 
 ---

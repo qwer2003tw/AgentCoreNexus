@@ -21,7 +21,7 @@
 
 ## 1.1 創建 Conversations DynamoDB 表
 
-### 修改文件：`web-channel/infrastructure/web-channel-template.yaml`
+### 修改文件：`web-adapter/infrastructure/web-adapter-template.yaml`
 
 在 `Resources:` 部分添加新表定義：
 
@@ -92,7 +92,7 @@
 
 ## 1.2 修改 WebSocket Lambda
 
-### 文件：`web-channel/lambdas/websocket/handler.py`
+### 文件：`web-adapter/lambdas/websocket/handler.py`
 
 #### 添加導入和環境變數：
 
@@ -201,7 +201,7 @@ def handle_send_message(connection_id: str, body: dict[str, Any]) -> dict[str, A
         eventbridge.put_events(
             Entries=[
                 {
-                    "Source": "agentcore.web-channel",
+                    "Source": "agentcore.web-adapter",
                     "DetailType": "message.received",
                     "Detail": json.dumps(event_detail),
                     "EventBusName": EVENT_BUS_NAME,
@@ -341,7 +341,7 @@ def verify_conversation_ownership(unified_user_id: str, conversation_id: str) ->
 
 ## 1.3 修改 Response Router Lambda
 
-### 文件：`web-channel/lambdas/router/response_router.py`
+### 文件：`web-adapter/lambdas/router/response_router.py`
 
 #### 添加環境變數：
 
@@ -493,7 +493,7 @@ def update_conversation_metadata(
 
 ## 1.4 創建 Conversations API Lambda
 
-### 新建文件：`web-channel/lambdas/rest/conversations.py`
+### 新建文件：`web-adapter/lambdas/rest/conversations.py`
 
 ```python
 """
@@ -943,7 +943,7 @@ def response(status_code: int, body: dict[str, Any]) -> dict[str, Any]:
 
 ## 1.5 更新 CloudFormation Template
 
-### 文件：`web-channel/infrastructure/web-channel-template.yaml`
+### 文件：`web-adapter/infrastructure/web-adapter-template.yaml`
 
 #### 添加 Conversations Lambda 函數定義：
 
@@ -1045,18 +1045,18 @@ def response(status_code: int, body: dict[str, Any]) -> dict[str, Any]:
 
 ```bash
 # Step 1: 進入 infrastructure 目錄
-cd web-channel/infrastructure
+cd web-adapter/infrastructure
 
 # Step 2: 驗證 template
-sam validate -t web-channel-template.yaml
+sam validate -t web-adapter-template.yaml
 
 # Step 3: 建構
-sam build -t web-channel-template.yaml
+sam build -t web-adapter-template.yaml
 
 # Step 4: 部署
 sam deploy \
-  --template-file web-channel-template.yaml \
-  --stack-name agentcore-web-channel \
+  --template-file web-adapter-template.yaml \
+  --stack-name agentcore-web-adapter \
   --region us-west-2 \
   --capabilities CAPABILITY_IAM \
   --resolve-s3 \
@@ -1065,7 +1065,7 @@ sam deploy \
 # Step 5: 驗證部署
 aws cloudformation describe-stacks \
   --region us-west-2 \
-  --stack-name agentcore-web-channel \
+  --stack-name agentcore-web-adapter \
   --query 'Stacks[0].StackStatus'
 
 # 應該看到：UPDATE_COMPLETE
@@ -1077,19 +1077,19 @@ aws cloudformation describe-stacks \
 # 驗證 conversations 表已創建
 aws dynamodb describe-table \
   --region us-west-2 \
-  --table-name agentcore-web-channel-conversations \
+  --table-name agentcore-web-adapter-conversations \
   --query 'Table.{Name:TableName,Status:TableStatus,ItemCount:ItemCount}'
 
 # 驗證 Lambda 函數已更新
 aws lambda list-functions --region us-west-2 \
-  --query 'Functions[?contains(FunctionName,`agentcore-web-channel`)].{Name:FunctionName,Runtime:Runtime,LastModified:LastModified}' \
+  --query 'Functions[?contains(FunctionName,`agentcore-web-adapter`)].{Name:FunctionName,Runtime:Runtime,LastModified:LastModified}' \
   --output table
 
 # 測試新 API
 TOKEN="<your_jwt_token>"
 REST_API=$(aws cloudformation describe-stacks \
   --region us-west-2 \
-  --stack-name agentcore-web-channel \
+  --stack-name agentcore-web-adapter \
   --query 'Stacks[0].Outputs[?OutputKey==`RestApiEndpoint`].OutputValue' \
   --output text)
 
@@ -1104,7 +1104,7 @@ curl -X GET "$REST_API/conversations" \
 
 ## 2.1 創建遷移腳本
 
-### 新建文件：`web-channel/scripts/migrate-conversations.py`
+### 新建文件：`web-adapter/scripts/migrate-conversations.py`
 
 ```python
 """
@@ -1131,7 +1131,7 @@ from botocore.exceptions import ClientError
 # 配置
 REGION = "us-west-2"
 HISTORY_TABLE = "conversation_history"
-CONVERSATIONS_TABLE = "agentcore-web-channel-conversations"
+CONVERSATIONS_TABLE = "agentcore-web-adapter-conversations"
 BINDINGS_TABLE = "user_bindings"
 
 # 時間間隔閾值（超過此時間視為新對話）
@@ -1411,7 +1411,7 @@ if __name__ == "__main__":
 
 ## 2.2 創建驗證腳本
 
-### 新建文件：`web-channel/scripts/verify-migration.py`
+### 新建文件：`web-adapter/scripts/verify-migration.py`
 
 ```python
 """
@@ -1422,7 +1422,7 @@ import boto3
 
 REGION = "us-west-2"
 HISTORY_TABLE = "conversation_history"
-CONVERSATIONS_TABLE = "agentcore-web-channel-conversations"
+CONVERSATIONS_TABLE = "agentcore-web-adapter-conversations"
 
 dynamodb = boto3.resource("dynamodb", region_name=REGION)
 history_table = dynamodb.Table(HISTORY_TABLE)
@@ -1476,7 +1476,7 @@ pip install boto3
 aws configure
 
 # Step 3: 預覽遷移（建議先執行）
-cd web-channel/scripts
+cd web-adapter/scripts
 python migrate-conversations.py --dry-run
 
 # 檢查輸出，確認分組合理
@@ -1507,7 +1507,7 @@ python verify-migration.py
 
 ## 3.1 擴展 chatStore
 
-### 文件：`web-channel/frontend/src/stores/chatStore.ts`
+### 文件：`web-adapter/frontend/src/stores/chatStore.ts`
 
 **完整替換為以下內容**：
 
@@ -1915,7 +1915,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
 ## 3.2 擴展 API Service
 
-### 文件：`web-channel/frontend/src/services/api.ts`
+### 文件：`web-adapter/frontend/src/services/api.ts`
 
 添加新的 API 方法：
 
@@ -2002,7 +2002,7 @@ async getConversationMessages(
 
 ## 3.3 更新 WebSocket Service
 
-### 文件：`web-channel/frontend/src/services/websocket.ts`
+### 文件：`web-adapter/frontend/src/services/websocket.ts`
 
 修改 `sendMessage` 方法以支持 conversation_id：
 
@@ -2027,7 +2027,7 @@ sendMessage(message: string, conversationId?: string): void {
 
 ## 3.4 創建 ConversationList 組件
 
-### 新建文件：`web-channel/frontend/src/components/Chat/ConversationList.tsx`
+### 新建文件：`web-adapter/frontend/src/components/Chat/ConversationList.tsx`
 
 ```typescript
 import { useState } from 'react'
@@ -2224,7 +2224,7 @@ export default function ConversationList() {
 
 ## 3.5 創建 ConversationItem 組件
 
-### 新建文件：`web-channel/frontend/src/components/Chat/ConversationItem.tsx`
+### 新建文件：`web-adapter/frontend/src/components/Chat/ConversationItem.tsx`
 
 ```typescript
 import { Conversation } from '@/stores/chatStore'
@@ -2302,7 +2302,7 @@ export default function ConversationItem({
 
 **Note**: 需要安裝 `date-fns`:
 ```bash
-cd web-channel/frontend
+cd web-adapter/frontend
 npm install date-fns
 ```
 
@@ -2310,7 +2310,7 @@ npm install date-fns
 
 ## 3.6 創建 ConversationContextMenu 組件
 
-### 新建文件：`web-channel/frontend/src/components/Chat/ConversationContextMenu.tsx`
+### 新建文件：`web-adapter/frontend/src/components/Chat/ConversationContextMenu.tsx`
 
 ```typescript
 import { useEffect, useRef } from 'react'
@@ -2443,7 +2443,7 @@ export default function ConversationContextMenu({
 
 ## 3.7 創建 RenameConversationDialog 組件
 
-### 新建文件：`web-channel/frontend/src/components/Chat/RenameConversationDialog.tsx`
+### 新建文件：`web-adapter/frontend/src/components/Chat/RenameConversationDialog.tsx`
 
 ```typescript
 import { useState, useEffect, useRef } from 'react'
@@ -2593,7 +2593,7 @@ export default function RenameConversationDialog({
 
 ## 3.8 創建 DeleteConfirmDialog 組件
 
-### 新建文件：`web-channel/frontend/src/components/Chat/DeleteConfirmDialog.tsx`
+### 新建文件：`web-adapter/frontend/src/components/Chat/DeleteConfirmDialog.tsx`
 
 ```typescript
 import { useState } from 'react'
@@ -2713,7 +2713,7 @@ export default function DeleteConfirmDialog({
 
 ## 3.9 修改 Sidebar
 
-### 文件：`web-channel/frontend/src/components/Chat/Sidebar.tsx`
+### 文件：`web-adapter/frontend/src/components/Chat/Sidebar.tsx`
 
 **完整替換為以下內容**：
 
@@ -2788,7 +2788,7 @@ export default function Sidebar({ onClose }: SidebarProps) {
 
 ## 3.10 修改 ChatWindow
 
-### 文件：`web-channel/frontend/src/components/Chat/ChatWindow.tsx`
+### 文件：`web-adapter/frontend/src/components/Chat/ChatWindow.tsx`
 
 更新以使用 `getCurrentMessages()` 而不是直接訪問 messages：
 
@@ -2954,7 +2954,7 @@ export default function ChatWindow() {
 
 ## 3.11 修改 MessageList
 
-### 文件：`web-channel/frontend/src/components/Chat/MessageList.tsx`
+### 文件：`web-adapter/frontend/src/components/Chat/MessageList.tsx`
 
 更新以使用 `getCurrentMessages()`:
 
@@ -3137,7 +3137,7 @@ curl -X DELETE "$REST_API/conversations/$CONV_ID" \
 ### 安裝依賴
 
 ```bash
-cd web-channel/frontend
+cd web-adapter/frontend
 
 # 安裝 date-fns（用於時間格式化）
 npm install date-fns
@@ -3152,7 +3152,7 @@ npm run build
 # 上傳到 S3
 BUCKET_NAME=$(aws cloudformation describe-stacks \
   --region us-west-2 \
-  --stack-name agentcore-web-channel \
+  --stack-name agentcore-web-adapter \
   --query 'Stacks[0].Outputs[?OutputKey==`FrontendBucketName`].OutputValue' \
   --output text)
 
@@ -3161,7 +3161,7 @@ aws s3 sync dist/ s3://$BUCKET_NAME/ --delete
 # 清除 CloudFront 快取
 DISTRIBUTION_ID=$(aws cloudformation describe-stacks \
   --region us-west-2 \
-  --stack-name agentcore-web-channel \
+  --stack-name agentcore-web-adapter \
   --query 'Stacks[0].Outputs[?OutputKey==`CloudFrontDistributionId`].OutputValue' \
   --output text)
 
@@ -3217,13 +3217,13 @@ aws cloudfront create-invalidation \
 **解決步驟**：
 ```bash
 # 檢查後端日誌
-aws logs tail /aws/lambda/agentcore-web-channel-conversations-api \
+aws logs tail /aws/lambda/agentcore-web-adapter-conversations-api \
   --region us-west-2 --since 5m
 
 # 檢查 DynamoDB 表
 aws dynamodb scan \
   --region us-west-2 \
-  --table-name agentcore-web-channel-conversations \
+  --table-name agentcore-web-adapter-conversations \
   --limit 5
 
 # 檢查前端控制台
@@ -3263,7 +3263,7 @@ console.log('Conversations:', store.conversations)
 **解決步驟**：
 ```bash
 # 檢查 WebSocket Lambda 日誌
-aws logs tail /aws/lambda/agentcore-web-channel-ws-default \
+aws logs tail /aws/lambda/agentcore-web-adapter-ws-default \
   --region us-west-2 --since 5m --follow
 
 # 查看 conversation_id 是否正確
@@ -3303,12 +3303,12 @@ python migrate-conversations.py --user-id "<user_id>" --dry-run
 # 手動檢查狀態
 aws cloudformation describe-stacks \
   --region us-west-2 \
-  --stack-name agentcore-web-channel
+  --stack-name agentcore-web-adapter
 
 # 如果需要手動回滾
 aws cloudformation cancel-update-stack \
   --region us-west-2 \
-  --stack-name agentcore-web-channel
+  --stack-name agentcore-web-adapter
 ```
 
 ### 如果遷移出錯
@@ -3323,7 +3323,7 @@ python migrate-conversations.py --user-id "<user_id>"
 # 方案 3：刪除 conversations 表重新開始
 aws dynamodb delete-table \
   --region us-west-2 \
-  --table-name agentcore-web-channel-conversations
+  --table-name agentcore-web-adapter-conversations
 
 # 重新部署後端（會重新創建表）
 ```
@@ -3332,7 +3332,7 @@ aws dynamodb delete-table \
 
 ```bash
 # 回滾前端到上一版本
-cd web-channel/frontend
+cd web-adapter/frontend
 
 # 檢出上一次提交
 git checkout HEAD~1
@@ -3365,7 +3365,7 @@ aws cloudwatch put-metric-alarm \
   --period 300 \
   --threshold 10 \
   --comparison-operator GreaterThanThreshold \
-  --dimensions Name=FunctionName,Value=agentcore-web-channel-conversations-api \
+  --dimensions Name=FunctionName,Value=agentcore-web-adapter-conversations-api \
   --evaluation-periods 1
 ```
 

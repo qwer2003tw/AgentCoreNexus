@@ -6,11 +6,11 @@
 
 ### 雙 Stack 設計
 ```
-telegram-lambda-receiver (接收層)
+telegram-adapter-receiver (接收層)
    ├─ API Gateway (webhook 入口)
-   ├─ telegram-lambda-receiver (接收器 Lambda)
-   ├─ telegram-lambda-response-router (響應路由 Lambda)
-   └─ EventBridge: telegram-lambda-receiver-events
+   ├─ telegram-adapter-receiver (接收器 Lambda)
+   ├─ telegram-adapter-response-router (響應路由 Lambda)
+   └─ EventBridge: telegram-adapter-receiver-events
        ↓
 telegram-unified-bot (處理層)
    └─ telegram-unified-bot-processor (AI 處理器 Lambda)
@@ -171,7 +171,7 @@ Policies:
 ```yaml
 Environment:
   Variables:
-    EVENT_BUS_NAME: telegram-lambda-receiver-events  # ⭐ 關鍵！沒有這個無法回應
+    EVENT_BUS_NAME: telegram-adapter-receiver-events  # ⭐ 關鍵！沒有這個無法回應
     BEDROCK_MODEL_ID: anthropic.claude-3-5-sonnet-20241022-v2:0
     BROWSER_ENABLED: 'true'  # 或 'false'
     LOG_LEVEL: INFO
@@ -185,16 +185,16 @@ aws lambda get-function-configuration \
   --query 'Environment.Variables'
 ```
 
-### telegram-lambda-receiver（接收器）
+### telegram-adapter-receiver（接收器）
 
 **必須的環境變數**：
 ```yaml
 Environment:
   Variables:
     TELEGRAM_SECRETS_ARN: <secrets-manager-arn>
-    EVENT_BUS_NAME: telegram-lambda-receiver-events
+    EVENT_BUS_NAME: telegram-adapter-receiver-events
     ALLOWLIST_TABLE_NAME: telegram-allowlist
-    STACK_NAME: telegram-lambda-receiver
+    STACK_NAME: telegram-adapter-receiver
 ```
 
 ---
@@ -203,7 +203,7 @@ Environment:
 
 ### 必須的 Secrets
 
-**Secret 名稱**: `telegram-lambda-receiver-secrets`
+**Secret 名稱**: `telegram-adapter-receiver-secrets`
 
 **必須包含的 keys**：
 ```json
@@ -223,7 +223,7 @@ aws secretsmanager update-secret ...
 # 立即清除 Lambda 緩存（否則仍讀取舊值）
 aws lambda update-function-code \
   --region us-west-2 \
-  --function-name telegram-lambda-receiver \
+  --function-name telegram-adapter-receiver \
   --s3-bucket aws-sam-cli-managed-default-samclisourcebucket-tephzsvbizdo \
   --s3-key LATEST_KEY \
   --publish
@@ -231,7 +231,7 @@ aws lambda update-function-code \
 # 等待狀態變為 Active
 aws lambda wait function-updated \
   --region us-west-2 \
-  --function-name telegram-lambda-receiver
+  --function-name telegram-adapter-receiver
 ```
 
 ---
@@ -263,13 +263,13 @@ aws dynamodb scan --region us-west-2 \
 **檢查消息是否被處理**：
 ```bash
 # 1. 接收器日誌（應該看到 "Received webhook"）
-aws logs tail /aws/lambda/telegram-lambda-receiver --region us-west-2 --since 1m
+aws logs tail /aws/lambda/telegram-adapter-receiver --region us-west-2 --since 1m
 
 # 2. 處理器日誌（應該看到 "Processing message"）
 aws logs tail /aws/lambda/telegram-unified-bot-processor --region us-west-2 --since 1m
 
 # 3. 路由器日誌（應該看到 "Routing response"）
-aws logs tail /aws/lambda/telegram-lambda-response-router --region us-west-2 --since 1m
+aws logs tail /aws/lambda/telegram-adapter-response-router --region us-west-2 --since 1m
 ```
 
 ---
@@ -283,8 +283,8 @@ aws logs tail /aws/lambda/telegram-lambda-response-router --region us-west-2 --s
 # 1. EventBridge rule 是否有 targets？
 aws events list-targets-by-rule \
   --region us-west-2 \
-  --rule telegram-lambda-receiver-message-received \
-  --event-bus-name telegram-lambda-receiver-events
+  --rule telegram-adapter-receiver-message-received \
+  --event-bus-name telegram-adapter-receiver-events
 
 # 2. 處理器是否配置了 EVENT_BUS_NAME？
 aws lambda get-function-configuration \
@@ -348,14 +348,14 @@ with self.browser_session(region) as client:  # 正確使用
 
 ## 📁 關鍵文件位置
 
-### 處理器（telegram-agentcore-bot/）
+### 處理器（ai-processor/）
 - `template.yaml` - CloudFormation 模板（權限配置）
 - `processor_entry.py` - Lambda 入口（環境變數檢查）
 - `services/browser_service.py` - 瀏覽器服務（browser_session 使用）
 - `agents/conversation_agent.py` - AI Agent（工具註冊）
 - `tools/__init__.py` - 工具列表（AVAILABLE_TOOLS）
 
-### 接收器（telegram-lambda/）
+### 接收器（telegram-adapter/）
 - `template.yaml` - CloudFormation 模板（EventBridge rules）
 - `src/handler.py` - Webhook 處理（命令路由）
 - `src/commands/handlers/info_handler.py` - /info 命令（格式化）
@@ -376,7 +376,7 @@ with self.browser_session(region) as client:  # 正確使用
 
 ### 添加新的工具函數
 
-1. **創建工具文件**：`telegram-agentcore-bot/tools/new_tool.py`
+1. **創建工具文件**：`ai-processor/tools/new_tool.py`
 2. **註冊到工具列表**：`tools/__init__.py` 的 `AVAILABLE_TOOLS`
 3. **重新部署處理器**
 4. **測試工具調用**
@@ -384,7 +384,7 @@ with self.browser_session(region) as client:  # 正確使用
 ### 修改消息處理邏輯
 
 1. **修改 Agent 配置**：`agents/conversation_agent.py`
-2. **或添加命令處理器**：`telegram-lambda/src/commands/handlers/`
+2. **或添加命令處理器**：`telegram-adapter/src/commands/handlers/`
 3. **重新部署相應的 Lambda**
 4. **測試完整流程**
 
@@ -419,13 +419,13 @@ with self.browser_session(region) as client:  # 正確使用
 **正確的檢查順序**：
 ```bash
 # 步驟 1: 檢查接收器（消息是否收到？）
-aws logs tail /aws/lambda/telegram-lambda-receiver --region us-west-2 --since 5m
+aws logs tail /aws/lambda/telegram-adapter-receiver --region us-west-2 --since 5m
 
 # 步驟 2: 檢查處理器（消息是否處理？）
 aws logs tail /aws/lambda/telegram-unified-bot-processor --region us-west-2 --since 5m
 
 # 步驟 3: 檢查路由器（回應是否發送？）
-aws logs tail /aws/lambda/telegram-lambda-response-router --region us-west-2 --since 5m
+aws logs tail /aws/lambda/telegram-adapter-response-router --region us-west-2 --since 5m
 ```
 
 ### 3. 驗證關鍵配置
@@ -442,7 +442,7 @@ aws lambda list-functions --region us-west-2 \
 
 # ✅ EventBridge rules 和 targets
 aws events list-rules --region us-west-2 \
-  --event-bus-name telegram-lambda-receiver-events
+  --event-bus-name telegram-adapter-receiver-events
 
 # ✅ 處理器環境變數
 aws lambda get-function-configuration --region us-west-2 \

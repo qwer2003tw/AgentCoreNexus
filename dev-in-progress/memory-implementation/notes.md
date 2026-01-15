@@ -57,7 +57,7 @@ aws lambda update-function-configuration \
   --function-name telegram-unified-bot-processor \
   --environment "Variables={
     BEDROCK_AGENTCORE_MEMORY_ID=TelegramBotMemory-6UH9fyDyIf,
-    EVENT_BUS_NAME=telegram-lambda-receiver-events,
+    EVENT_BUS_NAME=telegram-adapter-receiver-events,
     BEDROCK_MODEL_ID=anthropic.claude-3-5-sonnet-20241022-v2:0,
     BROWSER_ENABLED=true,
     LOG_LEVEL=INFO
@@ -66,9 +66,9 @@ aws lambda update-function-configuration \
 
 ### 3. 部署接收器 Lambda（包含 /new 命令）
 ```bash
-cd telegram-lambda
+cd telegram-adapter
 sam build
-sam deploy --stack-name telegram-lambda-receiver \
+sam deploy --stack-name telegram-adapter-receiver \
   --resolve-s3 --capabilities CAPABILITY_IAM \
   --region us-west-2 --no-confirm-changeset
 ```

@@ -5,7 +5,7 @@
 ## 🏗️ 專案架構
 
 ```
-telegram-agentcore-bot/
+ai-processor/
 ├── config/                 # 配置模組
 │   ├── __init__.py        # 導出 settings 和 SYSTEM_PROMPT
 │   ├── settings.py        # 環境變數管理

@@ -19,7 +19,7 @@
 ### 一鍵執行所有檢查
 
 ```bash
-cd telegram-lambda
+cd telegram-adapter
 ./run_all_tests.sh --cov -v
 ```
 
@@ -37,7 +37,7 @@ cd telegram-lambda
 ### Step 1: 代碼質量檢查
 
 ```bash
-cd telegram-lambda
+cd telegram-adapter
 ruff check . --fix
 ruff format .
 ruff check .
@@ -245,4 +245,4 @@ pytest tests/test_failed.py -v --tb=long
 
 **最後更新**: 2026-01-07  
 **版本**: 1.0  
-**適用範圍**: telegram-lambda 專案
+**適用範圍**: telegram-adapter 專案

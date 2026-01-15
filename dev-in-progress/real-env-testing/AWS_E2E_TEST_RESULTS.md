@@ -2,7 +2,7 @@
 
 **執行時間**: 2026-01-15 07:18-07:24 AM UTC  
 **總時長**: 6.1 分鐘  
-**環境**: 真實 AWS (us-west-2, agentcore-web-channel Stack)  
+**環境**: 真實 AWS (us-west-2, agentcore-web-adapter Stack)  
 **測試方式**: Playwright E2E with E2E_ENV=aws
 
 ---
@@ -186,13 +186,13 @@
 
 **Mock 測試**（開發用）：
 ```bash
-cd web-channel/e2e-tests
+cd web-adapter/e2e-tests
 npm test  # 默認使用 Mock
 ```
 
 **真實 AWS 測試**（驗證用）：
 ```bash
-cd web-channel/e2e-tests
+cd web-adapter/e2e-tests
 E2E_ENV=aws npm test  # 連接真實 AWS
 ```
 
