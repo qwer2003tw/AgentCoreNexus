@@ -28,11 +28,6 @@ Parameters:
     MinValue: 1
     MaxValue: 365
     Description: Number of days to retain files in S3 before automatic deletion
-  
-  ProcessorFunctionArn:
-    Type: String
-    Default: 'arn:aws:lambda:us-west-2:190825685292:function:telegram-unified-bot-processor'
-    Description: Temporary - Processor Lambda ARN (will use ImportValue after rebuild)
 
 # Global configuration for all functions
 Globals:
@@ -481,32 +476,30 @@ Resources:
       TreatMissingData: notBreaching
 
   # EventBridge Rule - Route message.received to Agent Processor
-  # TEMPORARY: Commented out until agentcore-ai-processor is deployed
-  # MessageReceivedRule:
-  #   Type: AWS::Events::Rule
-  #   Properties:
-  #     Name: !Sub '${AWS::StackName}-message-received'
-  #     Description: Route message.received events to Agent Processor
-  #     EventBusName: !Ref UniversalEventBus
-  #     EventPattern:
-  #       source:
-  #         - universal-adapter
-  #       detail-type:
-  #         - message.received
-  #     State: ENABLED
-  #     Targets:
-  #       - Arn: !Ref ProcessorFunctionArn
-  #         Id: AgentProcessor
+  MessageReceivedRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub '${AWS::StackName}-message-received'
+      Description: Route message.received events to Agent Processor
+      EventBusName: !Ref UniversalEventBus
+      EventPattern:
+        source:
+          - universal-adapter
+        detail-type:
+          - message.received
+      State: ENABLED
+      Targets:
+        - Arn: !ImportValue agentcore-ai-processor-ProcessorArn
+          Id: AgentProcessor
 
   # Permission for EventBridge to invoke Processor
-  # TEMPORARY: Commented out until agentcore-ai-processor is deployed
-  # ProcessorEventPermission:
-  #   Type: AWS::Lambda::Permission
-  #   Properties:
-  #     FunctionName: telegram-unified-bot-processor
-  #     Action: lambda:InvokeFunction
-  #     Principal: events.amazonaws.com
-  #     SourceArn: !GetAtt MessageReceivedRule.Arn
+  ProcessorEventPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !ImportValue agentcore-ai-processor-ProcessorName
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt MessageReceivedRule.Arn
 
   # EventBridge Rule - Route message.completed to Response Router
   MessageCompletedRule:
