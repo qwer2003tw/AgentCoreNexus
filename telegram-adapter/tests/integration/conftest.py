@@ -23,9 +23,9 @@ def mock_env():
         os.environ,
         {
             "TELEGRAM_SECRETS_ARN": "arn:aws:secretsmanager:us-west-2:123456789:secret:test",
-            "EVENT_BUS_NAME": "telegram-lambda-receiver-events",
+            "EVENT_BUS_NAME": "telegram-adapter-receiver-events",
             "ALLOWLIST_TABLE_NAME": "telegram-allowlist",
-            "STACK_NAME": "telegram-lambda-receiver",
+            "STACK_NAME": "telegram-adapter-receiver",
             "AWS_REGION": "us-west-2",
             "SQS_QUEUE_URL": "https://sqs.us-west-2.amazonaws.com/123456789/test-queue",
         },
