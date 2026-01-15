@@ -1,9 +1,9 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: >
-  telegram-lambda
+  agentcore-telegram-adapter
   
-  Telegram Webhook Receiver with Allowlist validation and SQS forwarding
+  Telegram Channel Adapter - Webhook receiver, message normalization, and EventBridge integration
 
 # Parameters for sensitive data and environment configuration
 Parameters:
@@ -113,7 +113,7 @@ Resources:
   TelegramReceiverFunction:
     Type: AWS::Serverless::Function
     Properties:
-      FunctionName: telegram-lambda-receiver
+      FunctionName: !Sub '${AWS::StackName}-receiver'
       CodeUri: src/
       Handler: handler.lambda_handler
       Description: Receives Telegram webhooks, validates allowlist, and forwards to SQS
@@ -160,9 +160,10 @@ Resources:
             Method: POST
             RestApiId: !Ref TelegramApi
       Tags:
-        Service: telegram-lambda
-        Component: receiver
-        auto-delete: "no"
+        Project: AgentCoreNexus
+        Component: telegram-adapter
+        Function: receiver
+        ManagedBy: SAM
 
   # API Gateway
   TelegramApi:
@@ -218,7 +219,7 @@ Resources:
   ResponseRouterFunction:
     Type: AWS::Serverless::Function
     Properties:
-      FunctionName: telegram-lambda-response-router
+      FunctionName: !Sub '${AWS::StackName}-router'
       CodeUri: .
       Handler: router.response_router.lambda_handler
       Description: Routes completed AI responses back to users via appropriate channels
@@ -240,9 +241,10 @@ Resources:
             Resource:
               - !GetAtt UniversalEventBus.Arn
       Tags:
-        Service: telegram-lambda
-        Component: response-router
-        auto-delete: "no"
+        Project: AgentCoreNexus
+        Component: telegram-adapter
+        Function: router
+        ManagedBy: SAM
 
   # CloudWatch Log Group
   TelegramReceiverLogGroup:
@@ -262,7 +264,7 @@ Resources:
   TelegramMonitoringDashboard:
     Type: AWS::CloudWatch::Dashboard
     Properties:
-      DashboardName: telegram-lambda-monitoring
+      DashboardName: !Sub '${AWS::StackName}-monitoring'
       DashboardBody: !Sub |
         {
           "widgets": [
@@ -442,7 +444,7 @@ Resources:
   TelegramReceiverErrorAlarm:
     Type: AWS::CloudWatch::Alarm
     Properties:
-      AlarmName: telegram-lambda-receiver-errors
+      AlarmName: !Sub '${AWS::StackName}-receiver-errors'
       AlarmDescription: Alert when Lambda function has errors
       MetricName: Errors
       Namespace: AWS/Lambda
@@ -459,7 +461,7 @@ Resources:
   SQSQueueDepthAlarm:
     Type: AWS::CloudWatch::Alarm
     Properties:
-      AlarmName: telegram-sqs-queue-depth
+      AlarmName: !Sub '${AWS::StackName}-sqs-queue-depth'
       AlarmDescription: Alert when SQS queue has too many messages
       MetricName: ApproximateNumberOfMessagesVisible
       Namespace: AWS/SQS

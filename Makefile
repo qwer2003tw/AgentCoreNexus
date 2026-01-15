@@ -6,10 +6,10 @@
 # AWS 配置
 AWS_REGION ?= us-west-2
 
-# Stack 名稱
-TELEGRAM_STACK = telegram-lambda-receiver
-PROCESSOR_STACK = telegram-unified-bot
-WEB_STACK = agentcore-web-channel
+# Stack 名稱（重構後）
+TELEGRAM_STACK = agentcore-telegram-adapter
+PROCESSOR_STACK = agentcore-ai-processor
+WEB_STACK = agentcore-web-adapter
 
 # 顯示幫助
 help:
@@ -65,7 +65,7 @@ deploy-all:
 # 部署 Telegram 接收層
 deploy-telegram:
 	@echo "📱 部署 Telegram 接收層..."
-	cd telegram-lambda && \
+	cd telegram-adapter && \
 	sam build && \
 	sam deploy \
 		--stack-name $(TELEGRAM_STACK) \
@@ -77,7 +77,7 @@ deploy-telegram:
 # 部署 AI 處理層
 deploy-processor:
 	@echo "🤖 部署 AI 處理層..."
-	cd telegram-agentcore-bot && \
+	cd ai-processor && \
 	sam build && \
 	sam deploy \
 		--stack-name $(PROCESSOR_STACK) \
@@ -90,15 +90,15 @@ deploy-processor:
 deploy-web:
 	@echo "🌐 部署 Web 通道層..."
 	@echo "📦 安裝 Lambda 依賴..."
-	@cd web-channel/lambdas/websocket && \
+	@cd web-adapter/lambdas/websocket && \
 		pip3.11 install -r requirements.txt -t . --quiet
-	@cd web-channel/lambdas/rest && \
+	@cd web-adapter/lambdas/rest && \
 		pip3.11 install -r requirements.txt -t . --quiet
-	@cd web-channel/lambdas/router && \
+	@cd web-adapter/lambdas/router && \
 		pip3.11 install -r requirements.txt -t . --quiet
 	@echo "✅ 依賴安裝完成"
 	@echo "🔨 建構和部署..."
-	cd web-channel/infrastructure && \
+	cd web-adapter/infrastructure && \
 	sam build -t web-channel-template.yaml && \
 	sam deploy \
 		--template-file web-channel-template.yaml \
@@ -121,7 +121,7 @@ deploy-web:
 # 快速更新前端（不重新部署 stack）
 update-frontend:
 	@echo "📦 快速更新前端..."
-	cd web-channel && \
+	cd web-adapter && \
 	./scripts/deploy-frontend.sh
 
 # 檢查所有 stacks 狀態
@@ -220,8 +220,8 @@ test-backend:
 
 # AI 處理器測試
 test-agentcore:
-	@echo "🤖 測試 telegram-agentcore-bot..."
-	@cd telegram-agentcore-bot && \
+	@echo "🤖 測試 ai-processor..."
+	@cd ai-processor && \
 		if [ -f "run_tests_with_coverage.sh" ]; then \
 			./run_tests_with_coverage.sh; \
 		else \
@@ -230,8 +230,8 @@ test-agentcore:
 
 # Webhook 接收器測試
 test-lambda:
-	@echo "📱 測試 telegram-lambda..."
-	@cd telegram-lambda && \
+	@echo "📱 測試 telegram-adapter..."
+	@cd telegram-adapter && \
 		if [ -f "run_all_tests.sh" ]; then \
 			./run_all_tests.sh --cov; \
 		else \
@@ -241,11 +241,11 @@ test-lambda:
 # 前端測試
 test-frontend: test-web
 test-web:
-	@echo "🌐 測試 web-channel..."
-	@if [ -d "web-channel/e2e-tests" ]; then \
-		cd web-channel/e2e-tests && npm test; \
+	@echo "🌐 測試 web-adapter..."
+	@if [ -d "web-adapter/tests" ]; then \
+		cd web-adapter/tests && npm test; \
 	else \
-		echo "⚠️  web-channel/e2e-tests 不存在"; \
+		echo "⚠️  web-adapter/tests 不存在"; \
 	fi
 
 # 快速測試（不含覆蓋率和 Web E2E）
@@ -258,19 +258,19 @@ coverage-report:
 	@echo "📊 覆蓋率報告"
 	@echo ""
 	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-	@echo "🤖 telegram-agentcore-bot:"
+	@echo "🤖 ai-processor:"
 	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-	@if [ -f "telegram-agentcore-bot/coverage.xml" ]; then \
-		cd telegram-agentcore-bot && python3.11 -m coverage report 2>/dev/null || echo "  請先運行測試以生成覆蓋率報告"; \
+	@if [ -f "ai-processor/coverage.xml" ]; then \
+		cd ai-processor && python3.11 -m coverage report 2>/dev/null || echo "  請先運行測試以生成覆蓋率報告"; \
 	else \
 		echo "  未找到覆蓋率報告，請運行: make test-agentcore"; \
 	fi
 	@echo ""
 	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-	@echo "📱 telegram-lambda:"
+	@echo "📱 telegram-adapter:"
 	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-	@if [ -f "telegram-lambda/coverage.xml" ]; then \
-		cd telegram-lambda && python3.11 -m coverage report 2>/dev/null || echo "  請先運行測試以生成覆蓋率報告"; \
+	@if [ -f "telegram-adapter/coverage.xml" ]; then \
+		cd telegram-adapter && python3.11 -m coverage report 2>/dev/null || echo "  請先運行測試以生成覆蓋率報告"; \
 	else \
 		echo "  未找到覆蓋率報告，請運行: make test-lambda"; \
 	fi

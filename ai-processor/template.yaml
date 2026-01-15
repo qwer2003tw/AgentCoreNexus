@@ -1,9 +1,9 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: >
-  telegram-agentcore-bot
+  agentcore-ai-processor
   
-  AgentCore Processor for multi-channel message processing
+  Channel-agnostic AI Processor for multi-channel message processing using AgentCore
 
 Parameters:
   EventBusName:
@@ -28,8 +28,8 @@ Parameters:
 
   ReceiverStackName:
     Type: String
-    Description: Name of the telegram-lambda-receiver stack for importing S3 bucket
-    Default: 'telegram-lambda-receiver'
+    Description: Name of the telegram-adapter stack for importing S3 bucket
+    Default: 'agentcore-telegram-adapter'
 
 Globals:
   Function:
@@ -47,7 +47,7 @@ Resources:
   AgentProcessorFunction:
     Type: AWS::Serverless::Function
     Properties:
-      FunctionName: !Sub '${AWS::StackName}-processor'
+      FunctionName: !Sub '${AWS::StackName}-main'
       CodeUri: .
       Handler: processor_entry.handler
       Description: Process messages from EventBridge using AgentCore
@@ -127,9 +127,10 @@ Resources:
                       Fn::Sub: '${ReceiverStackName}-FileStorageBucketArn'
                 - 'arn:aws:s3:::agentcore-web-channel-attachments-190825685292/*'
       Tags:
-        Service: telegram-agentcore-bot
-        Component: processor
-        auto-delete: "no"
+        Project: AgentCoreNexus
+        Component: ai-processor
+        Environment: !Ref AWS::StackName
+        ManagedBy: SAM
 
   # CloudWatch Log Group
   ProcessorLogGroup:
@@ -149,13 +150,13 @@ Resources:
 
 Outputs:
   ProcessorFunctionArn:
-    Description: Agent Processor Lambda ARN
+    Description: AI Processor Lambda ARN
     Value: !GetAtt AgentProcessorFunction.Arn
     Export:
       Name: !Sub '${AWS::StackName}-ProcessorArn'
 
   ProcessorFunctionName:
-    Description: Agent Processor Lambda Function Name
+    Description: AI Processor Lambda Function Name
     Value: !Ref AgentProcessorFunction
     Export:
       Name: !Sub '${AWS::StackName}-ProcessorName'

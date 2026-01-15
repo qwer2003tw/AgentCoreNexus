@@ -1,0 +1,137 @@
+{
+    "Stacks": [
+        {
+            "StackId": "arn:aws:cloudformation:us-west-2:190825685292:stack/telegram-lambda-receiver/18213940-eb10-11f0-bd54-063fe700e2f9",
+            "StackName": "telegram-lambda-receiver",
+            "ChangeSetId": "arn:aws:cloudformation:us-west-2:190825685292:changeSet/samcli-deploy1767802931/4d41bb34-e564-47da-b04a-86de008b4a7e",
+            "Description": "telegram-lambda\nTelegram Webhook Receiver with Allowlist validation and SQS forwarding\n",
+            "Parameters": [
+                {
+                    "ParameterKey": "Environment",
+                    "ParameterValue": "prod"
+                },
+                {
+                    "ParameterKey": "TelegramBotToken",
+                    "ParameterValue": "****"
+                },
+                {
+                    "ParameterKey": "FileRetentionDays",
+                    "ParameterValue": "30"
+                }
+            ],
+            "CreationTime": "2026-01-06T14:58:00.715000+00:00",
+            "LastUpdatedTime": "2026-01-07T16:22:29.130000+00:00",
+            "RollbackConfiguration": {},
+            "StackStatus": "UPDATE_COMPLETE",
+            "DisableRollback": false,
+            "NotificationARNs": [],
+            "Capabilities": [
+                "CAPABILITY_IAM"
+            ],
+            "Outputs": [
+                {
+                    "OutputKey": "EventBusName",
+                    "OutputValue": "telegram-lambda-receiver-events",
+                    "Description": "EventBridge Event Bus Name for multi-channel messaging",
+                    "ExportName": "telegram-lambda-receiver-EventBusName"
+                },
+                {
+                    "OutputKey": "FileStorageBucketName",
+                    "OutputValue": "telegram-bot-files-190825685292-prod",
+                    "Description": "S3 Bucket name for file storage",
+                    "ExportName": "telegram-lambda-receiver-FileStorageBucket"
+                },
+                {
+                    "OutputKey": "MessageCompletedRuleArn",
+                    "OutputValue": "arn:aws:events:us-west-2:190825685292:rule/telegram-lambda-receiver-events/telegram-lambda-receiver-message-completed",
+                    "Description": "EventBridge Rule ARN for message.completed events"
+                },
+                {
+                    "OutputKey": "TelegramSecretsArn",
+                    "OutputValue": "arn:aws:secretsmanager:us-west-2:190825685292:secret:telegram-lambda-receiver-secrets-g3QCBe",
+                    "Description": "ARN of Telegram Secrets in Secrets Manager (contains both bot_token and webhook_secret_token)",
+                    "ExportName": "telegram-lambda-receiver-SecretsArn"
+                },
+                {
+                    "OutputKey": "GetWebhookSecretTokenCommand",
+                    "OutputValue": "aws secretsmanager get-secret-value --secret-id telegram-lambda-receiver-secrets --region us-west-2 --query SecretString --output text | jq -r .webhook_secret_token",
+                    "Description": "Run this command to retrieve the webhook secret token"
+                },
+                {
+                    "OutputKey": "ResponseRouterFunctionArn",
+                    "OutputValue": "arn:aws:lambda:us-west-2:190825685292:function:telegram-lambda-response-router",
+                    "Description": "Response Router Lambda Function ARN",
+                    "ExportName": "telegram-lambda-receiver-ResponseRouterArn"
+                },
+                {
+                    "OutputKey": "QueueUrl",
+                    "OutputValue": "https://sqs.us-west-2.amazonaws.com/190825685292/telegram-inbound",
+                    "Description": "SQS Queue URL for telegram-processor Lambda",
+                    "ExportName": "telegram-lambda-receiver-QueueUrl"
+                },
+                {
+                    "OutputKey": "EventBusArn",
+                    "OutputValue": "arn:aws:events:us-west-2:190825685292:event-bus/telegram-lambda-receiver-events",
+                    "Description": "EventBridge Event Bus ARN",
+                    "ExportName": "telegram-lambda-receiver-EventBusArn"
+                },
+                {
+                    "OutputKey": "WebhookUrl",
+                    "OutputValue": "https://jpyhj26jw9.execute-api.us-west-2.amazonaws.com/Prod/webhook",
+                    "Description": "Telegram Webhook URL (Use this to register with Telegram)",
+                    "ExportName": "telegram-lambda-receiver-WebhookUrl"
+                },
+                {
+                    "OutputKey": "GetBotTokenCommand",
+                    "OutputValue": "aws secretsmanager get-secret-value --secret-id telegram-lambda-receiver-secrets --region us-west-2 --query SecretString --output text | jq -r .bot_token",
+                    "Description": "Run this command to retrieve the bot token"
+                },
+                {
+                    "OutputKey": "TelegramSecretsName",
+                    "OutputValue": "telegram-lambda-receiver-secrets",
+                    "Description": "Name of Telegram Secrets (for CLI commands)"
+                },
+                {
+                    "OutputKey": "LambdaFunctionArn",
+                    "OutputValue": "arn:aws:lambda:us-west-2:190825685292:function:telegram-lambda-receiver",
+                    "Description": "Lambda Function ARN",
+                    "ExportName": "telegram-lambda-receiver-FunctionArn"
+                },
+                {
+                    "OutputKey": "FileStorageBucketArn",
+                    "OutputValue": "arn:aws:s3:::telegram-bot-files-190825685292-prod",
+                    "Description": "ARN of the file storage bucket",
+                    "ExportName": "telegram-lambda-receiver-FileStorageBucketArn"
+                },
+                {
+                    "OutputKey": "ApiGatewayId",
+                    "OutputValue": "jpyhj26jw9",
+                    "Description": "API Gateway ID",
+                    "ExportName": "telegram-lambda-receiver-ApiGatewayId"
+                },
+                {
+                    "OutputKey": "AllowlistTableName",
+                    "OutputValue": "telegram-allowlist",
+                    "Description": "DynamoDB Allowlist Table Name (existing table)",
+                    "ExportName": "telegram-lambda-receiver-AllowlistTableName"
+                },
+                {
+                    "OutputKey": "ResponseRouterFunctionName",
+                    "OutputValue": "telegram-lambda-response-router",
+                    "Description": "Response Router Lambda Function Name"
+                },
+                {
+                    "OutputKey": "QueueArn",
+                    "OutputValue": "arn:aws:sqs:us-west-2:190825685292:telegram-inbound",
+                    "Description": "SQS Queue ARN",
+                    "ExportName": "telegram-lambda-receiver-QueueArn"
+                }
+            ],
+            "Tags": [],
+            "EnableTerminationProtection": false,
+            "DriftInformation": {
+                "StackDriftStatus": "NOT_CHECKED"
+            }
+        }
+    ]
+}
