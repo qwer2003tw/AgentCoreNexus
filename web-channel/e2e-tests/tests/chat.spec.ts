@@ -121,6 +121,38 @@ test.describe('Chat Core Functionality', () => {
     await page.waitForSelector('text=sample.txt', { timeout: 10000 })
   })
   
+  test('attachments display correctly in conversation history without crashing', async ({ authenticatedPage: page }) => {
+    await createNewConversation(page)
+    
+    // Track JavaScript errors
+    const jsErrors: string[] = []
+    page.on('pageerror', (err) => {
+      jsErrors.push(err.message)
+      console.error('Page error:', err.message)
+    })
+    
+    // Upload and send
+    const fileInput = page.locator('input[type=\"file\"]')
+    await fileInput.setInputFiles('fixtures/sample.txt')
+    await page.waitForSelector('text=sample.txt', { timeout: 10000 })
+    await page.click('button[aria-label=\"發送訊息\"]')
+    
+    // Wait for AI to process
+    await waitForAIReply(page, 30000)
+    
+    // Reload page to trigger loading from history
+    await page.reload()
+    await page.waitForSelector('textarea', { timeout: 10000 })
+    await page.waitForTimeout(2000)
+    
+    // Verify no JavaScript errors occurred
+    expect(jsErrors).toHaveLength(0)
+    
+    // Page should still be functional (not black screen)
+    const textarea = page.locator('textarea')
+    await expect(textarea).toBeVisible()
+  })
+  
   test('WebSocket reconnection works', async ({ authenticatedPage: page }) => {
     // Create conversation and send message
     await createNewConversation(page)

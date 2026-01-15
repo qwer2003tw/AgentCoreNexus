@@ -40,6 +40,10 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         attachments = body.get("attachments") or []
         conversation_id = body.get("conversation_id")
 
+        # Convert Web attachments to unified format
+        if attachments:
+            attachments = convert_web_attachments(attachments, message_text)
+
         if not message_text and not attachments:
             return {"statusCode": 400, "body": "Missing message"}
 
@@ -77,6 +81,42 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
 
         traceback.print_exc()
         return {"statusCode": 500, "body": "Internal server error"}
+
+
+def convert_web_attachments(web_attachments: list, user_message: str = "") -> list:
+    """
+    Convert Web attachment format to unified format
+    """
+    result = []
+    bucket = "agentcore-web-channel-attachments-190825685292"
+
+    for att in web_attachments:
+        s3_url = f"s3://{bucket}/{att['key']}"
+        content_type = att.get("content_type", "")
+        att_type = "photo" if content_type.startswith("image/") else "document"
+
+        if not user_message:
+            if att_type == "photo":
+                task = "Please describe this image."
+            else:
+                task = f"Please summarize the file {att['name']}."
+        else:
+            task = user_message
+
+        result.append(
+            {
+                "type": att_type,
+                "file_name": att["name"],
+                "file_id": att["id"],
+                "mime_type": content_type,
+                "file_size": att["size"],
+                "s3_url": s3_url,
+                "task": task,
+            }
+        )
+
+    print(f"Converted {len(web_attachments)} Web attachments")
+    return result
 
 
 def get_connection(connection_id: str) -> dict[str, Any] | None:

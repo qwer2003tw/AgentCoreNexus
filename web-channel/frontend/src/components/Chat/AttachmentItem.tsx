@@ -17,7 +17,7 @@ function formatFileSize(size: number): string {
 export default function AttachmentItem({ attachment }: AttachmentItemProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
-  const isImage = attachment.content_type.startsWith('image/')
+  const isImage = attachment.content_type?.startsWith('image/') ?? false
 
   const handleDownload = async () => {
     try {
