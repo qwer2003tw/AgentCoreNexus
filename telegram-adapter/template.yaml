@@ -28,6 +28,11 @@ Parameters:
     MinValue: 1
     MaxValue: 365
     Description: Number of days to retain files in S3 before automatic deletion
+  
+  ProcessorFunctionArn:
+    Type: String
+    Default: 'arn:aws:lambda:us-west-2:190825685292:function:telegram-unified-bot-processor'
+    Description: Temporary - Processor Lambda ARN (will use ImportValue after rebuild)
 
 # Global configuration for all functions
 Globals:
@@ -489,14 +494,14 @@ Resources:
           - message.received
       State: ENABLED
       Targets:
-        - Arn: !ImportValue telegram-unified-bot-ProcessorArn
+        - Arn: !Ref ProcessorFunctionArn
           Id: AgentProcessor
 
   # Permission for EventBridge to invoke Processor
   ProcessorEventPermission:
     Type: AWS::Lambda::Permission
     Properties:
-      FunctionName: !ImportValue telegram-unified-bot-ProcessorName
+      FunctionName: telegram-unified-bot-processor
       Action: lambda:InvokeFunction
       Principal: events.amazonaws.com
       SourceArn: !GetAtt MessageReceivedRule.Arn
