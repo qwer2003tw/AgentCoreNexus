@@ -1,3 +1,8 @@
+[project]
+name = "agentcore-nexus"
+version = "0.8.0"
+description = "多通道 AI 助理平台（Telegram + Web + EventBridge）"
+
 [tool.ruff]
 # 專案配置
 target-version = "py311"
