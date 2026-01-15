@@ -481,30 +481,32 @@ Resources:
       TreatMissingData: notBreaching
 
   # EventBridge Rule - Route message.received to Agent Processor
-  MessageReceivedRule:
-    Type: AWS::Events::Rule
-    Properties:
-      Name: !Sub '${AWS::StackName}-message-received'
-      Description: Route message.received events to Agent Processor
-      EventBusName: !Ref UniversalEventBus
-      EventPattern:
-        source:
-          - universal-adapter
-        detail-type:
-          - message.received
-      State: ENABLED
-      Targets:
-        - Arn: !Ref ProcessorFunctionArn
-          Id: AgentProcessor
+  # TEMPORARY: Commented out until agentcore-ai-processor is deployed
+  # MessageReceivedRule:
+  #   Type: AWS::Events::Rule
+  #   Properties:
+  #     Name: !Sub '${AWS::StackName}-message-received'
+  #     Description: Route message.received events to Agent Processor
+  #     EventBusName: !Ref UniversalEventBus
+  #     EventPattern:
+  #       source:
+  #         - universal-adapter
+  #       detail-type:
+  #         - message.received
+  #     State: ENABLED
+  #     Targets:
+  #       - Arn: !Ref ProcessorFunctionArn
+  #         Id: AgentProcessor
 
   # Permission for EventBridge to invoke Processor
-  ProcessorEventPermission:
-    Type: AWS::Lambda::Permission
-    Properties:
-      FunctionName: telegram-unified-bot-processor
-      Action: lambda:InvokeFunction
-      Principal: events.amazonaws.com
-      SourceArn: !GetAtt MessageReceivedRule.Arn
+  # TEMPORARY: Commented out until agentcore-ai-processor is deployed
+  # ProcessorEventPermission:
+  #   Type: AWS::Lambda::Permission
+  #   Properties:
+  #     FunctionName: telegram-unified-bot-processor
+  #     Action: lambda:InvokeFunction
+  #     Principal: events.amazonaws.com
+  #     SourceArn: !GetAtt MessageReceivedRule.Arn
 
   # EventBridge Rule - Route message.completed to Response Router
   MessageCompletedRule:
