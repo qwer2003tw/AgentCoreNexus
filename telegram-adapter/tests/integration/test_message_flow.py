@@ -8,7 +8,7 @@ import json
 import pytest
 from handler import lambda_handler
 
-from tests.e2e.helpers.telegram_factory import TelegramUpdateFactory
+from tests.integration.helpers.telegram_factory import TelegramUpdateFactory
 
 
 @pytest.mark.e2e

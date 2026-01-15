@@ -8,7 +8,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from tests.e2e.helpers.aws_mocks import (
+from tests.integration.helpers.aws_mocks import (
     MockDynamoDB,
     MockEventBridge,
     MockTelegramAPI,
