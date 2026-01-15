@@ -1,0 +1,78 @@
+{
+    "Status": "UPDATE_COMPLETE",
+    "Updated": "2026-01-14T14:46:42.454000+00:00",
+    "Outputs": [
+        {
+            "OutputKey": "RestApiEndpoint",
+            "OutputValue": "https://dr614rh1s6.execute-api.us-west-2.amazonaws.com/prod",
+            "Description": "REST API endpoint URL",
+            "ExportName": "agentcore-web-channel-RestApiEndpoint"
+        },
+        {
+            "OutputKey": "UserBindingsTableName",
+            "OutputValue": "agentcore-web-channel-user-bindings",
+            "Description": "User Bindings DynamoDB table name",
+            "ExportName": "agentcore-web-channel-UserBindingsTable"
+        },
+        {
+            "OutputKey": "FrontendBucketName",
+            "OutputValue": "agentcore-web-channel-frontend-190825685292",
+            "Description": "Frontend S3 bucket name",
+            "ExportName": "agentcore-web-channel-FrontendBucket"
+        },
+        {
+            "OutputKey": "CloudFrontDistributionId",
+            "OutputValue": "E38PYJE66F9ZOW",
+            "Description": "CloudFront distribution ID",
+            "ExportName": "agentcore-web-channel-CloudFrontDistributionId"
+        },
+        {
+            "OutputKey": "ConversationsTableArn",
+            "OutputValue": "arn:aws:dynamodb:us-west-2:190825685292:table/agentcore-web-channel-conversations",
+            "Description": "Conversations DynamoDB table ARN",
+            "ExportName": "agentcore-web-channel-ConversationsTableArn"
+        },
+        {
+            "OutputKey": "ConversationsTableName",
+            "OutputValue": "agentcore-web-channel-conversations",
+            "Description": "Conversations DynamoDB table name",
+            "ExportName": "agentcore-web-channel-ConversationsTable"
+        },
+        {
+            "OutputKey": "WebUsersTableName",
+            "OutputValue": "agentcore-web-channel-web-users",
+            "Description": "Web Users DynamoDB table name",
+            "ExportName": "agentcore-web-channel-WebUsersTable"
+        },
+        {
+            "OutputKey": "ConversationHistoryTableName",
+            "OutputValue": "agentcore-web-channel-conversation-history",
+            "Description": "Conversation History DynamoDB table name",
+            "ExportName": "agentcore-web-channel-ConversationHistoryTable"
+        },
+        {
+            "OutputKey": "CloudFrontDomain",
+            "OutputValue": "d3hplgekizttn1.cloudfront.net",
+            "Description": "CloudFront distribution domain name",
+            "ExportName": "agentcore-web-channel-CloudFrontDomain"
+        },
+        {
+            "OutputKey": "WebSocketApiEndpoint",
+            "OutputValue": "wss://c8921qtrs8.execute-api.us-west-2.amazonaws.com/prod",
+            "Description": "WebSocket API endpoint URL",
+            "ExportName": "agentcore-web-channel-WebSocketEndpoint"
+        },
+        {
+            "OutputKey": "JWTSecretArn",
+            "OutputValue": "arn:aws:secretsmanager:us-west-2:190825685292:secret:agentcore-web-channel/jwt-secret-y7tKLW",
+            "Description": "JWT Secret ARN",
+            "ExportName": "agentcore-web-channel-JWTSecretArn"
+        },
+        {
+            "OutputKey": "FrontendUrl",
+            "OutputValue": "https://d3hplgekizttn1.cloudfront.net",
+            "Description": "Frontend URL (HTTPS via CloudFront)",
+            "ExportName": "agentcore-web-channel-FrontendUrl"
+        }
+    ]
+}

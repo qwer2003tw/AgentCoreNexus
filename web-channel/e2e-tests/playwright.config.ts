@@ -1,4 +1,9 @@
 import { defineConfig, devices } from '@playwright/test'
+import dotenv from 'dotenv'
+
+// Load environment-specific config
+const envFile = process.env.E2E_ENV === 'aws' ? '.env.aws' : '.env.local'
+dotenv.config({ path: envFile })
 
 export default defineConfig({
   testDir: './tests',
@@ -21,7 +26,13 @@ export default defineConfig({
   
   // Shared settings
   use: {
-    baseURL: 'http://localhost:5173',
+    // Use real AWS URL if E2E_ENV=aws, otherwise local dev server
+    baseURL: process.env.E2E_ENV === 'aws' 
+      ? (process.env.FRONTEND_URL || 'https://d3hplgekizttn1.cloudfront.net')
+      : 'http://localhost:5173',
+    
+    // Increase timeout for real AWS (network latency + Lambda cold start)
+    actionTimeout: process.env.E2E_ENV === 'aws' ? 30000 : 10000,
     trace: 'retain-on-failure',  //  Optimized: only keep trace on failure
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
