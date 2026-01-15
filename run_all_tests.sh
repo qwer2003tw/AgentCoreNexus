@@ -169,11 +169,11 @@ else
     echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
     
-    if [ ! -d "web-adapter/e2e-tests" ]; then
-        echo -e "${YELLOW}⚠️  找不到 web-adapter/e2e-tests 目錄${NC}"
+    if [ ! -d "web-adapter/tests" ]; then
+        echo -e "${YELLOW}⚠️  找不到 web-adapter/tests 目錄${NC}"
         echo -e "${YELLOW}   跳過 web-adapter 測試${NC}"
     else
-        cd web-adapter/e2e-tests || exit 1
+        cd web-adapter/tests || exit 1
         
         # 檢查 Node.js 是否安裝
         if ! command -v npm &> /dev/null; then

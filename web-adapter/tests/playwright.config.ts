@@ -52,11 +52,13 @@ export default defineConfig({
     // },
   ],
   
-  // Dev server configuration
-  webServer: {
-    command: 'cd ../frontend && npm run dev',
-    url: 'http://localhost:5173',
-    reuseExistingServer: !process.env.CI,
-    timeout: 30000,
-  },
+  // Dev server configuration (only for local testing)
+  ...(process.env.E2E_ENV !== 'aws' && {
+    webServer: {
+      command: 'cd ../frontend && npm run dev',
+      url: 'http://localhost:5173',
+      reuseExistingServer: !process.env.CI,
+      timeout: 30000,
+    },
+  }),
 })
