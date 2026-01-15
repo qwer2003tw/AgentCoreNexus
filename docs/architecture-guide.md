@@ -11,10 +11,51 @@
 
 ---
 
-## 目標
+## 架構目標
 
-- 多通道輸入：Telegram、Web UI、Discord、Slack（可擴張）
-- 通道無關處理：統一訊息結構、通道適配器
+### 多通道支援策略
+
+**通道適配器（Channel Adapters）**：
+- 每個通道有專屬的 Adapter（Telegram、Web、Discord、Slack）
+- 各自獨立部署、獨立擴展、故障隔離
+- 針對通道特性優化（如 Telegram 4096字符限制、Web WebSocket）
+
+**統一事件層（Universal Layer）**：
+- 所有 Adapter 發送到統一的 EventBridge Bus
+- 標準化訊息格式（Universal Message Schema）
+- 通道無關的事件路由和處理
+
+**AI 處理器（Channel-Agnostic Processor）**：
+- 單一 Processor 服務所有通道
+- 跨通道 Memory 和上下文管理
+- 統一的工具和服務層
+
+### 關鍵設計決策
+
+**1. 多個專用 Adapter > 單一 Universal Adapter**
+
+原因：
+- ✅ 鬆耦合：Telegram 故障不影響 Web
+- ✅ 獨立部署：可以單獨更新 Telegram Adapter
+- ✅ 專門優化：每個 Adapter 針對通道特性優化
+- ✅ 故障隔離：一個通道的問題不會傳播
+- ✅ 彈性擴展：Web 流量大時只擴展 Web Adapter
+
+**2. EventBridge 是 Universal 層**
+
+- 統一的事件格式（message.received, message.completed）
+- 統一的路由機制
+- 通道無關的處理邏輯
+- DLQ 和重試策略
+
+**3. Response Router 通道專屬**
+
+- 每個通道有自己的 Router（處理通道特定格式化）
+- 符合 Backend for Frontend (BFF) 模式
+- 送達機制各不相同（Telegram: HTTP API, Web: WebSocket）
+
+### 其他目標
+
 - 事件驅動：EventBridge 為核心事件總線；DLQ、重試策略
 - AgentCore 增強：統一會話與記憶、跨通道上下文
 - 回應分發：通道格式化與送達回報
@@ -22,44 +63,87 @@
 
 ---
 
-## 高階架構
+## 高階架構（實際實現）
 
 ```
-┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐
-│ Telegram    │  │   Web UI    │  │  Discord    │  │   Slack     │
-└──────┬──────┘  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘
-       │ HTTPS/Webhook         HTTP/WS          HTTPS           HTTPS
-       ▼                      ▼                 ▼               ▼
-               ┌──────────────────────────────────────────┐
-               │ AWS API Gateway (多路由)                  │
-               │ /telegram/webhook /web/api ...           │
-               └───────────────┬──────────────────────────┘
-                               ▼
-                 ┌───────────────────────────────┐
-                 │ Universal Message Adapter     │  ← 改造自 telegram-lambda
-                 │ - 檢測通道/標準化/統一驗證        │
-                 └───────────────┬───────────────┘
-                                 ▼ Event
-                     ┌─────────────────────────┐
-                     │ Amazon EventBridge      │  ← 中央事件總線
-                     │ message.received ...    │
-                     └───────────────┬─────────┘
-                                     ▼
-                 ┌────────────────────────────────┐
-                 │ Agent Processor (Lambda/ECS)   │  ← 整合 telegram-agentcore-bot
-                 │ - AgentCore Orchestrator       │
-                 │ - Conversation/Multi-channel   │
-                 └───────────────┬────────────────┘
-                                 ▼
-                     ┌─────────────────────────┐
-                     │ Response Router         │
-                     │ - 通道格式化/送達/回報      │
-                     └────────┬────────────────┘
-                              ▼
-            ┌─────────┬───────────┬───────────┬───────────┐
-            ▼         ▼           ▼           ▼           ▼
-          Telegram    Web         Discord     Slack       Email/SMS...
+┌─ Telegram ─┐     ┌──── Web ────┐     ┌─ Discord ─┐ (規劃中)
+│  Webhook   │     │ WebSocket   │     │  Webhook  │
+└─────┬──────┘     └──────┬──────┘     └─────┬─────┘
+      │                   │                   │
+      ▼                   ▼                   ▼
+┌──────────────┐    ┌──────────────┐   ┌──────────────┐
+│ Telegram     │    │ Web Channel  │   │ Discord      │
+│ Adapter      │    │ Adapter      │   │ Adapter      │
+│              │    │              │   │              │
+│(telegram-    │    │(web-channel/ │   │(未來)        │
+│ lambda)      │    │ lambdas)     │   │              │
+└──────┬───────┘    └──────┬───────┘   └──────┬───────┘
+       │ EventBridge       │                   │
+       │ message.received  │                   │
+       └──────────┬─────────┴───────────────────┘
+                  │
+     ┌────────────▼───────────────────┐
+     │   Amazon EventBridge           │ ← Universal 層
+     │   - 統一事件總線                 │
+     │   - Universal Message Schema   │
+     │   - Event: message.received    │
+     └────────────┬───────────────────┘
+                  │
+                  ▼
+     ┌──────────────────────────────────┐
+     │  Agent Processor (Lambda)        │
+     │  (telegram-agentcore-bot)        │
+     │                                  │
+     │  - AgentCore Orchestrator        │
+     │  - Bedrock Claude Integration    │
+     │  - Memory Service (cross-channel)│
+     │  - Browser/File Tools            │
+     └────────────┬─────────────────────┘
+                  │ EventBridge
+                  │ message.completed
+     ┌────────────▼─────────────────────┐
+     │   Amazon EventBridge             │
+     │   - Event: message.completed     │
+     └────────┬──────────────────────────┘
+              │
+     ┌────────┴──────────┐
+     │                   │
+     ▼                   ▼
+┌──────────────┐   ┌──────────────┐
+│ Telegram     │   │ Web Channel  │
+│ Response     │   │ Response     │
+│ Router       │   │ Router       │
+│              │   │              │
+│(telegram-    │   │(web-channel/ │
+│ lambda/      │   │ lambdas/     │
+│ router)      │   │ router)      │
+└──────┬───────┘   └──────┬───────┘
+       │                  │
+       ▼                  ▼
+  Telegram API      WebSocket Push
 ```
+
+### 架構說明
+
+**通道適配器層（Platform-Specific）**：
+- 各通道有獨立的入口和適配邏輯
+- 職責：接收 → 驗證 → 標準化 → 發送到 EventBridge
+- 範例：telegram-lambda 處理 Telegram，web-channel/lambdas 處理 Web
+
+**統一事件層（Universal）**：
+- EventBridge 作為中央事件總線
+- 定義 Universal Message Schema
+- 提供通道無關的事件路由
+
+**AI 處理層（Channel-Agnostic）**：
+- 單一 Processor 處理所有通道的訊息
+- 不關心訊息來源（Telegram 或 Web）
+- 使用統一的 Memory 和工具
+
+**回應路由層（Platform-Specific）**：
+- 各通道有獨立的 Response Router
+- 職責：接收統一格式 → 通道格式化 → 送達
+- 範例：Telegram Router 處理 Markdown + 4096限制，Web Router 處理 WebSocket 推送
 
 ---
 

@@ -36,18 +36,48 @@ AgentCoreNexus 專案的完整文檔目錄。
 
 ## 📦 組件文檔
 
-### telegram-agentcore-bot
-AI 處理器組件的詳細文檔：
-- [README](../telegram-agentcore-bot/README.md) - 組件概覽與使用
-
-### telegram-lambda
-Webhook 接收器組件的詳細文檔：
+### telegram-lambda (Telegram Channel Adapter)
+Telegram webhook 接收與訊息適配組件：
 - [README](../telegram-lambda/README.md) - 組件概覽
 - [完整文檔目錄](../telegram-lambda/docs/README.md) - 詳細技術文檔
   - Changelog（變更記錄）
   - Deployment（部署指南）
   - Features（功能說明）
   - Troubleshooting（故障排除）
+
+**職責**：
+- 接收 Telegram webhook
+- 白名單驗證（chat_id + username 雙重檢查）
+- 標準化為 Universal Message Schema
+- 發送到 EventBridge
+- 命令處理（/info, /bind, /new 等）
+- Telegram Response Router（格式化與送達）
+
+### telegram-agentcore-bot (AI Processor - Channel-Agnostic)
+通道無關的 AI 處理引擎：
+- [README](../telegram-agentcore-bot/README.md) - 組件概覽與使用
+
+**職責**：
+- 接收來自**所有通道**的訊息（via EventBridge）
+- AgentCore + Bedrock Claude 處理
+- Memory Service（跨通道共享）
+- Browser/File 工具整合
+- 發送處理結果到 EventBridge
+
+**重要**：雖然名稱包含 "telegram"，但它處理來自所有通道的訊息
+
+### web-channel (Web Channel Adapter + Frontend)
+Web 入口與適配器：
+- [README](../web-channel/README.md) - 組件完整說明
+- [QUICKSTART](../web-channel/QUICKSTART.md) - 5分鐘快速開始
+
+**職責**：
+- WebSocket 即時通訊
+- REST API（認證、歷史、綁定、管理）
+- React PWA 前端（ChatGPT 風格界面）
+- 標準化為 Universal Message Schema
+- 發送到 EventBridge
+- Web Response Router（WebSocket 推送）
 
 ---
 
