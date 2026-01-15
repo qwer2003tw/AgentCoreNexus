@@ -12,11 +12,16 @@
     "test:conversations": "playwright test tests/conversations.spec.ts",
     "test:auth": "playwright test tests/auth.spec.ts"
   },
-  "keywords": ["e2e", "playwright", "testing"],
+  "keywords": [
+    "e2e",
+    "playwright",
+    "testing"
+  ],
   "author": "AgentCore Team",
   "license": "MIT",
   "devDependencies": {
     "@playwright/test": "^1.40.0",
-    "@types/node": "^20.10.0"
+    "@types/node": "^20.10.0",
+    "dotenv": "^17.2.3"
   }
 }
