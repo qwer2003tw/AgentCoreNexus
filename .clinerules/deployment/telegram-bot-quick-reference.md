@@ -12,13 +12,13 @@ us-west-2 (Oregon)
 ### CloudFormation Stacks
 | Stack 名稱 | 用途 | 主要資源 |
 |-----------|------|----------|
-| `telegram-unified-bot` | AI 處理器 | telegram-unified-bot-processor |
+| `agentcore-ai-processor` | AI 處理器 | agentcore-ai-processor-processor |
 | `telegram-adapter-receiver` | Webhook 接收 | telegram-adapter-receiver<br>telegram-adapter-response-router |
 
 ### Lambda 函數
 | 函數名稱 | 用途 | 內存 | 超時 |
 |---------|------|------|------|
-| telegram-unified-bot-processor | AI 處理 + Browser | 1024 MB | 300s |
+| agentcore-ai-processor-processor | AI 處理 + Browser | 1024 MB | 300s |
 | telegram-adapter-receiver | Webhook 接收 | 256 MB | 30s |
 | telegram-adapter-response-router | 響應路由 | 256 MB | 30s |
 
@@ -38,7 +38,7 @@ us-west-2 (Oregon)
 ```bash
 cd ai-processor
 sam build
-sam deploy --stack-name telegram-unified-bot \
+sam deploy --stack-name agentcore-ai-processor \
   --resolve-s3 \
   --capabilities CAPABILITY_IAM \
   --region us-west-2
@@ -77,7 +77,7 @@ sam deploy --stack-name STACK_NAME --resolve-s3 --capabilities CAPABILITY_IAM --
 ### 查看實時日誌
 ```bash
 # 處理器日誌（AI 和瀏覽器）
-aws logs tail /aws/lambda/telegram-unified-bot-processor \
+aws logs tail /aws/lambda/agentcore-ai-processor-processor \
   --region us-west-2 \
   --follow
 
@@ -220,7 +220,7 @@ aws cloudformation describe-stacks --region us-west-2 \
 # 檢查特定 stack
 aws cloudformation describe-stacks \
   --region us-west-2 \
-  --stack-name telegram-unified-bot \
+  --stack-name agentcore-ai-processor \
   --query 'Stacks[0].StackStatus'
 ```
 
@@ -234,13 +234,13 @@ aws lambda list-functions --region us-west-2 \
 # 檢查函數狀態
 aws lambda get-function \
   --region us-west-2 \
-  --function-name telegram-unified-bot-processor \
+  --function-name agentcore-ai-processor-processor \
   --query 'Configuration.{State:State,LastUpdateStatus:LastUpdateStatus}'
 
 # 檢查環境變數
 aws lambda get-function-configuration \
   --region us-west-2 \
-  --function-name telegram-unified-bot-processor \
+  --function-name agentcore-ai-processor-processor \
   --query 'Environment.Variables'
 ```
 
@@ -299,7 +299,7 @@ aws dynamodb get-item --region us-west-2 \
 ```bash
 aws lambda update-function-configuration \
   --region us-west-2 \
-  --function-name telegram-unified-bot-processor \
+  --function-name agentcore-ai-processor-processor \
   --environment "Variables={
     BEDROCK_MODEL_ID=anthropic.claude-3-5-sonnet-20241022-v2:0,
     BROWSER_ENABLED=true,
@@ -362,7 +362,7 @@ aws lambda update-function-code \
 ```bash
 # 1. 檢查 Lambda 狀態
 aws lambda get-function --region us-west-2 \
-  --function-name telegram-unified-bot-processor \
+  --function-name agentcore-ai-processor-processor \
   --query 'Configuration.State'
 
 # 2. 檢查 EventBridge rule targets
@@ -372,11 +372,11 @@ aws events list-targets-by-rule --region us-west-2 \
 
 # 3. 檢查環境變數
 aws lambda get-function-configuration --region us-west-2 \
-  --function-name telegram-unified-bot-processor \
+  --function-name agentcore-ai-processor-processor \
   --query 'Environment.Variables.EVENT_BUS_NAME'
 
 # 4. 查看最近日誌
-aws logs tail /aws/lambda/telegram-unified-bot-processor \
+aws logs tail /aws/lambda/agentcore-ai-processor-processor \
   --region us-west-2 --since 10m
 ```
 
@@ -386,7 +386,7 @@ aws logs tail /aws/lambda/telegram-unified-bot-processor \
 ```bash
 # 獲取角色名稱
 ROLE_NAME=$(aws lambda get-function --region us-west-2 \
-  --function-name telegram-unified-bot-processor \
+  --function-name agentcore-ai-processor-processor \
   --query 'Configuration.Role' --output text | cut -d'/' -f2)
 
 # 查看角色策略
@@ -405,7 +405,7 @@ aws iam get-role-policy --role-name $ROLE_NAME --policy-name POLICY_NAME
 ```bash
 # 1. 檢查 BROWSER_ENABLED
 aws lambda get-function-configuration --region us-west-2 \
-  --function-name telegram-unified-bot-processor \
+  --function-name agentcore-ai-processor-processor \
   --query 'Environment.Variables.BROWSER_ENABLED'
 
 # 2. 測試 Browser sandbox 權限
@@ -416,7 +416,7 @@ aws bedrock-agentcore start-browser-session \
 # 3. 查看瀏覽器相關日誌
 aws logs filter-log-events \
   --region us-west-2 \
-  --log-group-name /aws/lambda/telegram-unified-bot-processor \
+  --log-group-name /aws/lambda/agentcore-ai-processor-processor \
   --filter-pattern "browser" \
   --start-time $(date -u -d '1 hour ago' +%s)000
 ```
@@ -445,7 +445,7 @@ aws cloudwatch get-metric-statistics \
   --region us-west-2 \
   --namespace AWS/Lambda \
   --metric-name Invocations \
-  --dimensions Name=FunctionName,Value=telegram-unified-bot-processor \
+  --dimensions Name=FunctionName,Value=agentcore-ai-processor-processor \
   --start-time $(date -u -d '1 hour ago' +%s) \
   --end-time $(date -u +%s) \
   --period 300 \
@@ -456,7 +456,7 @@ aws cloudwatch get-metric-statistics \
   --region us-west-2 \
   --namespace AWS/Lambda \
   --metric-name Errors \
-  --dimensions Name=FunctionName,Value=telegram-unified-bot-processor \
+  --dimensions Name=FunctionName,Value=agentcore-ai-processor-processor \
   --start-time $(date -u -d '1 hour ago' +%s) \
   --end-time $(date -u +%s) \
   --period 300 \
@@ -475,7 +475,7 @@ aws lambda list-functions --region us-west-2 \
   --output table
 
 # 2. 檢查錯誤日誌
-for func in telegram-unified-bot-processor telegram-adapter-receiver telegram-adapter-response-router; do
+for func in agentcore-ai-processor-processor telegram-adapter-receiver telegram-adapter-response-router; do
   echo "=== $func ==="
   aws logs filter-log-events \
     --region us-west-2 \
@@ -621,7 +621,7 @@ AgentCoreNexus/
 ## 🎓 重要經驗
 
 ### 部署順序
-1. ✅ 先部署 telegram-unified-bot（處理器）
+1. ✅ 先部署 agentcore-ai-processor（處理器）
 2. ✅ 再部署 telegram-adapter-receiver（接收器）
 3. ✅ 使用 ImportValue 建立連接
 

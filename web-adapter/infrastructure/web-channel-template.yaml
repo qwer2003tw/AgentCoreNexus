@@ -16,13 +16,13 @@ Parameters:
   
   ExistingEventBusName:
     Type: String
-    Default: telegram-lambda-receiver-events
-    Description: Name of existing EventBridge bus (from telegram-lambda stack)
+    Default: agentcore-telegram-adapter-events
+    Description: Name of existing EventBridge bus (from telegram-adapter stack)
   
   ExistingProcessorFunctionName:
     Type: String
-    Default: telegram-unified-bot-processor
-    Description: Name of existing processor Lambda (from telegram-agentcore-bot stack)
+    Default: agentcore-ai-processor-main
+    Description: Name of existing processor Lambda (from ai-processor stack)
 
 Globals:
   Function:

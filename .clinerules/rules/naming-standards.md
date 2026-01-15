@@ -32,7 +32,7 @@ always_active: true
 - `web-adapter`：Web 通道適配器
 
 **❌ 不好的範例**：
-- `telegram-agentcore-bot`：混雜技術（agentcore）和平台（telegram）
+- `agentcore-ai-processor`：混雜技術（agentcore）和平台（telegram）
 - `lambda-handler`：技術細節不應在組件名
 - `bot-service`：過於通用
 
@@ -55,7 +55,7 @@ always_active: true
 - `agentcore-web-adapter-prod`
 
 **❌ 避免**：
-- `telegram-unified-bot`（無統一前綴）
+- `agentcore-ai-processor`（無統一前綴）
 - `my-stack`（不描述功能）
 - `stack-1`（無意義）
 
@@ -161,8 +161,8 @@ component/
 
 ```bash
 # 檢查是否有遺漏的舊名稱
-grep -r "telegram-agentcore-bot" . --exclude-dir=.git
-grep -r "telegram-lambda" . --exclude-dir=.git --exclude-dir=backup
+grep -r "agentcore-ai-processor" . --exclude-dir=.git
+grep -r "agentcore-telegram-adapter" . --exclude-dir=.git --exclude-dir=backup
 
 # 應該沒有結果（除了 CHANGELOG 和歷史文檔）
 ```

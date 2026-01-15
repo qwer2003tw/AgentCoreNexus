@@ -12,8 +12,8 @@ telegram-adapter-receiver (接收層)
    ├─ telegram-adapter-response-router (響應路由 Lambda)
    └─ EventBridge: telegram-adapter-receiver-events
        ↓
-telegram-unified-bot (處理層)
-   └─ telegram-unified-bot-processor (AI 處理器 Lambda)
+agentcore-ai-processor (處理層)
+   └─ agentcore-ai-processor-processor (AI 處理器 Lambda)
 ```
 
 ### 消息流程
@@ -22,7 +22,7 @@ Telegram → API Gateway → receiver Lambda
    ├─ /info 命令 → 直接回應（1-2秒）
    └─ 其他消息 → EventBridge event
        ↓
-telegram-unified-bot-processor (處理器)
+agentcore-ai-processor-processor (處理器)
    ├─ AI 對話處理（Bedrock Claude, 5-30秒）
    ├─ 瀏覽器功能（AWS Browser sandbox, 10-20秒）
    └─ 發送 message.completed event
@@ -165,7 +165,7 @@ Policies:
 
 ## 🔑 必須配置的環境變數
 
-### telegram-unified-bot-processor（處理器）
+### agentcore-ai-processor-processor（處理器）
 
 **必須的環境變數**：
 ```yaml
@@ -181,7 +181,7 @@ Environment:
 ```bash
 aws lambda get-function-configuration \
   --region us-west-2 \
-  --function-name telegram-unified-bot-processor \
+  --function-name agentcore-ai-processor-processor \
   --query 'Environment.Variables'
 ```
 
@@ -266,7 +266,7 @@ aws dynamodb scan --region us-west-2 \
 aws logs tail /aws/lambda/telegram-adapter-receiver --region us-west-2 --since 1m
 
 # 2. 處理器日誌（應該看到 "Processing message"）
-aws logs tail /aws/lambda/telegram-unified-bot-processor --region us-west-2 --since 1m
+aws logs tail /aws/lambda/agentcore-ai-processor-processor --region us-west-2 --since 1m
 
 # 3. 路由器日誌（應該看到 "Routing response"）
 aws logs tail /aws/lambda/telegram-adapter-response-router --region us-west-2 --since 1m
@@ -289,13 +289,13 @@ aws events list-targets-by-rule \
 # 2. 處理器是否配置了 EVENT_BUS_NAME？
 aws lambda get-function-configuration \
   --region us-west-2 \
-  --function-name telegram-unified-bot-processor \
+  --function-name agentcore-ai-processor-processor \
   --query 'Environment.Variables.EVENT_BUS_NAME'
 
 # 3. 檢查處理器日誌是否有 "skipping completion event"
 aws logs filter-log-events \
   --region us-west-2 \
-  --log-group-name /aws/lambda/telegram-unified-bot-processor \
+  --log-group-name /aws/lambda/agentcore-ai-processor-processor \
   --filter-pattern "skipping completion event" \
   --start-time $(date -u -d '1 hour ago' +%s)000
 ```
@@ -422,7 +422,7 @@ with self.browser_session(region) as client:  # 正確使用
 aws logs tail /aws/lambda/telegram-adapter-receiver --region us-west-2 --since 5m
 
 # 步驟 2: 檢查處理器（消息是否處理？）
-aws logs tail /aws/lambda/telegram-unified-bot-processor --region us-west-2 --since 5m
+aws logs tail /aws/lambda/agentcore-ai-processor-processor --region us-west-2 --since 5m
 
 # 步驟 3: 檢查路由器（回應是否發送？）
 aws logs tail /aws/lambda/telegram-adapter-response-router --region us-west-2 --since 5m
@@ -446,7 +446,7 @@ aws events list-rules --region us-west-2 \
 
 # ✅ 處理器環境變數
 aws lambda get-function-configuration --region us-west-2 \
-  --function-name telegram-unified-bot-processor \
+  --function-name agentcore-ai-processor-processor \
   --query 'Environment.Variables.EVENT_BUS_NAME'
 
 # ✅ Webhook 狀態

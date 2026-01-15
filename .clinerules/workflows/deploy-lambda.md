@@ -60,7 +60,7 @@ git status
    - Webhook 接收 Lambda
    - 響應路由 Lambda
    
-2. telegram-unified-bot（處理器）
+2. agentcore-ai-processor（處理器）
    - AI 處理器 Lambda
    - Browser sandbox 整合
    
@@ -89,7 +89,7 @@ sam deploy --stack-name telegram-adapter-receiver \
 ```bash
 cd ai-processor
 sam build
-sam deploy --stack-name telegram-unified-bot \
+sam deploy --stack-name agentcore-ai-processor \
   --resolve-s3 \
   --capabilities CAPABILITY_IAM \
   --region us-west-2
@@ -151,7 +151,7 @@ aws logs tail /aws/lambda/telegram-adapter-receiver \
   --since 5m
 
 # 檢查處理器日誌
-aws logs tail /aws/lambda/telegram-unified-bot-processor \
+aws logs tail /aws/lambda/agentcore-ai-processor-processor \
   --region us-west-2 \
   --since 5m
 ```

@@ -20,7 +20,7 @@ AgentCoreNexus 使用多個 CloudFormation Stacks 實現模組化架構。
                        │ EventBridge Events
                        ↓
 ┌─────────────────────────────────────────────────────────┐
-│         telegram-unified-bot (AI 處理層)                 │
+│         agentcore-ai-processor (AI 處理層)                 │
 │  - Processor Lambda (AgentCore)                         │
 │  - Memory Service                                        │
 │  - Browser Service                                       │
@@ -71,7 +71,7 @@ sam deploy --stack-name telegram-adapter-receiver ...
 
 ---
 
-### 2. telegram-unified-bot（處理層）
+### 2. agentcore-ai-processor（處理層）
 **職責**: AI 核心處理
 - 監聽 EventBridge events
 - 處理 AI 對話（Bedrock Claude）
@@ -80,7 +80,7 @@ sam deploy --stack-name telegram-adapter-receiver ...
 - 發送回應 events
 
 **主要資源**:
-- Lambda: telegram-unified-bot-processor
+- Lambda: agentcore-ai-processor
 - AgentCore Memory
 - Bedrock Integration
 
@@ -89,7 +89,7 @@ sam deploy --stack-name telegram-adapter-receiver ...
 make deploy-processor
 # 或
 cd ai-processor
-sam deploy --stack-name telegram-unified-bot ...
+sam deploy --stack-name agentcore-ai-processor ...
 ```
 
 ---
@@ -129,7 +129,7 @@ sam deploy --stack-name agentcore-web-adapter ...
 telegram-adapter-receiver
   └─ 發送: message.received (Telegram 消息)
       ↓
-telegram-unified-bot-processor  
+agentcore-ai-processor  
   └─ 監聽: message.received
   └─ 發送: message.completed (AI 回應)
       ↓
@@ -318,7 +318,7 @@ aws cloudfront create-invalidation \
 telegram-adapter-receiver (獨立)
   ↓ exports: EventBridge Bus
   
-telegram-unified-bot
+agentcore-ai-processor
   ↑ imports: EventBridge Bus
   
 agentcore-web-adapter
@@ -333,7 +333,7 @@ agentcore-web-adapter
 aws cloudformation delete-stack --stack-name agentcore-web-adapter
 
 # 2. 再刪除 Processor（依賴 EventBridge）
-aws cloudformation delete-stack --stack-name telegram-unified-bot
+aws cloudformation delete-stack --stack-name agentcore-ai-processor
 
 # 3. 最後刪除 Telegram（提供 EventBridge）
 aws cloudformation delete-stack --stack-name telegram-adapter-receiver
@@ -351,7 +351,7 @@ make clean
 | Stack | 主要費用 | 月成本 |
 |-------|---------|--------|
 | telegram-adapter | Lambda + DynamoDB | $5-10 |
-| telegram-unified-bot | Lambda + Bedrock | $10-20 |
+| agentcore-ai-processor | Lambda + Bedrock | $10-20 |
 | agentcore-web-adapter | Lambda + DynamoDB + S3 + CloudFront | $15-30 |
 | **總計** | | **$30-60** |
 

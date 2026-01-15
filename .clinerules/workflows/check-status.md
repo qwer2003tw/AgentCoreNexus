@@ -30,7 +30,7 @@ aws cloudformation describe-stacks \
 ```
 📦 CloudFormation Stacks:
 - telegram-adapter-receiver: CREATE_COMPLETE ✅
-- telegram-unified-bot: UPDATE_COMPLETE ✅
+- agentcore-ai-processor: UPDATE_COMPLETE ✅
 ```
 
 ---
@@ -55,7 +55,7 @@ aws lambda list-functions \
 ```
 🔧 Lambda 函數:
 - telegram-adapter-receiver: Active (Successful) ✅
-- telegram-unified-bot-processor: Active (Successful) ✅
+- agentcore-ai-processor-processor: Active (Successful) ✅
 - telegram-adapter-response-router: Active (Successful) ✅
 ```
 
@@ -104,7 +104,7 @@ aws logs tail /aws/lambda/telegram-adapter-receiver \
   --filter-pattern "ERROR"
 
 # 處理器日誌
-aws logs tail /aws/lambda/telegram-unified-bot-processor \
+aws logs tail /aws/lambda/agentcore-ai-processor-processor \
   --region us-west-2 \
   --since 5m \
   --filter-pattern "ERROR"
@@ -125,7 +125,7 @@ aws logs tail /aws/lambda/telegram-adapter-response-router \
 ```
 📊 最近日誌 (5分鐘):
 - telegram-adapter-receiver: 無錯誤 ✅
-- telegram-unified-bot-processor: 無錯誤 ✅
+- agentcore-ai-processor-processor: 無錯誤 ✅
 - telegram-adapter-response-router: 無錯誤 ✅
 ```
 
@@ -139,7 +139,7 @@ aws logs tail /aws/lambda/telegram-adapter-response-router \
 # 檢查處理器的 EVENT_BUS_NAME
 aws lambda get-function-configuration \
   --region us-west-2 \
-  --function-name telegram-unified-bot-processor \
+  --function-name agentcore-ai-processor-processor \
   --query 'Environment.Variables.EVENT_BUS_NAME'
 ```
 
@@ -232,7 +232,7 @@ curl "https://api.telegram.org/bot${BOT_TOKEN}/getWebhookInfo"
 ❌ 檢測到系統問題：
 
 問題 1: Lambda 函數狀態異常
-- telegram-unified-bot-processor: Failed
+- agentcore-ai-processor-processor: Failed
 - 建議: 查看詳細日誌並重新部署
 
 問題 2: EventBridge 配置缺失
@@ -266,7 +266,7 @@ aws lambda list-functions --region us-west-2 \
 ```bash
 aws logs filter-log-events \
   --region us-west-2 \
-  --log-group-name /aws/lambda/telegram-unified-bot-processor \
+  --log-group-name /aws/lambda/agentcore-ai-processor-processor \
   --filter-pattern "ERROR" \
   --start-time $(date -u -d '1 hour ago' +%s)000
 ```

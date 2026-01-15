@@ -134,7 +134,7 @@ AgentCoreNexus/
 │   │                                      # - 發送 message.completed
 │   ├── telegram_agent.py                  # 原 Telegram bot 入口（向後兼容）
 │   ├── tests/                             # 測試套件（47 個測試）
-│   ├── template.yaml                      # SAM 部署模板（Stack: telegram-unified-bot）
+│   ├── template.yaml                      # SAM 部署模板（Stack: agentcore-ai-processor）
 │   └── requirements.txt                   # Python 依賴
 │
 └── web-adapter/                           # Web Channel (Frontend + Backend)
