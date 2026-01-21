@@ -119,6 +119,76 @@ class MemoryService:
             retrieval_config=retrieval_config,
         )
 
+    def create_image_event(
+        self, user_id: str, image_url: str, analysis: str, task: str = ""
+    ) -> bool:
+        """
+        創建圖片分析的 Memory Event
+
+        將圖片分析記錄到 short-term memory，
+        讓 long-term memory 能自動提取 facts
+
+        Args:
+            user_id: 用戶 ID（應該是 secure_actor_id）
+            image_url: 圖片 S3 URL
+            analysis: 分析結果文字
+            task: 分析任務描述
+
+        Returns:
+            是否成功
+        """
+        if not self.enabled:
+            logger.info("Memory 未啟用，跳過圖片 event 記錄")
+            return False
+
+        try:
+            from datetime import datetime
+
+            from bedrock_agentcore.memory import MemoryClient
+
+            client = MemoryClient(region_name=settings.AWS_REGION)
+
+            # 構建 event data（結構化資訊）
+            event_data = {
+                "type": "image_analysis",
+                "image_url": image_url,
+                "task": task,
+                "analysis": analysis,
+                "timestamp": datetime.utcnow().isoformat(),
+            }
+
+            # 構建 event metadata（供檢索）
+            event_metadata = {
+                "source": "image_analysis_tool",
+                "content_type": "image",
+                "filename": image_url.split("/")[-1],
+            }
+
+            # 創建 event（寫入 short-term memory）
+            # 注意：session_id 需要從當前 context 獲取
+            # 這裡使用 user_id 作為 session_id（簡化處理）
+            client.create_event(
+                memory_id=self.memory_id,
+                actor_id=user_id,
+                session_id=user_id,  # 使用 user_id 作為 session
+                event_data=event_data,
+                event_metadata=event_metadata,
+            )
+
+            logger.info(
+                "✅ 圖片分析已記錄到 Memory",
+                extra={
+                    "memory_id": self.memory_id,
+                    "actor_id": user_id,
+                    "image_url": image_url,
+                },
+            )
+            return True
+
+        except Exception as e:
+            logger.error(f"❌ 寫入圖片 Memory 失敗：{str(e)}", exc_info=True)
+            return False
+
     def get_status(self) -> dict[str, Any]:
         """
         取得 Memory 服務狀態

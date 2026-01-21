@@ -6,30 +6,20 @@ Description: >
   Channel-agnostic AI Processor for multi-channel message processing using AgentCore
 
 Parameters:
-  EventBusName:
+  ReceiverStackName:
     Type: String
-    Description: EventBridge Event Bus Name (from telegram-lambda stack)
-    Default: ''
+    Description: Name of the telegram-adapter stack for importing resources
+    Default: 'agentcore-telegram-adapter'
 
-  EventBusArn:
-    Type: String
-    Description: EventBridge Event Bus ARN (from telegram-lambda stack)
-    Default: ''
+  BedrockAgentCoreMemoryId:
+    Type: AWS::SSM::Parameter::Value<String>
+    Description: Memory ID from SSM Parameter Store
+    Default: /agentcore/memory/telegram-bot
 
   BedrockModelId:
     Type: String
     Description: Bedrock Model ID for AgentCore
     Default: 'anthropic.claude-3-5-sonnet-20241022-v2:0'
-
-  BedrockAgentCoreMemoryId:
-    Type: String
-    Description: Optional Bedrock AgentCore Memory ID
-    Default: ''
-
-  ReceiverStackName:
-    Type: String
-    Description: Name of the telegram-adapter stack for importing S3 bucket
-    Default: 'agentcore-telegram-adapter'
 
 Globals:
   Function:
@@ -55,7 +45,8 @@ Resources:
       MemorySize: 1024
       Environment:
         Variables:
-          EVENT_BUS_NAME: !Ref EventBusName
+          EVENT_BUS_NAME: !ImportValue 
+            Fn::Sub: '${ReceiverStackName}-EventBusName'
           BEDROCK_MODEL_ID: !Ref BedrockModelId
           BEDROCK_AGENTCORE_MEMORY_ID: !Ref BedrockAgentCoreMemoryId
           BROWSER_ENABLED: 'true'
@@ -166,7 +157,11 @@ Outputs:
     Value: !Ref ProcessorLogGroup
 
   DeploymentInstructions:
-    Description: Instructions for connecting to EventBridge
+    Description: Deployment completed with automatic configuration
     Value: !Sub |
-      After deploying this stack, update the telegram-lambda MessageReceivedRule with this target:
-      aws events put-targets --rule ${EventBusName}-message-received --event-bus-name ${EventBusName} --targets "Id"="AgentProcessor","Arn"="${AgentProcessorFunction.Arn}"
+      Stack deployed successfully with automatic configuration:
+      - EVENT_BUS_NAME: Imported from ${ReceiverStackName}
+      - MEMORY_ID: Read from SSM Parameter Store
+      - FILE_STORAGE_BUCKET: Imported from ${ReceiverStackName}
+      
+      All configuration is automated. No manual steps required.

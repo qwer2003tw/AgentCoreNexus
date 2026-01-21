@@ -61,50 +61,41 @@ class ConversationAgent:
             logger.error(f"❌ Agent 建立失敗: {str(e)}", exc_info=True)
             raise
 
-    def process_message(self, message: str, images: list[dict] | None = None) -> dict[str, Any]:
+    def process_message(self, message: str) -> dict[str, Any]:
         """
-        處理用戶訊息（支援圖片）- 帶重試和友善錯誤處理
+        處理用戶訊息 - 帶重試和友善錯誤處理
+
+        ✅ 新架構：只處理純文字訊息
+        圖片處理已移至 tools/image_analysis.py
 
         Args:
             message: 用戶訊息文字
-            images: 圖片列表，格式 [{"data": base64_str, "media_type": "image/jpeg"}, ...]
 
         Returns:
             處理結果字典
         """
         # 驗證訊息
-        if not message and not images:
+        if not message:
             message = "你好，我需要協助"
 
-        message = message.strip() if message else ""
+        message = message.strip()
 
         # 記錄處理信息
-        if images:
-            logger.info(f"📥 處理多模態訊息: {len(images)} 張圖片 + 文字({len(message)} 字元)")
-        else:
-            logger.info(f"📥 處理訊息: {message[:50]}...")
+        logger.info(f"📥 處理訊息: {message[:100]}...")
 
-        # 構建內容（支援多模態）
-        if images:
-            content = self._build_multimodal_content(message, images)
-            logger.info(f"🖼️ 構建多模態內容: {len(images)} 張圖片")
-        else:
-            content = message
+        # ✅ 簡化：content 就是 message（純文字）
+        content = message
 
         # 分析 context 大小（用於診斷）
         context_analysis = analyze_context_size(
             messages=content,
-            memory_context=None,  # 無法直接獲取，在 processor_entry 層級分析
-            images=images,
+            memory_context=None,
+            images=None,  # 不再有圖片
         )
         log_context_analysis(context_analysis, operation="process_message")
 
         # 使用重試機制執行 Agent
-        retry_context = {
-            "has_images": bool(images),
-            "message_length": len(message),
-            "images_count": len(images) if images else 0,
-        }
+        retry_context = {"message_length": len(message)}
 
         # 定義降級函數（無 Memory 重試）
         def fallback_without_memory():
@@ -170,7 +161,7 @@ class ConversationAgent:
             error_context = {
                 "retry_count": attempts,
                 "has_memory": bool(self.session_manager),
-                "processing_image": bool(images),
+                "processing_image": False,  # ✅ 不再處理圖片
             }
             friendly_message = format_error_response(error, error_context)
 
@@ -180,34 +171,6 @@ class ConversationAgent:
                 "error": str(error),
                 "error_type": result_dict.get("error_type"),
             }
-
-    def _build_multimodal_content(self, text: str, images: list[dict]) -> list[dict]:
-        """
-        構建 Bedrock Converse API 格式的多模態內容
-
-        Args:
-            text: 文字內容
-            images: 圖片列表，格式 [{"bytes": image_bytes, "format": "jpeg"}, ...]
-
-        Returns:
-            多模態內容列表（Converse API 格式）
-        """
-        content = []
-
-        # 添加圖片（Converse API 格式）
-        for img in images:
-            content.append(
-                {"image": {"format": img.get("format", "jpeg"), "source": {"bytes": img["bytes"]}}}
-            )
-
-        # 添加文字（如果有）
-        if text:
-            content.append({"text": text})
-        else:
-            # 如果沒有文字，添加預設問題
-            content.append({"text": "請詳細描述這張圖片的內容。"})
-
-        return content
 
     def _extract_response(self, result: Any) -> str:
         """

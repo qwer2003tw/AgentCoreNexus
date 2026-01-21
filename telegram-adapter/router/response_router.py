@@ -94,7 +94,16 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
 
         # 提取訊息資訊
         message_id = detail["messageId"]
-        channel = detail["channel"]
+        channel_info = detail["channel"]
+
+        # 提取 channel type（支援舊格式字符串和新格式 dict）
+        if isinstance(channel_info, dict):
+            channel = channel_info.get("type", "unknown")
+            channel_id = channel_info.get("channelId", "")
+        else:
+            channel = channel_info  # 向後兼容字符串格式
+            channel_id = ""
+
         user_info = detail["user"]
         user_id = user_info.get("id", user_info.get("userId"))
         response_content = detail["response"]
@@ -106,6 +115,7 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
                 "event_type": "router_processing",
                 "message_id": message_id,
                 "channel": channel,
+                "channel_id": channel_id,
                 "user_id": user_id,
                 "response_length": len(response_content)
                 if isinstance(response_content, str)

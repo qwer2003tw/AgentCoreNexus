@@ -122,74 +122,6 @@ def process_eventbridge_event(event: dict[str, Any], context: Any) -> dict[str, 
     }
 
 
-def process_image_attachments(attachments: list, user_id: str) -> list:
-    """
-    處理圖片附件，準備為 Bedrock Converse API 格式
-
-    Args:
-        attachments: 圖片附件列表
-        user_id: 用戶 ID
-
-    Returns:
-        圖片數據列表 [{"bytes": image_bytes, "format": "jpeg"}, ...]
-    """
-    images_data = []
-
-    for attachment in attachments:
-        try:
-            # 檢查是否有 S3 URL
-            s3_url = attachment.get("s3_url")
-            if not s3_url:
-                logger.warning(f"No S3 URL in image attachment: {attachment}")
-                continue
-
-            filename = attachment.get("file_name", "unknown")
-
-            logger.info(
-                f"🖼️ Processing image: {filename}",
-                extra={"user_id": user_id, "file_name": filename, "s3_url": s3_url},
-            )
-
-            # 從 S3 讀取圖片（直接用 bytes，不需要 base64）
-            image_bytes = file_service.read_from_s3(s3_url)
-            if not image_bytes:
-                logger.warning(f"Failed to read image from S3: {filename}")
-                continue
-
-            # 判斷圖片格式（Converse API 格式）
-            image_format = _detect_image_format(filename)
-
-            images_data.append({"bytes": image_bytes, "format": image_format})
-
-            logger.info(
-                f"✅ Image prepared for Converse API: {filename} ({image_format}, {len(image_bytes)} bytes)"
-            )
-
-        except Exception as e:
-            logger.error(f"Error processing image attachment: {e}", exc_info=True)
-
-    return images_data
-
-
-def _detect_image_format(filename: str) -> str:
-    """
-    根據檔案名稱判斷圖片格式（Converse API 格式）
-
-    Args:
-        filename: 檔案名稱
-
-    Returns:
-        圖片格式：'jpeg' | 'png' | 'gif' | 'webp'
-    """
-    import os
-
-    ext = os.path.splitext(filename)[1].lower()
-
-    formats = {".jpg": "jpeg", ".jpeg": "jpeg", ".png": "png", ".gif": "gif", ".webp": "webp"}
-
-    return formats.get(ext, "jpeg")
-
-
 def process_file_attachments(attachments: list, user_id: str) -> str | None:
     """
     處理檔案附件（非圖片）
@@ -382,21 +314,61 @@ def process_normalized_message(normalized: dict[str, Any]) -> dict[str, Any]:
         if file_attachments:
             file_processing_result = process_file_attachments(file_attachments, user_id)
 
-        # 處理圖片附件（轉換為 base64）
-        images_data = []
+        # ✅ 新架構：使用 image_analysis tool 處理圖片
+        image_analysis_results = []
         if image_attachments:
-            images_data = process_image_attachments(image_attachments, user_id)
+            from tools.image_analysis import analyze_image
+
+            logger.info(f"🖼️ 使用 Image Analysis Tool 處理 {len(image_attachments)} 張圖片")
+
+            for img_att in image_attachments:
+                s3_url = img_att.get("s3_url")
+                filename = img_att.get("file_name", "image")
+                task = img_att.get("task", "請詳細描述這張圖片的內容")
+
+                # 調用 image_analysis tool
+                analysis_result = analyze_image(
+                    image_s3_url=s3_url,
+                    user_id=secure_actor_id(user_id),
+                    task=task,
+                    filename=filename,
+                )
+
+                if analysis_result["success"]:
+                    # 成功：記錄分析結果
+                    analysis_text = analysis_result["analysis"]
+                    image_analysis_results.append(f"📸 圖片 {filename}：\n{analysis_text}")
+
+                    # 寫入 Memory
+                    if memory_service.enabled:
+                        memory_service.create_image_event(
+                            user_id=secure_actor_id(user_id),
+                            image_url=s3_url,
+                            analysis=analysis_text,
+                            task=task,
+                        )
+                else:
+                    # 失敗：記錄錯誤
+                    error = analysis_result.get("error", "未知錯誤")
+                    image_analysis_results.append(f"❌ 圖片 {filename} 分析失敗：{error}")
 
         # 處理文字訊息或檔案訊息
         if message_type in ["text", "file", "image", "video", "audio"] and (
-            text or file_processing_result or images_data
+            text or file_processing_result or image_analysis_results
         ):
-            # 如果有檔案處理結果，添加到訊息文字中
+            # 構建完整訊息文字
             full_text = text
+
+            # 添加檔案處理結果
             if file_processing_result:
                 full_text = (
                     f"{text}\n\n{file_processing_result}" if text else file_processing_result
                 )
+
+            # 添加圖片分析結果
+            if image_analysis_results:
+                image_summary = "\n\n".join(image_analysis_results)
+                full_text = f"{full_text}\n\n{image_summary}" if full_text else image_summary
             # 驗證 user_id 格式
             if not validate_user_id(user_id):
                 logger.warning(f"Invalid user_id format: {user_id}")
@@ -460,22 +432,11 @@ def process_normalized_message(normalized: dict[str, Any]) -> dict[str, Any]:
                         extra={"user_id": user_id, "secure_actor_id": secure_user_id},
                     )
 
-            # 建立 ConversationAgent
-            # 注意：如果有圖片，暫時禁用 Memory（因為 bytes 無法序列化）
-            if images_data:
-                logger.info(
-                    "🖼️ 圖片分析模式：暫時禁用 Memory（AgentCore Memory 無法序列化圖片 bytes）"
-                )
-                agent = ConversationAgent(
-                    tools=AVAILABLE_TOOLS,
-                    session_manager=None,  # 圖片分析時不使用 Memory
-                )
-                logger.info(f"🖼️ 傳遞 {len(images_data)} 張圖片到 Agent（無 Memory）")
-                response_dict = agent.process_message(full_text, images=images_data)
-            else:
-                # 純文字對話使用 Memory
-                agent = ConversationAgent(tools=AVAILABLE_TOOLS, session_manager=session_manager)
-                response_dict = agent.process_message(full_text)
+            # ✅ 建立 ConversationAgent（新架構：只傳文字）
+            agent = ConversationAgent(tools=AVAILABLE_TOOLS, session_manager=session_manager)
+
+            # ✅ 只傳遞文字給 Agent（圖片已通過 tool 處理並添加到 full_text）
+            response_dict = agent.process_message(full_text)
 
             # 提取回應字串
             response_text = (
