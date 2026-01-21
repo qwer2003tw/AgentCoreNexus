@@ -581,6 +581,32 @@ Resources:
       Principal: events.amazonaws.com
       SourceArn: !GetAtt MessageCompletedRule.Arn
 
+  # EventBridge Rule - Route session.clear to Agent Processor
+  SessionClearRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub '${AWS::StackName}-session-clear'
+      Description: Route session.clear events to Agent Processor for memory cleanup
+      EventBusName: !Ref UniversalEventBus
+      EventPattern:
+        source:
+          - telegram-adapter
+        detail-type:
+          - session.clear
+      State: ENABLED
+      Targets:
+        - Arn: !ImportValue agentcore-ai-processor-ProcessorArn
+          Id: SessionClearTarget
+
+  # Permission for EventBridge to invoke Processor for session.clear
+  SessionClearEventPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !ImportValue agentcore-ai-processor-ProcessorName
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt SessionClearRule.Arn
+
 Outputs:
   WebhookUrl:
     Description: Telegram Webhook URL (Use this to register with Telegram)

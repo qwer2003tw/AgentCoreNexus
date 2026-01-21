@@ -3,9 +3,12 @@ New Session Command Handler
 處理 /new 指令，開始新的對話 session
 """
 
+import json
+import os
 import uuid
 from datetime import datetime
 
+import boto3
 import telegram_client
 from commands.base import CommandHandler
 from telegram import Update
@@ -13,6 +16,17 @@ from telegram import Update
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
+
+# EventBridge client for sending session.clear events
+_eventbridge_client = None
+
+
+def get_eventbridge_client():
+    """Get EventBridge client singleton"""
+    global _eventbridge_client
+    if _eventbridge_client is None:
+        _eventbridge_client = boto3.client("events")
+    return _eventbridge_client
 
 
 class NewCommandHandler(CommandHandler):
@@ -60,6 +74,11 @@ class NewCommandHandler(CommandHandler):
                 f"Creating new session for user {user_id}",
                 extra={"user_id": user_id, "username": username, "new_session_id": new_session_id},
             )
+
+            # 發送 session.clear 事件到 EventBridge（讓 Processor 清除 Memory）
+            clear_success = send_session_clear_event(user_id, str(chat_id), new_session_id)
+            if not clear_success:
+                logger.warning(f"Failed to send session clear event for user {user_id}")
 
             # 構建回應訊息
             message_lines = [
@@ -113,3 +132,55 @@ class NewCommandHandler(CommandHandler):
     def get_description(self) -> str:
         """取得指令描述"""
         return "開始新的對話 session（清空短期記憶，保留長期記憶）"
+
+
+def send_session_clear_event(user_id: int, chat_id: str, new_session_id: str) -> bool:
+    """
+    發送 session.clear 事件到 EventBridge
+
+    Args:
+        user_id: Telegram user ID
+        chat_id: Telegram chat ID
+        new_session_id: 新的 session ID
+
+    Returns:
+        True if successful
+    """
+    event_bus_name = os.getenv("EVENT_BUS_NAME")
+    if not event_bus_name:
+        logger.warning("EVENT_BUS_NAME not configured, cannot clear session")
+        return False
+
+    try:
+        evb = get_eventbridge_client()
+
+        event_detail = {
+            "user_id": str(user_id),
+            "chat_id": chat_id,
+            "new_session_id": new_session_id,
+            "timestamp": datetime.now().isoformat(),
+        }
+
+        response = evb.put_events(
+            Entries=[
+                {
+                    "Source": "telegram-adapter",
+                    "DetailType": "session.clear",
+                    "Detail": json.dumps(event_detail),
+                    "EventBusName": event_bus_name,
+                }
+            ]
+        )
+
+        if response.get("FailedEntryCount", 0) > 0:
+            logger.error(f"Failed to send session.clear event: {response}")
+            return False
+
+        logger.info(
+            "Session clear event sent", extra={"user_id": user_id, "new_session_id": new_session_id}
+        )
+        return True
+
+    except Exception as e:
+        logger.error(f"Error sending session clear event: {e}", exc_info=True)
+        return False

@@ -189,6 +189,64 @@ class MemoryService:
             logger.error(f"❌ 寫入圖片 Memory 失敗：{str(e)}", exc_info=True)
             return False
 
+    def clear_session(self, actor_id: str) -> bool:
+        """
+        清除用戶的 Memory session
+
+        通過刪除 session 的所有事件來重置記憶
+
+        Args:
+            actor_id: 用戶的 actor ID（應該是 secure_actor_id）
+
+        Returns:
+            是否成功
+        """
+        if not self.enabled:
+            logger.info("Memory 未啟用，跳過 session 清除")
+            return False
+
+        try:
+            from bedrock_agentcore.memory import MemoryClient
+
+            client = MemoryClient(region_name=settings.AWS_REGION)
+
+            # 列出該 actor 的所有 sessions
+            sessions_response = client.list_sessions(
+                memory_id=self.memory_id, actor_id=actor_id, max_results=100
+            )
+
+            sessions = sessions_response.get("sessions", [])
+
+            if not sessions:
+                logger.info(f"No sessions found for actor {actor_id}")
+                return True
+
+            # 刪除所有 sessions
+            deleted_count = 0
+            for session in sessions:
+                session_id = session.get("sessionId")
+                if session_id:
+                    try:
+                        client.delete_session(memory_id=self.memory_id, session_id=session_id)
+                        deleted_count += 1
+                        logger.info(f"Deleted session: {session_id}")
+                    except Exception as e:
+                        logger.warning(f"Failed to delete session {session_id}: {e}")
+
+            logger.info(
+                "✅ Session 清除完成",
+                extra={
+                    "actor_id": actor_id,
+                    "sessions_deleted": deleted_count,
+                    "total_sessions": len(sessions),
+                },
+            )
+            return True
+
+        except Exception as e:
+            logger.error(f"❌ 清除 session 失敗：{str(e)}", exc_info=True)
+            return False
+
     def get_status(self) -> dict[str, Any]:
         """
         取得 Memory 服務狀態

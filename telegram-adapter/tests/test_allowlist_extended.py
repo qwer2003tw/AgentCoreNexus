@@ -27,7 +27,7 @@ def mock_dynamodb_table():
         )
 
         # Mock get_dynamodb_table 函數返回這個 table
-        with patch.object(allowlist, 'get_dynamodb_table', return_value=table):
+        with patch.object(allowlist, "get_dynamodb_table", return_value=table):
             yield table
 
 

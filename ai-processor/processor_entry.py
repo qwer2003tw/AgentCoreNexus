@@ -55,9 +55,10 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """
     Lambda 入口函數 - 處理 EventBridge 事件
 
-    支援兩種觸發來源：
+    支援三種觸發來源：
     1. EventBridge: event['detail'] 包含標準化訊息
     2. SQS (向後兼容): event['Records'] 包含 SQS 訊息
+    3. EventBridge: session.clear 清除 session
 
     Args:
         event: EventBridge 事件或 SQS 事件
@@ -81,7 +82,14 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             logger.info("Processing SQS event (legacy mode)")
             return process_sqs_event(event, context)
         elif "detail" in event:
-            # EventBridge 事件（新架構）
+            detail_type = event.get("detail-type", "")
+
+            # EventBridge session.clear 事件
+            if detail_type == "session.clear":
+                logger.info("Processing session.clear event")
+                return process_session_clear_event(event, context)
+
+            # EventBridge message.received 事件（新架構）
             logger.info("Processing EventBridge event")
             return process_eventbridge_event(event, context)
         else:
@@ -553,6 +561,62 @@ def publish_completion_event(original_message: dict[str, Any], result: dict[str,
     except Exception as e:
         logger.error(f"Failed to publish completion event: {e}", exc_info=True)
         return False
+
+
+def process_session_clear_event(event: dict[str, Any], context: Any) -> dict[str, Any]:
+    """
+    處理 session.clear 事件 - 清除用戶的 Memory session
+
+    Args:
+        event: EventBridge session.clear 事件
+        context: Lambda context
+
+    Returns:
+        處理結果
+    """
+    detail = event.get("detail", {})
+    user_id = detail.get("user_id", "unknown")
+    new_session_id = detail.get("new_session_id", "")
+
+    logger.info(
+        f"Clearing session for user {user_id}",
+        extra={"user_id": user_id, "new_session_id": new_session_id},
+    )
+
+    if not memory_service.enabled:
+        logger.warning("Memory service not enabled, cannot clear session")
+        return {
+            "statusCode": 200,
+            "body": json.dumps({"status": "skipped", "reason": "memory_disabled"}),
+        }
+
+    try:
+        from utils.security import secure_actor_id
+
+        secure_user_id = secure_actor_id(user_id)
+
+        # 清除 session（通過刪除所有 session 記錄）
+        # Bedrock Memory 會自動開始新 session
+        success = memory_service.clear_session(secure_user_id)
+
+        if success:
+            logger.info(
+                f"Session cleared successfully for user {user_id}",
+                extra={"user_id": user_id, "secure_actor_id": secure_user_id},
+            )
+            return {
+                "statusCode": 200,
+                "body": json.dumps(
+                    {"status": "success", "user_id": user_id, "new_session_id": new_session_id}
+                ),
+            }
+        else:
+            logger.warning(f"Failed to clear session for user {user_id}")
+            return {"statusCode": 500, "body": json.dumps({"status": "failed", "user_id": user_id})}
+
+    except Exception as e:
+        logger.error(f"Error clearing session: {e}", exc_info=True)
+        return {"statusCode": 500, "body": json.dumps({"status": "error", "error": str(e)})}
 
 
 def publish_failure_event(original_message: dict[str, Any], result: dict[str, Any]) -> bool:
