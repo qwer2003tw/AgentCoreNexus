@@ -148,31 +148,32 @@ class MemoryService:
 
             client = MemoryClient(region_name=settings.AWS_REGION)
 
-            # 構建 event data（結構化資訊）
-            event_data = {
-                "type": "image_analysis",
-                "image_url": image_url,
-                "task": task,
-                "analysis": analysis,
-                "timestamp": datetime.utcnow().isoformat(),
-            }
+            # 提取檔名
+            filename = image_url.split("/")[-1]
 
-            # 構建 event metadata（供檢索）
-            event_metadata = {
-                "source": "image_analysis_tool",
-                "content_type": "image",
-                "filename": image_url.split("/")[-1],
-            }
+            # 構建 payload（Bedrock Memory API 格式）
+            payload = [
+                {
+                    "type": "text",
+                    "data": {
+                        "content": f"圖片分析：{filename}\n任務：{task}\n結果：{analysis}",
+                        "metadata": {
+                            "type": "image_analysis",
+                            "image_url": image_url,
+                            "filename": filename,
+                            "timestamp": datetime.utcnow().isoformat(),
+                        },
+                    },
+                }
+            ]
 
             # 創建 event（寫入 short-term memory）
-            # 注意：session_id 需要從當前 context 獲取
-            # 這裡使用 user_id 作為 session_id（簡化處理）
+            # 注意：使用 payload 參數，不是 event_data
             client.create_event(
                 memory_id=self.memory_id,
                 actor_id=user_id,
                 session_id=user_id,  # 使用 user_id 作為 session
-                event_data=event_data,
-                event_metadata=event_metadata,
+                payload=payload,
             )
 
             logger.info(
