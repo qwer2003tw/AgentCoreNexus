@@ -10,6 +10,7 @@ from datetime import datetime
 
 import boto3
 import telegram_client
+from allowlist import update_session_id
 from commands.base import CommandHandler
 from telegram import Update
 
@@ -75,6 +76,15 @@ class NewCommandHandler(CommandHandler):
                 extra={"user_id": user_id, "username": username, "new_session_id": new_session_id},
             )
 
+            # 更新 DynamoDB 中的 session 映射
+            update_success = update_session_id(chat_id, new_session_id)
+
+            if not update_success:
+                logger.warning(
+                    "⚠️ Session 映射更新失敗，但繼續處理",
+                    extra={"chat_id": chat_id, "new_session_id": new_session_id},
+                )
+
             # 發送 session.clear 事件到 EventBridge（讓 Processor 清除 Memory）
             clear_success = send_session_clear_event(user_id, str(chat_id), new_session_id)
             if not clear_success:
@@ -99,9 +109,7 @@ class NewCommandHandler(CommandHandler):
 
             response_text = "\n".join(message_lines)
 
-            # 發送回覆（包含 session_id 供下次使用）
-            # 注意：這裡需要將 new_session_id 儲存起來，讓下一次訊息使用
-            # 目前先簡單實現，未來可以用 DynamoDB 儲存
+            # 發送回覆
             telegram_client.send_message(chat_id, response_text)
 
             logger.info(

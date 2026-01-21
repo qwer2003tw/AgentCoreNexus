@@ -49,13 +49,13 @@ class TestLambdaHandler:
         return context
 
     @patch("src.handler.send_to_queue")
-    @patch("src.handler.check_allowed")
+    @patch("src.handler.check_allowed_with_session")
     def test_valid_user_message(
-        self, mock_check_allowed, mock_send_to_queue, valid_telegram_event, mock_context
+        self, mock_check_allowed_with_session, mock_send_to_queue, valid_telegram_event, mock_context
     ):
         """測試有效用戶訊息處理"""
-        # 設定 mock 返回值
-        mock_check_allowed.return_value = True
+        # 設定 mock 返回值（三元組）
+        mock_check_allowed_with_session.return_value = (True, "test_user", "123456789")
         mock_send_to_queue.return_value = True
 
         # 執行 handler
@@ -68,14 +68,14 @@ class TestLambdaHandler:
         assert body["status"] == "ok"
 
         # 驗證函數被正確調用
-        mock_check_allowed.assert_called_once_with(123456789, "test_user")
+        mock_check_allowed_with_session.assert_called_once_with(123456789, "test_user")
         mock_send_to_queue.assert_called_once()
 
-    @patch("src.handler.check_allowed")
-    def test_unauthorized_user(self, mock_check_allowed, valid_telegram_event, mock_context):
+    @patch("src.handler.check_allowed_with_session")
+    def test_unauthorized_user(self, mock_check_allowed_with_session, valid_telegram_event, mock_context):
         """測試未授權用戶訪問"""
-        # 設定 mock 返回值
-        mock_check_allowed.return_value = False
+        # 設定 mock 返回值（三元組，allowed=False）
+        mock_check_allowed_with_session.return_value = (False, "test_user", "123456789")
 
         # 執行 handler
         response = lambda_handler(valid_telegram_event, mock_context)
@@ -85,8 +85,8 @@ class TestLambdaHandler:
         body = json.loads(response["body"])
         assert body["status"] == "ignored"
 
-        # 驗證 check_allowed 被調用
-        mock_check_allowed.assert_called_once_with(123456789, "test_user")
+        # 驗證 check_allowed_with_session 被調用
+        mock_check_allowed_with_session.assert_called_once_with(123456789, "test_user")
 
     def test_malformed_payload(self, mock_context):
         """測試格式錯誤的 payload"""
@@ -113,13 +113,13 @@ class TestLambdaHandler:
         assert body["error"] == "Invalid webhook payload"
 
     @patch("src.handler.send_to_queue")
-    @patch("src.handler.check_allowed")
+    @patch("src.handler.check_allowed_with_session")
     def test_sqs_send_failure(
-        self, mock_check_allowed, mock_send_to_queue, valid_telegram_event, mock_context
+        self, mock_check_allowed_with_session, mock_send_to_queue, valid_telegram_event, mock_context
     ):
         """測試 SQS 發送失敗"""
         # 設定 mock 返回值
-        mock_check_allowed.return_value = True
+        mock_check_allowed_with_session.return_value = (True, "test_user", "123456789")
         mock_send_to_queue.return_value = False
 
         # 執行 handler
@@ -130,11 +130,11 @@ class TestLambdaHandler:
         body = json.loads(response["body"])
         assert body["status"] == "sqs_failed"
 
-    @patch("src.handler.check_allowed")
-    def test_check_allowed_exception(self, mock_check_allowed, valid_telegram_event, mock_context):
-        """測試 check_allowed 拋出異常"""
+    @patch("src.handler.check_allowed_with_session")
+    def test_check_allowed_exception(self, mock_check_allowed_with_session, valid_telegram_event, mock_context):
+        """測試 check_allowed_with_session 拋出異常"""
         # 設定 mock 拋出異常
-        mock_check_allowed.side_effect = Exception("Database error")
+        mock_check_allowed_with_session.side_effect = Exception("Database error")
 
         # 執行 handler
         response = lambda_handler(valid_telegram_event, mock_context)
@@ -146,9 +146,9 @@ class TestLambdaHandler:
 
     @patch.dict(os.environ, {"TELEGRAM_SECRET_TOKEN": "test_secret_token_abc123"})
     @patch("src.handler.send_to_queue")
-    @patch("src.handler.check_allowed")
+    @patch("src.handler.check_allowed_with_session")
     def test_valid_secret_token(
-        self, mock_check_allowed, mock_send_to_queue, valid_telegram_event, mock_context
+        self, mock_check_allowed_with_session, mock_send_to_queue, valid_telegram_event, mock_context
     ):
         """測試有效的 secret token"""
         # 設定 event 包含正確的 token
@@ -157,7 +157,7 @@ class TestLambdaHandler:
         }
 
         # 設定 mock 返回值
-        mock_check_allowed.return_value = True
+        mock_check_allowed_with_session.return_value = (True, "test_user", "123456789")
         mock_send_to_queue.return_value = True
 
         # 執行 handler
@@ -169,14 +169,14 @@ class TestLambdaHandler:
         assert body["status"] == "ok"
 
     @patch.dict(os.environ, {"TELEGRAM_SECRET_TOKEN": "test_secret_token_abc123"})
-    @patch("src.handler.check_allowed")
-    def test_invalid_secret_token(self, mock_check_allowed, valid_telegram_event, mock_context):
+    @patch("src.handler.check_allowed_with_session")
+    def test_invalid_secret_token(self, mock_check_allowed_with_session, valid_telegram_event, mock_context):
         """測試無效的 secret token"""
         # 設定 event 包含錯誤的 token
         valid_telegram_event["headers"] = {"X-Telegram-Bot-Api-Secret-Token": "wrong_token"}
 
-        # Mock check_allowed 以避免實際檢查
-        mock_check_allowed.return_value = False
+        # Mock check_allowed_with_session 以避免實際檢查
+        mock_check_allowed_with_session.return_value = (False, "test_user", "123456789")
 
         # 執行 handler
         response = lambda_handler(valid_telegram_event, mock_context)
@@ -187,14 +187,14 @@ class TestLambdaHandler:
         assert body["status"] == "ignored"
 
     @patch.dict(os.environ, {"TELEGRAM_SECRET_TOKEN": "test_secret_token_abc123"})
-    @patch("src.handler.check_allowed")
-    def test_missing_secret_token(self, mock_check_allowed, valid_telegram_event, mock_context):
+    @patch("src.handler.check_allowed_with_session")
+    def test_missing_secret_token(self, mock_check_allowed_with_session, valid_telegram_event, mock_context):
         """測試缺少 secret token"""
         # event 不包含 token header
         valid_telegram_event["headers"] = {}
 
-        # Mock check_allowed 以避免實際檢查
-        mock_check_allowed.return_value = False
+        # Mock check_allowed_with_session 以避免實際檢查
+        mock_check_allowed_with_session.return_value = (False, "test_user", "123456789")
 
         # 執行 handler
         response = lambda_handler(valid_telegram_event, mock_context)
@@ -206,9 +206,9 @@ class TestLambdaHandler:
 
     @patch.dict(os.environ, {"TELEGRAM_SECRET_TOKEN": "test_secret_token_abc123"})
     @patch("src.handler.send_to_queue")
-    @patch("src.handler.check_allowed")
+    @patch("src.handler.check_allowed_with_session")
     def test_lowercase_secret_token_header(
-        self, mock_check_allowed, mock_send_to_queue, valid_telegram_event, mock_context
+        self, mock_check_allowed_with_session, mock_send_to_queue, valid_telegram_event, mock_context
     ):
         """測試小寫的 secret token header"""
         # 設定 event 包含小寫 header key 的正確 token
@@ -217,7 +217,7 @@ class TestLambdaHandler:
         }
 
         # 設定 mock 返回值
-        mock_check_allowed.return_value = True
+        mock_check_allowed_with_session.return_value = (True, "test_user", "123456789")
         mock_send_to_queue.return_value = True
 
         # 執行 handler
@@ -230,16 +230,16 @@ class TestLambdaHandler:
 
     @patch.dict(os.environ, {"TELEGRAM_SECRET_TOKEN": ""})
     @patch("src.handler.send_to_queue")
-    @patch("src.handler.check_allowed")
+    @patch("src.handler.check_allowed_with_session")
     def test_no_secret_token_configured(
-        self, mock_check_allowed, mock_send_to_queue, valid_telegram_event, mock_context
+        self, mock_check_allowed_with_session, mock_send_to_queue, valid_telegram_event, mock_context
     ):
         """測試未設定 secret token 時（向後相容）"""
         # 沒有設定 token header
         valid_telegram_event["headers"] = {}
 
         # 設定 mock 返回值
-        mock_check_allowed.return_value = True
+        mock_check_allowed_with_session.return_value = (True, "test_user", "123456789")
         mock_send_to_queue.return_value = True
 
         # 執行 handler
@@ -250,9 +250,9 @@ class TestLambdaHandler:
         body = json.loads(response["body"])
         assert body["status"] == "ok"
 
-    @patch("src.handler.check_allowed")
+    @patch("src.handler.check_allowed_with_session")
     @patch("src.commands.handlers.debug_handler.telegram_client.send_debug_info")
-    def test_debug_command(self, mock_send_debug, mock_check_allowed, mock_context):
+    def test_debug_command(self, mock_send_debug, mock_check_allowed_with_session, mock_context):
         """測試 /debug test 指令（通過指令路由器）"""
         # 創建 debug 指令的 event
         event = {
@@ -278,7 +278,7 @@ class TestLambdaHandler:
 
         # 設定 mock 返回值
         mock_send_debug.return_value = True
-        mock_check_allowed.return_value = True
+        mock_check_allowed_with_session.return_value = (True, "test_user", "123456789")
 
         # 執行 handler
         response = lambda_handler(event, mock_context)
@@ -291,9 +291,9 @@ class TestLambdaHandler:
         # 驗證 send_debug_info 被正確調用
         mock_send_debug.assert_called_once_with(123456789, event)
 
-    @patch("src.handler.check_allowed")
+    @patch("src.handler.check_allowed_with_session")
     @patch("src.commands.handlers.debug_handler.telegram_client.send_debug_info")
-    def test_debug_command_alone(self, mock_send_debug, mock_check_allowed, mock_context):
+    def test_debug_command_alone(self, mock_send_debug, mock_check_allowed_with_session, mock_context):
         """測試單獨的 /debug 指令"""
         event = {
             "headers": {},
@@ -317,7 +317,7 @@ class TestLambdaHandler:
         }
 
         mock_send_debug.return_value = True
-        mock_check_allowed.return_value = True
+        mock_check_allowed_with_session.return_value = (True, "test_user", "123456789")
         response = lambda_handler(event, mock_context)
 
         assert response["statusCode"] == 200
@@ -325,9 +325,9 @@ class TestLambdaHandler:
         assert body["status"] == "command_handled"
         mock_send_debug.assert_called_once()
 
-    @patch("src.handler.check_allowed")
+    @patch("src.handler.check_allowed_with_session")
     @patch("src.commands.handlers.debug_handler.telegram_client.send_debug_info")
-    def test_debug_command_with_number(self, mock_send_debug, mock_check_allowed, mock_context):
+    def test_debug_command_with_number(self, mock_send_debug, mock_check_allowed_with_session, mock_context):
         """測試 /debug 123 指令"""
         event = {
             "headers": {},
@@ -351,17 +351,17 @@ class TestLambdaHandler:
         }
 
         mock_send_debug.return_value = True
-        mock_check_allowed.return_value = True
+        mock_check_allowed_with_session.return_value = (True, "test_user", "123456789")
         response = lambda_handler(event, mock_context)
 
         assert response["statusCode"] == 200
         body = json.loads(response["body"])
         assert body["status"] == "command_handled"
 
-    @patch("src.handler.check_allowed")
+    @patch("src.handler.check_allowed_with_session")
     @patch("src.commands.handlers.debug_handler.telegram_client.send_debug_info")
     def test_debug_command_with_multiple_words(
-        self, mock_send_debug, mock_check_allowed, mock_context
+        self, mock_send_debug, mock_check_allowed_with_session, mock_context
     ):
         """測試 /debug any string 指令"""
         event = {
@@ -386,7 +386,7 @@ class TestLambdaHandler:
         }
 
         mock_send_debug.return_value = True
-        mock_check_allowed.return_value = True
+        mock_check_allowed_with_session.return_value = (True, "test_user", "123456789")
         response = lambda_handler(event, mock_context)
 
         assert response["statusCode"] == 200
@@ -394,9 +394,9 @@ class TestLambdaHandler:
         assert body["status"] == "command_handled"
 
     @patch("src.handler.send_to_queue")
-    @patch("src.handler.check_allowed")
+    @patch("src.handler.check_allowed_with_session")
     def test_debug_without_space_should_not_trigger(
-        self, mock_check_allowed, mock_send_to_queue, mock_context
+        self, mock_check_allowed_with_session, mock_send_to_queue, mock_context
     ):
         """測試 /debugtest 不應該觸發除錯功能"""
         event = {
@@ -412,7 +412,7 @@ class TestLambdaHandler:
             ),
         }
 
-        mock_check_allowed.return_value = True
+        mock_check_allowed_with_session.return_value = (True, "test_user", "123456789")
         mock_send_to_queue.return_value = True
 
         response = lambda_handler(event, mock_context)
@@ -421,12 +421,12 @@ class TestLambdaHandler:
         assert response["statusCode"] == 200
         body = json.loads(response["body"])
         assert body["status"] == "ok"
-        mock_check_allowed.assert_called_once()
+        mock_check_allowed_with_session.assert_called_once()
         mock_send_to_queue.assert_called_once()
 
-    @patch("src.handler.check_allowed")
+    @patch("src.handler.check_allowed_with_session")
     @patch("src.commands.handlers.debug_handler.telegram_client.send_debug_info")
-    def test_debug_command_with_spaces(self, mock_send_debug, mock_check_allowed, mock_context):
+    def test_debug_command_with_spaces(self, mock_send_debug, mock_check_allowed_with_session, mock_context):
         """測試 /debug test 指令（帶空格）"""
         # 創建帶空格的 debug 指令
         event = {
@@ -452,7 +452,7 @@ class TestLambdaHandler:
 
         # 設定 mock
         mock_send_debug.return_value = True
-        mock_check_allowed.return_value = True
+        mock_check_allowed_with_session.return_value = (True, "test_user", "123456789")
 
         # 執行
         response = lambda_handler(event, mock_context)
@@ -463,10 +463,10 @@ class TestLambdaHandler:
         assert body["status"] == "command_handled"
 
     @patch("src.handler.send_to_queue")
-    @patch("src.handler.check_allowed")
+    @patch("src.handler.check_allowed_with_session")
     @patch("src.commands.handlers.debug_handler.telegram_client.send_debug_info")
     def test_debug_command_send_failure(
-        self, mock_send_debug, mock_check_allowed, mock_send_to_queue, mock_context
+        self, mock_send_debug, mock_check_allowed_with_session, mock_send_to_queue, mock_context
     ):
         """測試 debug 指令發送失敗"""
         event = {
@@ -492,7 +492,7 @@ class TestLambdaHandler:
 
         # 設定 mock 返回失敗
         mock_send_debug.return_value = False
-        mock_check_allowed.return_value = True
+        mock_check_allowed_with_session.return_value = (True, "test_user", "123456789")
         mock_send_to_queue.return_value = False  # SQS 也失敗
 
         # 執行
@@ -504,8 +504,8 @@ class TestLambdaHandler:
         assert body["status"] == "sqs_failed"
 
     @patch("src.handler.send_to_queue")
-    @patch("src.handler.check_allowed")
-    def test_non_debug_command(self, mock_check_allowed, mock_send_to_queue, mock_context):
+    @patch("src.handler.check_allowed_with_session")
+    def test_non_debug_command(self, mock_check_allowed_with_session, mock_send_to_queue, mock_context):
         """測試非 debug 指令的正常處理"""
         event = {
             "headers": {},
@@ -521,7 +521,7 @@ class TestLambdaHandler:
         }
 
         # 設定 mock
-        mock_check_allowed.return_value = True
+        mock_check_allowed_with_session.return_value = (True, "test_user", "123456789")
         mock_send_to_queue.return_value = True
 
         # 執行
@@ -531,7 +531,7 @@ class TestLambdaHandler:
         assert response["statusCode"] == 200
         body = json.loads(response["body"])
         assert body["status"] == "ok"
-        mock_check_allowed.assert_called_once()
+        mock_check_allowed_with_session.assert_called_once()
         mock_send_to_queue.assert_called_once()
 
     @patch("src.telegram_client.send_debug_info")
@@ -564,11 +564,11 @@ class TestLambdaHandler:
             "AWS_LAMBDA_FUNCTION_NAME": "test-function",
         },
     )
-    @patch("src.handler.check_allowed")
+    @patch("src.handler.check_allowed_with_session")
     @patch("src.commands.handlers.info_handler.telegram_client.send_message")
     @patch("src.commands.handlers.info_handler.boto3.client")
     def test_info_command(
-        self, mock_boto_client, mock_send_message, mock_check_allowed, mock_context
+        self, mock_boto_client, mock_send_message, mock_check_allowed_with_session, mock_context
     ):
         """測試 /info 指令（通過指令路由器）"""
         from datetime import datetime
@@ -613,7 +613,7 @@ class TestLambdaHandler:
 
         # 設定 mock 返回值
         mock_send_message.return_value = True
-        mock_check_allowed.return_value = True
+        mock_check_allowed_with_session.return_value = (True, "test_user", "123456789")
 
         # 執行 handler
         response = lambda_handler(event, mock_context)
@@ -634,11 +634,11 @@ class TestLambdaHandler:
         assert "UPDATE_COMPLETE" in info_text
 
     @patch.dict(os.environ, {"STACK_NAME": "test-stack", "AWS_REGION": "us-west-2"})
-    @patch("src.handler.check_allowed")
+    @patch("src.handler.check_allowed_with_session")
     @patch("src.commands.handlers.info_handler.telegram_client.send_message")
     @patch("src.commands.handlers.info_handler.boto3.client")
     def test_info_command_with_text(
-        self, mock_boto_client, mock_send_message, mock_check_allowed, mock_context
+        self, mock_boto_client, mock_send_message, mock_check_allowed_with_session, mock_context
     ):
         """測試 /info test 指令（帶額外文字）"""
         from datetime import datetime
@@ -678,7 +678,7 @@ class TestLambdaHandler:
         }
 
         mock_send_message.return_value = True
-        mock_check_allowed.return_value = True
+        mock_check_allowed_with_session.return_value = (True, "test_user", "123456789")
 
         response = lambda_handler(event, mock_context)
 
@@ -688,11 +688,11 @@ class TestLambdaHandler:
         mock_send_message.assert_called_once()
 
     @patch.dict(os.environ, {"STACK_NAME": "test-stack", "AWS_REGION": "us-west-2"})
-    @patch("src.handler.check_allowed")
+    @patch("src.handler.check_allowed_with_session")
     @patch("src.commands.handlers.info_handler.telegram_client.send_message")
     @patch("src.commands.handlers.info_handler.boto3.client")
     def test_info_command_cloudformation_access_denied(
-        self, mock_boto_client, mock_send_message, mock_check_allowed, mock_context
+        self, mock_boto_client, mock_send_message, mock_check_allowed_with_session, mock_context
     ):
         """測試 /info 指令遇到權限不足錯誤"""
         from botocore.exceptions import ClientError
@@ -727,7 +727,7 @@ class TestLambdaHandler:
         mock_cfn.exceptions.ClientError = ClientError
 
         mock_send_message.return_value = True
-        mock_check_allowed.return_value = True
+        mock_check_allowed_with_session.return_value = (True, "test_user", "123456789")
 
         response = lambda_handler(event, mock_context)
 
@@ -738,11 +738,11 @@ class TestLambdaHandler:
         assert "權限不足" in call_args
 
     @patch.dict(os.environ, {"STACK_NAME": "non-existent-stack", "AWS_REGION": "us-west-2"})
-    @patch("src.handler.check_allowed")
+    @patch("src.handler.check_allowed_with_session")
     @patch("src.commands.handlers.info_handler.telegram_client.send_message")
     @patch("src.commands.handlers.info_handler.boto3.client")
     def test_info_command_stack_not_found(
-        self, mock_boto_client, mock_send_message, mock_check_allowed, mock_context
+        self, mock_boto_client, mock_send_message, mock_check_allowed_with_session, mock_context
     ):
         """測試 /info 指令找不到 Stack"""
         from botocore.exceptions import ClientError
@@ -778,7 +778,7 @@ class TestLambdaHandler:
         mock_cfn.exceptions.ClientError = ClientError
 
         mock_send_message.return_value = True
-        mock_check_allowed.return_value = True
+        mock_check_allowed_with_session.return_value = (True, "test_user", "123456789")
 
         response = lambda_handler(event, mock_context)
 
@@ -788,11 +788,11 @@ class TestLambdaHandler:
         assert "找不到 Stack" in call_args
 
     @patch.dict(os.environ, {"STACK_NAME": "test-stack", "AWS_REGION": "us-west-2"})
-    @patch("src.handler.check_allowed")
+    @patch("src.handler.check_allowed_with_session")
     @patch("src.commands.handlers.info_handler.telegram_client.send_message")
     @patch("src.commands.handlers.info_handler.boto3.client")
     def test_info_command_api_error(
-        self, mock_boto_client, mock_send_message, mock_check_allowed, mock_context
+        self, mock_boto_client, mock_send_message, mock_check_allowed_with_session, mock_context
     ):
         """測試 /info 指令遇到一般 API 錯誤"""
         from botocore.exceptions import ClientError
@@ -827,7 +827,7 @@ class TestLambdaHandler:
         mock_cfn.exceptions.ClientError = ClientError
 
         mock_send_message.return_value = True
-        mock_check_allowed.return_value = True
+        mock_check_allowed_with_session.return_value = (True, "test_user", "123456789")
 
         response = lambda_handler(event, mock_context)
 
@@ -837,9 +837,9 @@ class TestLambdaHandler:
         assert "API 錯誤" in call_args
 
     @patch("src.handler.send_to_queue")
-    @patch("src.handler.check_allowed")
+    @patch("src.handler.check_allowed_with_session")
     def test_info_without_space_should_not_trigger(
-        self, mock_check_allowed, mock_send_to_queue, mock_context
+        self, mock_check_allowed_with_session, mock_send_to_queue, mock_context
     ):
         """測試 /infotest 不應該觸發 info 指令"""
         event = {
@@ -855,7 +855,7 @@ class TestLambdaHandler:
             ),
         }
 
-        mock_check_allowed.return_value = True
+        mock_check_allowed_with_session.return_value = (True, "test_user", "123456789")
         mock_send_to_queue.return_value = True
 
         response = lambda_handler(event, mock_context)
@@ -864,5 +864,5 @@ class TestLambdaHandler:
         assert response["statusCode"] == 200
         body = json.loads(response["body"])
         assert body["status"] == "ok"
-        mock_check_allowed.assert_called_once()
+        mock_check_allowed_with_session.assert_called_once()
         mock_send_to_queue.assert_called_once()

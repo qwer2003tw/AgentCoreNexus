@@ -3,6 +3,7 @@ Allowlist Module - DynamoDB 允許名單驗證
 """
 
 import os
+import time
 
 import boto3
 from botocore.config import Config
@@ -117,6 +118,109 @@ def check_allowed(chat_id: int, username: str = "") -> bool:
             exc_info=True,
         )
         return False
+
+
+def update_session_id(chat_id: int, new_session_id: str) -> bool:
+    """
+    更新用戶的當前 session ID
+
+    Args:
+        chat_id: Telegram chat ID
+        new_session_id: 新的 session ID
+
+    Returns:
+        是否成功更新
+    """
+    try:
+        table = get_dynamodb_table()
+
+        # 使用 UpdateExpression 更新欄位
+        table.update_item(
+            Key={"chat_id": chat_id},
+            UpdateExpression="SET current_session_id = :sid, session_created_at = :ts",
+            ExpressionAttributeValues={":sid": new_session_id, ":ts": int(time.time())},
+        )
+
+        logger.info(
+            "✅ Session ID 已更新",
+            extra={
+                "chat_id": chat_id,
+                "new_session_id": new_session_id,
+                "event_type": "session_updated",
+            },
+        )
+        return True
+
+    except ClientError as e:
+        error_code = e.response["Error"]["Code"]
+        logger.error(
+            f"❌ 更新 session ID 失敗: {error_code}",
+            extra={"chat_id": chat_id, "error": str(e), "event_type": "session_update_failed"},
+        )
+        return False
+    except Exception as e:
+        logger.error(
+            f"❌ 更新 session ID 時發生未預期錯誤: {str(e)}",
+            extra={"chat_id": chat_id, "event_type": "session_update_error"},
+            exc_info=True,
+        )
+        return False
+
+
+def check_allowed_with_session(chat_id: int, username: str) -> tuple[bool, str, str]:
+    """
+    檢查用戶是否在 allowlist 中，並返回當前 session ID
+
+    Args:
+        chat_id: Telegram chat ID
+        username: Telegram username
+
+    Returns:
+        (是否允許, username, session_id)
+        - 如果不在 allowlist，返回 (False, username, str(chat_id))
+        - 如果在 allowlist 但沒有 current_session_id，返回 (True, username, str(chat_id))
+        - 如果在 allowlist 且有 current_session_id，返回 (True, username, current_session_id)
+    """
+    # 首先檢查是否在 allowlist
+    if not check_allowed(chat_id, username):
+        logger.debug(f"User not in allowlist: {chat_id} / {username}")
+        return False, username, str(chat_id)
+
+    # 在 allowlist 中，獲取完整資料（包含 session_id）
+    try:
+        table = get_dynamodb_table()
+        response = table.get_item(Key={"chat_id": chat_id})
+
+        if "Item" not in response:
+            # 理論上不應該發生（因為 check_allowed 通過了）
+            logger.warning(f"Item not found after allowlist check: {chat_id}")
+            return True, username, str(chat_id)
+
+        item = response["Item"]
+
+        # 提取 session_id（向後兼容）
+        session_id = item.get("current_session_id", str(chat_id))
+        actual_username = item.get("username", username)
+
+        logger.debug(
+            "✅ Retrieved session for user",
+            extra={
+                "chat_id": chat_id,
+                "username": actual_username,
+                "session_id": session_id,
+                "has_custom_session": "current_session_id" in item,
+            },
+        )
+
+        return True, actual_username, session_id
+
+    except ClientError as e:
+        logger.error(f"❌ Failed to get session: {e}", exc_info=True)
+        # 回退：返回 chat_id 作為 session_id
+        return True, username, str(chat_id)
+    except Exception as e:
+        logger.error(f"❌ Unexpected error getting session: {e}", exc_info=True)
+        return True, username, str(chat_id)
 
 
 def add_to_allowlist(chat_id: int, username: str, enabled: bool = True) -> bool:

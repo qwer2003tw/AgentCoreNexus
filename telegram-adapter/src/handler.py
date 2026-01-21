@@ -11,7 +11,7 @@ import uuid
 from typing import Any
 
 import boto3
-from allowlist import check_allowed, check_file_permission
+from allowlist import check_allowed_with_session, check_file_permission
 from commands.handlers.admin_handler import AdminCommandHandler
 from commands.handlers.debug_handler import DebugCommandHandler
 from commands.handlers.info_handler import InfoCommandHandler
@@ -106,7 +106,7 @@ def detect_channel(event: dict[str, Any]) -> str:
 
 
 def normalize_message(
-    raw_data: dict[str, Any], channel: str, event: dict[str, Any]
+    raw_data: dict[str, Any], channel: str, event: dict[str, Any], session_id: str | None = None
 ) -> dict[str, Any]:
     """
     將原始訊息標準化為 Universal Message Schema
@@ -115,6 +115,7 @@ def normalize_message(
         raw_data: 原始訊息資料
         channel: 通道類型
         event: 完整的 API Gateway event
+        session_id: 當前 session ID（可選，如果提供則使用，否則使用 user_id）
 
     Returns:
         標準化的訊息物件
@@ -260,7 +261,7 @@ def normalize_message(
             },
             "context": {
                 "conversationId": str(chat.get("id")),
-                "sessionId": str(from_user.get("id")),
+                "sessionId": session_id if session_id else str(from_user.get("id")),
                 "threadId": "",
             },
             "routing": {"priority": "normal", "tags": [], "targetAgent": ""},
@@ -503,8 +504,10 @@ def lambda_handler(event: dict[str, Any], context: Any, metrics) -> dict[str, An
                     )
                     return create_response(200, {"status": "command_handled"})
 
-        # 檢查允許名單
-        if not check_allowed(chat_id, username):
+        # 檢查允許名單並獲取 session_id
+        allowed, username, session_id = check_allowed_with_session(chat_id, username)
+
+        if not allowed:
             logger.warning(
                 "Unauthorized access attempt",
                 extra={"chat_id": chat_id, "username": username, "event_type": "unauthorized"},
@@ -521,8 +524,11 @@ def lambda_handler(event: dict[str, Any], context: Any, metrics) -> dict[str, An
         record_message_type_metric(metrics, update)
 
         # 標準化訊息（轉換為 Universal Message Schema）
-        normalized = normalize_message(body, channel, event)
-        logger.debug(f"Message normalized: {normalized['messageId']}")
+        normalized = normalize_message(body, channel, event, session_id)
+        logger.debug(
+            f"Message normalized: {normalized['messageId']}",
+            extra={"message_id": normalized["messageId"], "session_id": session_id},
+        )
 
         # 發布到 EventBridge（新增的多通道事件匯流排）
         eventbridge_success = publish_to_eventbridge(normalized)

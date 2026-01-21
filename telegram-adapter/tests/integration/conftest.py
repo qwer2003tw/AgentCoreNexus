@@ -80,15 +80,17 @@ def mock_allowlist():
     """Mock DynamoDB allowlist"""
     mock_db = MockDynamoDB()
 
-    def mock_check(chat_id, username):
-        return mock_db.check_allowed(chat_id, username)
+    def mock_check_with_session(chat_id, username):
+        # 返回 (allowed, username, session_id) 三元組
+        allowed = mock_db.check_allowed(chat_id, username)
+        return allowed, username, str(chat_id)
 
     def mock_file_permission(chat_id):
         # 預設允許檔案權限（避免錯誤）
         return True
 
     with (
-        patch("handler.check_allowed", side_effect=mock_check),
+        patch("handler.check_allowed_with_session", side_effect=mock_check_with_session),
         patch("handler.check_file_permission", side_effect=mock_file_permission),
     ):
         yield mock_db
