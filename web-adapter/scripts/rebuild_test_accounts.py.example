@@ -73,8 +73,9 @@ def main():
                 TableName=TABLE_NAME,
                 Item={
                     'email': {'S': email},
-                    'password': {'S': password_hash},
+                    'password_hash': {'S': password_hash},
                     'name': {'S': account['name']},
+                    'enabled': {'BOOL': True},
                     'created_at': {'S': datetime.now(timezone.utc).isoformat()},
                 }
             )
