@@ -132,7 +132,7 @@ interface ChatState {
 # 1. 驗證 DynamoDB 表
 aws dynamodb describe-table \
   --region us-west-2 \
-  --table-name agentcore-web-channel-conversations
+  --table-name agentcore-web-adapter-conversations
 
 ✅ Status: ACTIVE
 ✅ GSI: 2 個正確配置
@@ -140,7 +140,7 @@ aws dynamodb describe-table \
 
 # 2. 驗證 Lambda 函數
 aws lambda list-functions --region us-west-2 \
-  --query 'Functions[?contains(FunctionName,`agentcore-web-channel`)]'
+  --query 'Functions[?contains(FunctionName,`agentcore-web-adapter`)]'
 
 ✅ 7 個函數全部最新
 ✅ conversations-api 創建成功
@@ -423,10 +423,10 @@ curl -X POST "$REST_API/conversations" \
 ### Day 1: 後端架構（30 分鐘）
 
 **修改文件**:
-- `web-channel/infrastructure/web-channel-template.yaml` - 添加 ConversationsTable
-- `web-channel/lambdas/rest/conversations.py` - 新建 API
-- `web-channel/lambdas/websocket/default.py` - 添加 conversation_id 支持
-- `web-channel/lambdas/router/router.py` - 添加元數據更新
+- `web-adapter/infrastructure/web-adapter-template.yaml` - 添加 ConversationsTable
+- `web-adapter/lambdas/rest/conversations.py` - 新建 API
+- `web-adapter/lambdas/websocket/default.py` - 添加 conversation_id 支持
+- `web-adapter/lambdas/router/router.py` - 添加元數據更新
 
 **部署**:
 ```bash
@@ -441,8 +441,8 @@ sam build && sam deploy
 ### Day 2: 數據遷移（15 分鐘）
 
 **創建腳本**:
-- `web-channel/scripts/migrate-conversations.py` - 遷移工具
-- `web-channel/scripts/verify-migration.py` - 驗證工具
+- `web-adapter/scripts/migrate-conversations.py` - 遷移工具
+- `web-adapter/scripts/verify-migration.py` - 驗證工具
 
 **執行**:
 ```bash
@@ -522,13 +522,13 @@ aws cloudfront create-invalidation ...
 **查看對話**:
 ```bash
 aws dynamodb scan \
-  --table-name agentcore-web-channel-conversations \
+  --table-name agentcore-web-adapter-conversations \
   --limit 10
 ```
 
 **數據遷移**（如需要）:
 ```bash
-cd web-channel/scripts
+cd web-adapter/scripts
 python migrate-conversations.py --dry-run  # 預覽
 python migrate-conversations.py           # 執行
 python verify-migration.py                # 驗證
@@ -539,7 +539,7 @@ python verify-migration.py                # 驗證
 ## 📚 相關文檔
 
 ### 核心文檔
-- **完整實施指南**: `web-channel/CONVERSATION_MANAGEMENT_IMPLEMENTATION.md`（3,472 行）
+- **完整實施指南**: `web-adapter/CONVERSATION_MANAGEMENT_IMPLEMENTATION.md`（3,472 行）
   - Part 1: 後端架構升級
   - Part 2: 數據遷移
   - Part 3: 前端實現
@@ -547,12 +547,12 @@ python verify-migration.py                # 驗證
   - Part 5: 故障排除
 
 ### 臨時文檔（已整合到本報告）
-- ~~`web-channel/DAY1_COMPLETION_SUMMARY.md`~~
-- ~~`web-channel/IMPLEMENTATION_PROGRESS.md`~~
+- ~~`web-adapter/DAY1_COMPLETION_SUMMARY.md`~~
+- ~~`web-adapter/IMPLEMENTATION_PROGRESS.md`~~
 
 ### 其他參考
-- **架構設計**: `web-channel/ARCHITECTURE.md`
-- **部署指南**: `web-channel/DEPLOYMENT_GUIDE.md`
+- **架構設計**: `web-adapter/ARCHITECTURE.md`
+- **部署指南**: `web-adapter/DEPLOYMENT_GUIDE.md`
 
 ---
 

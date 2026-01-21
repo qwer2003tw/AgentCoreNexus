@@ -11,7 +11,7 @@
 ### 已完成的配置
 
 #### 1. Lambda 函數
-- ✅ **Receiver**: `telegram-lambda-receiver` (UPDATE_COMPLETE)
+- ✅ **Receiver**: `telegram-adapter-receiver` (UPDATE_COMPLETE)
 - ✅ **Processor**: `telegram-unified-bot-processor` (UPDATE_COMPLETE)
 
 #### 2. S3 Bucket
@@ -153,7 +153,7 @@
 
 #### Receiver Lambda 日誌
 ```bash
-aws logs tail /aws/lambda/telegram-lambda-receiver --region us-west-2 --since 5m --follow
+aws logs tail /aws/lambda/telegram-adapter-receiver --region us-west-2 --since 5m --follow
 ```
 
 **尋找的日誌**：
@@ -242,7 +242,7 @@ aws dynamodb get-item --region us-west-2 \
 
 #### 檢查 2: Receiver Lambda 日誌
 ```bash
-aws logs tail /aws/lambda/telegram-lambda-receiver \
+aws logs tail /aws/lambda/telegram-adapter-receiver \
   --region us-west-2 --since 5m | grep -i "file"
 ```
 尋找：`file_permission_check`, `file_processing`
@@ -297,7 +297,7 @@ echo '{"users":[{"name":"Alice","age":30},{"name":"Bob","age":25}]}' > test.json
 ### 監控命令（在測試時執行）
 ```bash
 # 終端 1: Receiver 日誌
-aws logs tail /aws/lambda/telegram-lambda-receiver \
+aws logs tail /aws/lambda/telegram-adapter-receiver \
   --region us-west-2 --follow
 
 # 終端 2: Processor 日誌

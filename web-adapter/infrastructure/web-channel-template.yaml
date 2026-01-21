@@ -1,0 +1,914 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  AgentCore Nexus - Web Channel Expansion
+  Infrastructure for Web frontend support with WebSocket and REST APIs
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - staging
+      - prod
+    Description: Deployment environment
+  
+  ExistingEventBusName:
+    Type: String
+    Default: agentcore-telegram-adapter-events
+    Description: Name of existing EventBridge bus (from telegram-adapter stack)
+  
+  ExistingProcessorFunctionName:
+    Type: String
+    Default: agentcore-ai-processor-main
+    Description: Name of existing processor Lambda (from ai-processor stack)
+
+Globals:
+  Function:
+    Timeout: 30
+    MemorySize: 256
+    Runtime: python3.11
+    Environment:
+      Variables:
+        ENVIRONMENT: !Ref Environment
+        LOG_LEVEL: INFO
+        POWERTOOLS_SERVICE_NAME: web-channel
+        POWERTOOLS_METRICS_NAMESPACE: AgentCoreNexus
+
+Resources:
+  # ============================================================
+  # DynamoDB Tables
+  # ============================================================
+  
+  WebUsersTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub '${AWS::StackName}-web-users'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: email
+          AttributeType: S
+      KeySchema:
+        - AttributeName: email
+          KeyType: HASH
+      SSESpecification:
+        SSEEnabled: true
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Purpose
+          Value: WebUserAuth
+  
+  UserBindingsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub '${AWS::StackName}-user-bindings'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: unified_user_id
+          AttributeType: S
+        - AttributeName: web_email
+          AttributeType: S
+        - AttributeName: telegram_chat_id
+          AttributeType: N
+      KeySchema:
+        - AttributeName: unified_user_id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: web_email-index
+          KeySchema:
+            - AttributeName: web_email
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+        - IndexName: telegram_chat_id-index
+          KeySchema:
+            - AttributeName: telegram_chat_id
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      SSESpecification:
+        SSEEnabled: true
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Purpose
+          Value: UserBindings
+  
+  ConversationHistoryTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub '${AWS::StackName}-conversation-history'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: unified_user_id
+          AttributeType: S
+        - AttributeName: timestamp_msgid
+          AttributeType: S
+        - AttributeName: channel
+          AttributeType: S
+      KeySchema:
+        - AttributeName: unified_user_id
+          KeyType: HASH
+        - AttributeName: timestamp_msgid
+          KeyType: RANGE
+      GlobalSecondaryIndexes:
+        - IndexName: channel-timestamp-index
+          KeySchema:
+            - AttributeName: channel
+              KeyType: HASH
+            - AttributeName: timestamp_msgid
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+      SSESpecification:
+        SSEEnabled: true
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Purpose
+          Value: ConversationHistory
+  
+  WebSocketConnectionsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub '${AWS::StackName}-websocket-connections'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: connection_id
+          AttributeType: S
+        - AttributeName: unified_user_id
+          AttributeType: S
+        - AttributeName: connected_at
+          AttributeType: S
+      KeySchema:
+        - AttributeName: connection_id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: unified_user_id-connected_at-index
+          KeySchema:
+            - AttributeName: unified_user_id
+              KeyType: HASH
+            - AttributeName: connected_at
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+      SSESpecification:
+        SSEEnabled: true
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Purpose
+          Value: WebSocketConnections
+  
+  BindingCodesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub '${AWS::StackName}-binding-codes'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: code
+          AttributeType: S
+        - AttributeName: web_email
+          AttributeType: S
+      KeySchema:
+        - AttributeName: code
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: web_email-index
+          KeySchema:
+            - AttributeName: web_email
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+      SSESpecification:
+        SSEEnabled: true
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Purpose
+          Value: BindingCodes
+  
+  # ============================================================
+  # Conversations Table
+  # ============================================================
+  
+  ConversationsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub '${AWS::StackName}-conversations'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: unified_user_id
+          AttributeType: S
+        - AttributeName: conversation_id
+          AttributeType: S
+        - AttributeName: last_message_time
+          AttributeType: S
+      KeySchema:
+        - AttributeName: unified_user_id
+          KeyType: HASH
+        - AttributeName: conversation_id
+          KeyType: RANGE
+      GlobalSecondaryIndexes:
+        - IndexName: conversation_id-index
+          KeySchema:
+            - AttributeName: conversation_id
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+        - IndexName: user-by-time-index
+          KeySchema:
+            - AttributeName: unified_user_id
+              KeyType: HASH
+            - AttributeName: last_message_time
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+      SSESpecification:
+        SSEEnabled: true
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Purpose
+          Value: ConversationManagement
+  
+  # ============================================================
+  # Secrets Manager
+  # ============================================================
+  
+  JWTSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub '${AWS::StackName}/jwt-secret'
+      Description: JWT signing secret for web authentication
+      GenerateSecretString:
+        SecretStringTemplate: '{"jwt_algorithm": "HS256", "jwt_expiry_days": 7}'
+        GenerateStringKey: jwt_secret
+        PasswordLength: 64
+        ExcludeCharacters: '"@\'
+
+  # ============================================================
+  # WebSocket API
+  # ============================================================
+  
+  WebSocketApi:
+    Type: AWS::ApiGatewayV2::Api
+    Properties:
+      Name: !Sub '${AWS::StackName}-websocket'
+      ProtocolType: WEBSOCKET
+      RouteSelectionExpression: $request.body.action
+      Description: WebSocket API for real-time chat
+  
+  WebSocketStage:
+    Type: AWS::ApiGatewayV2::Stage
+    Properties:
+      ApiId: !Ref WebSocketApi
+      StageName: prod
+      Description: Production stage
+      AutoDeploy: true
+      DefaultRouteSettings:
+        ThrottlingBurstLimit: 500
+        ThrottlingRateLimit: 100
+  
+  # WebSocket Lambda Functions
+  WebSocketConnectFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-ws-connect'
+      CodeUri: ../lambdas/websocket/
+      Handler: connect.handler
+      Description: Handle WebSocket connections
+      Environment:
+        Variables:
+          CONNECTIONS_TABLE: !Ref WebSocketConnectionsTable
+          WEB_USERS_TABLE: !Ref WebUsersTable
+          BINDINGS_TABLE: !Ref UserBindingsTable
+          JWT_SECRET_ARN: !Ref JWTSecret
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref WebSocketConnectionsTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref WebUsersTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref UserBindingsTable
+        - AWSSecretsManagerGetSecretValuePolicy:
+            SecretArn: !Ref JWTSecret
+  
+  WebSocketDisconnectFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-ws-disconnect'
+      CodeUri: ../lambdas/websocket/
+      Handler: disconnect.handler
+      Description: Handle WebSocket disconnections
+      Environment:
+        Variables:
+          CONNECTIONS_TABLE: !Ref WebSocketConnectionsTable
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref WebSocketConnectionsTable
+  
+  WebSocketDefaultFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-ws-default'
+      CodeUri: ../lambdas/websocket/
+      Handler: default.handler
+      Description: Handle WebSocket messages
+      Environment:
+        Variables:
+          CONNECTIONS_TABLE: !Ref WebSocketConnectionsTable
+          BINDINGS_TABLE: !Ref UserBindingsTable
+          CONVERSATIONS_TABLE: !Ref ConversationsTable
+          EVENT_BUS_NAME: !Ref ExistingEventBusName
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref WebSocketConnectionsTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref UserBindingsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ConversationsTable
+        - Statement:
+            - Effect: Allow
+              Action:
+                - events:PutEvents
+              Resource: !Sub 'arn:aws:events:${AWS::Region}:${AWS::AccountId}:event-bus/${ExistingEventBusName}'
+  
+  # WebSocket Integrations
+  ConnectIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref WebSocketApi
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${WebSocketConnectFunction.Arn}/invocations'
+  
+  DisconnectIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref WebSocketApi
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${WebSocketDisconnectFunction.Arn}/invocations'
+  
+  DefaultIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref WebSocketApi
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${WebSocketDefaultFunction.Arn}/invocations'
+  
+  # WebSocket Routes
+  ConnectRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref WebSocketApi
+      RouteKey: $connect
+      Target: !Sub 'integrations/${ConnectIntegration}'
+  
+  DisconnectRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref WebSocketApi
+      RouteKey: $disconnect
+      Target: !Sub 'integrations/${DisconnectIntegration}'
+  
+  DefaultRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref WebSocketApi
+      RouteKey: $default
+      Target: !Sub 'integrations/${DefaultIntegration}'
+  
+  # Lambda Permissions for Authorizer
+  AuthorizerInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref AuthorizerFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${RestApi}/authorizers/*'
+  
+  # Lambda Permissions for WebSocket
+  WebSocketConnectPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref WebSocketConnectFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${WebSocketApi}/*'
+  
+  WebSocketDisconnectPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref WebSocketDisconnectFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${WebSocketApi}/*'
+  
+  WebSocketDefaultPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref WebSocketDefaultFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${WebSocketApi}/*'
+  
+  # ============================================================
+  # REST API Lambda Functions
+  # ============================================================
+  
+  # Lambda Authorizer Function (must be defined before RestApi)
+  AuthorizerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-authorizer'
+      CodeUri: ../lambdas/rest/
+      Handler: authorizer.handler
+      Description: JWT token authorization
+      Environment:
+        Variables:
+          JWT_SECRET_ARN: !Ref JWTSecret
+      Policies:
+        - AWSSecretsManagerGetSecretValuePolicy:
+            SecretArn: !Ref JWTSecret
+  
+  # REST API
+  RestApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: !Sub '${AWS::StackName}-rest-api'
+      StageName: prod
+      Description: REST API for authentication, history, and admin operations
+      Cors:
+        AllowOrigin: "'*'"
+        AllowHeaders: "'Content-Type,Authorization'"
+        AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
+      Auth:
+        Authorizers:
+          MyLambdaTokenAuthorizer:
+            FunctionArn: !GetAtt AuthorizerFunction.Arn
+            FunctionPayloadType: TOKEN
+            Identity:
+              Header: Authorization
+              ReauthorizeEvery: 0
+      GatewayResponses:
+        DEFAULT_4XX:
+          ResponseParameters:
+            Headers:
+              Access-Control-Allow-Origin: "'*'"
+              Access-Control-Allow-Headers: "'Content-Type,Authorization'"
+              Access-Control-Allow-Methods: "'GET,POST,PUT,DELETE,OPTIONS'"
+        DEFAULT_5XX:
+          ResponseParameters:
+            Headers:
+              Access-Control-Allow-Origin: "'*'"
+              Access-Control-Allow-Headers: "'Content-Type,Authorization'"
+              Access-Control-Allow-Methods: "'GET,POST,PUT,DELETE,OPTIONS'"
+  
+  # Auth Function
+  AuthFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-auth'
+      CodeUri: ../lambdas/rest/
+      Handler: auth.handler
+      Description: Handle authentication operations
+      Environment:
+        Variables:
+          WEB_USERS_TABLE: !Ref WebUsersTable
+          JWT_SECRET_ARN: !Ref JWTSecret
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref WebUsersTable
+        - AWSSecretsManagerGetSecretValuePolicy:
+            SecretArn: !Ref JWTSecret
+      Events:
+        Login:
+          Type: Api
+          Properties:
+            RestApiId: !Ref RestApi
+            Path: /auth/login
+            Method: POST
+        Logout:
+          Type: Api
+          Properties:
+            RestApiId: !Ref RestApi
+            Path: /auth/logout
+            Method: POST
+        GetMe:
+          Type: Api
+          Properties:
+            RestApiId: !Ref RestApi
+            Path: /auth/me
+            Method: GET
+            Auth:
+              Authorizer: MyLambdaTokenAuthorizer
+        ChangePassword:
+          Type: Api
+          Properties:
+            RestApiId: !Ref RestApi
+            Path: /auth/change-password
+            Method: POST
+            Auth:
+              Authorizer: MyLambdaTokenAuthorizer
+  
+  # Conversations Function
+  ConversationsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-conversations-api'
+      CodeUri: ../lambdas/rest/
+      Handler: conversations.handler
+      Description: Handle conversation management operations
+      Environment:
+        Variables:
+          CONVERSATIONS_TABLE: !Ref ConversationsTable
+          HISTORY_TABLE: !Ref ConversationHistoryTable
+          BINDINGS_TABLE: !Ref UserBindingsTable
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ConversationsTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref ConversationHistoryTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref UserBindingsTable
+      Events:
+        ListConversations:
+          Type: Api
+          Properties:
+            RestApiId: !Ref RestApi
+            Path: /conversations
+            Method: GET
+            Auth:
+              Authorizer: MyLambdaTokenAuthorizer
+        CreateConversation:
+          Type: Api
+          Properties:
+            RestApiId: !Ref RestApi
+            Path: /conversations
+            Method: POST
+            Auth:
+              Authorizer: MyLambdaTokenAuthorizer
+        UpdateConversation:
+          Type: Api
+          Properties:
+            RestApiId: !Ref RestApi
+            Path: /conversations/{id}
+            Method: PUT
+            Auth:
+              Authorizer: MyLambdaTokenAuthorizer
+        DeleteConversation:
+          Type: Api
+          Properties:
+            RestApiId: !Ref RestApi
+            Path: /conversations/{id}
+            Method: DELETE
+            Auth:
+              Authorizer: MyLambdaTokenAuthorizer
+        GetConversationMessages:
+          Type: Api
+          Properties:
+            RestApiId: !Ref RestApi
+            Path: /conversations/{id}/messages
+            Method: GET
+            Auth:
+              Authorizer: MyLambdaTokenAuthorizer
+
+  # Attachments Function
+  AttachmentsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-attachments-api'
+      CodeUri: ../lambdas/rest/
+      Handler: attachments.handler
+      Description: Handle attachment upload/download presigned URLs
+      Environment:
+        Variables:
+          ATTACHMENTS_BUCKET: !Ref AttachmentsBucket
+          BINDINGS_TABLE: !Ref UserBindingsTable
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Ref AttachmentsBucket
+        - DynamoDBReadPolicy:
+            TableName: !Ref UserBindingsTable
+      Events:
+        PresignUpload:
+          Type: Api
+          Properties:
+            RestApiId: !Ref RestApi
+            Path: /attachments/presign
+            Method: POST
+            Auth:
+              Authorizer: MyLambdaTokenAuthorizer
+        PresignDownload:
+          Type: Api
+          Properties:
+            RestApiId: !Ref RestApi
+            Path: /attachments/download
+            Method: POST
+            Auth:
+              Authorizer: MyLambdaTokenAuthorizer
+
+  # ============================================================
+  # Response Router Updates (to be integrated with existing)
+  # ============================================================
+  
+  ResponseRouterFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-response-router'
+      CodeUri: ../lambdas/router/
+      Handler: router.handler
+      Description: Route responses to Web or Telegram channels
+      Timeout: 60
+      Environment:
+        Variables:
+          CONNECTIONS_TABLE: !Ref WebSocketConnectionsTable
+          HISTORY_TABLE: !Ref ConversationHistoryTable
+          CONVERSATIONS_TABLE: !Ref ConversationsTable
+          WEBSOCKET_API_ENDPOINT: !Sub 'https://${WebSocketApi}.execute-api.${AWS::Region}.amazonaws.com/${WebSocketStage}'
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref WebSocketConnectionsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ConversationHistoryTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ConversationsTable
+        - Statement:
+            - Effect: Allow
+              Action:
+                - execute-api:ManageConnections
+                - execute-api:Invoke
+              Resource: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${WebSocketApi}/*'
+      Events:
+        MessageCompleted:
+          Type: EventBridgeRule
+          Properties:
+            EventBusName: !Ref ExistingEventBusName
+            Pattern:
+              source:
+                - agent-processor
+              detail-type:
+                - message.completed
+              detail:
+                channel:
+                  type:
+                    - web
+
+  # ============================================================
+  # CloudWatch Log Groups
+  # ============================================================
+  
+  WebSocketConnectLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${WebSocketConnectFunction}'
+      RetentionInDays: 14
+  
+  WebSocketDisconnectLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${WebSocketDisconnectFunction}'
+      RetentionInDays: 14
+  
+  WebSocketDefaultLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${WebSocketDefaultFunction}'
+      RetentionInDays: 14
+  
+  AuthFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${AuthFunction}'
+      RetentionInDays: 14
+  
+  AuthorizerFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${AuthorizerFunction}'
+      RetentionInDays: 14
+  
+  ConversationsFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${ConversationsFunction}'
+      RetentionInDays: 14
+  
+  ResponseRouterLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${ResponseRouterFunction}'
+      RetentionInDays: 14
+
+  AttachmentsFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${AttachmentsFunction}'
+      RetentionInDays: 14
+  
+  # ============================================================
+  # Frontend S3 Bucket
+  # ============================================================
+  
+  # CloudFront Origin Access Identity
+  CloudFrontOriginAccessIdentity:
+    Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
+    Properties:
+      CloudFrontOriginAccessIdentityConfig:
+        Comment: !Sub 'OAI for ${AWS::StackName} frontend bucket'
+  
+  FrontendBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub '${AWS::StackName}-frontend-${AWS::AccountId}'
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Purpose
+          Value: Frontend static hosting
+
+  AttachmentsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub '${AWS::StackName}-attachments-${AWS::AccountId}'
+      VersioningConfiguration:
+        Status: Enabled
+      CorsConfiguration:
+        CorsRules:
+          - AllowedOrigins:
+              - '*'
+            AllowedMethods:
+              - PUT
+              - POST
+              - GET
+              - HEAD
+            AllowedHeaders:
+              - '*'
+            ExposedHeaders:
+              - ETag
+            MaxAge: 3000
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Purpose
+          Value: Chat attachments storage
+  
+  FrontendBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref FrontendBucket
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              CanonicalUser: !GetAtt CloudFrontOriginAccessIdentity.S3CanonicalUserId
+            Action: s3:GetObject
+            Resource: !Sub '${FrontendBucket.Arn}/*'
+  
+  # ============================================================
+  # CloudFront Distribution
+  # ============================================================
+  
+  FrontendDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        Comment: !Sub '${AWS::StackName} Frontend Distribution'
+        DefaultRootObject: index.html
+        Origins:
+          - Id: S3Origin
+            DomainName: !GetAtt FrontendBucket.RegionalDomainName
+            S3OriginConfig:
+              OriginAccessIdentity: !Sub 'origin-access-identity/cloudfront/${CloudFrontOriginAccessIdentity}'
+        DefaultCacheBehavior:
+          TargetOriginId: S3Origin
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+          CachedMethods:
+            - GET
+            - HEAD
+          ForwardedValues:
+            QueryString: false
+            Cookies:
+              Forward: none
+          Compress: true
+          DefaultTTL: 0
+          MaxTTL: 0
+          MinTTL: 0
+        CustomErrorResponses:
+          - ErrorCode: 404
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+          - ErrorCode: 403
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+        PriceClass: PriceClass_100
+        HttpVersion: http2
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Purpose
+          Value: Frontend CDN
+
+Outputs:
+  WebSocketApiEndpoint:
+    Description: WebSocket API endpoint URL
+    Value: !Sub 'wss://${WebSocketApi}.execute-api.${AWS::Region}.amazonaws.com/prod'
+    Export:
+      Name: !Sub '${AWS::StackName}-WebSocketEndpoint'
+  
+  RestApiEndpoint:
+    Description: REST API endpoint URL
+    Value: !Sub 'https://${RestApi}.execute-api.${AWS::Region}.amazonaws.com/prod'
+    Export:
+      Name: !Sub '${AWS::StackName}-RestApiEndpoint'
+  
+  WebUsersTableName:
+    Description: Web Users DynamoDB table name
+    Value: !Ref WebUsersTable
+    Export:
+      Name: !Sub '${AWS::StackName}-WebUsersTable'
+  
+  UserBindingsTableName:
+    Description: User Bindings DynamoDB table name
+    Value: !Ref UserBindingsTable
+    Export:
+      Name: !Sub '${AWS::StackName}-UserBindingsTable'
+  
+  ConversationHistoryTableName:
+    Description: Conversation History DynamoDB table name
+    Value: !Ref ConversationHistoryTable
+    Export:
+      Name: !Sub '${AWS::StackName}-ConversationHistoryTable'
+  
+  ConversationsTableName:
+    Description: Conversations DynamoDB table name
+    Value: !Ref ConversationsTable
+    Export:
+      Name: !Sub '${AWS::StackName}-ConversationsTable'
+  
+  ConversationsTableArn:
+    Description: Conversations DynamoDB table ARN
+    Value: !GetAtt ConversationsTable.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-ConversationsTableArn'
+  
+  JWTSecretArn:
+    Description: JWT Secret ARN
+    Value: !Ref JWTSecret
+    Export:
+      Name: !Sub '${AWS::StackName}-JWTSecretArn'
+  
+  FrontendBucketName:
+    Description: Frontend S3 bucket name
+    Value: !Ref FrontendBucket
+    Export:
+      Name: !Sub '${AWS::StackName}-FrontendBucket'
+  
+  CloudFrontDistributionId:
+    Description: CloudFront distribution ID
+    Value: !Ref FrontendDistribution
+    Export:
+      Name: !Sub '${AWS::StackName}-CloudFrontDistributionId'
+  
+  CloudFrontDomain:
+    Description: CloudFront distribution domain name
+    Value: !GetAtt FrontendDistribution.DomainName
+    Export:
+      Name: !Sub '${AWS::StackName}-CloudFrontDomain'
+  
+  FrontendUrl:
+    Description: Frontend URL (HTTPS via CloudFront)
+    Value: !Sub 'https://${FrontendDistribution.DomainName}'
+    Export:
+      Name: !Sub '${AWS::StackName}-FrontendUrl'

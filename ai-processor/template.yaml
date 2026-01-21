@@ -1,0 +1,167 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  agentcore-ai-processor
+  
+  Channel-agnostic AI Processor for multi-channel message processing using AgentCore
+
+Parameters:
+  ReceiverStackName:
+    Type: String
+    Description: Name of the telegram-adapter stack for importing resources
+    Default: 'agentcore-telegram-adapter'
+
+  BedrockAgentCoreMemoryId:
+    Type: AWS::SSM::Parameter::Value<String>
+    Description: Memory ID from SSM Parameter Store
+    Default: /agentcore/memory/telegram-bot
+
+  BedrockModelId:
+    Type: String
+    Description: Bedrock Model ID for AgentCore
+    Default: 'anthropic.claude-3-5-sonnet-20241022-v2:0'
+
+Globals:
+  Function:
+    Timeout: 300
+    MemorySize: 512
+    Runtime: python3.11
+    Architectures:
+      - x86_64
+    Environment:
+      Variables:
+        LOG_LEVEL: INFO
+
+Resources:
+  # Agent Processor Lambda Function
+  AgentProcessorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-main'
+      CodeUri: .
+      Handler: processor_entry.handler
+      Description: Process messages from EventBridge using AgentCore
+      Timeout: 300
+      MemorySize: 1024
+      Environment:
+        Variables:
+          EVENT_BUS_NAME: !ImportValue 
+            Fn::Sub: '${ReceiverStackName}-EventBusName'
+          BEDROCK_MODEL_ID: !Ref BedrockModelId
+          BEDROCK_AGENTCORE_MEMORY_ID: !Ref BedrockAgentCoreMemoryId
+          BROWSER_ENABLED: 'true'
+          FILE_ENABLED: 'true'
+          FILE_STORAGE_BUCKET: !ImportValue 
+            Fn::Sub: '${ReceiverStackName}-FileStorageBucket'
+      Policies:
+        - Statement:
+            # EventBridge
+            - Effect: Allow
+              Action:
+                - events:PutEvents
+              Resource: '*'
+            
+            # Bedrock AI
+            - Effect: Allow
+              Action:
+                - bedrock:InvokeModel
+                - bedrock:InvokeModelWithResponseStream
+                - bedrock:InvokeAgent
+                - bedrock:Retrieve
+              Resource: '*'
+            
+            # Browser Sandbox
+            - Effect: Allow
+              Action:
+                - bedrock-agentcore:StartBrowserSession
+                - bedrock-agentcore:StopBrowserSession
+                - bedrock-agentcore:GetBrowserSession
+                - bedrock-agentcore-control:*
+              Resource: '*'
+            
+            # Code Interpreter (File Processing)
+            - Effect: Allow
+              Action:
+                - bedrock-agentcore:StartCodeInterpreterSession
+                - bedrock-agentcore:StopCodeInterpreterSession
+                - bedrock-agentcore:InvokeCodeInterpreter
+              Resource: '*'
+            
+            # Memory
+            - Effect: Allow
+              Action:
+                - bedrock-agentcore:ListEvents
+                - bedrock-agentcore:GetEvent
+                - bedrock-agentcore:PutEvent
+                - bedrock-agentcore:CreateEvent
+                - bedrock-agentcore:DeleteEvent
+                - bedrock-agentcore:GetMemory
+                - bedrock-agentcore:UpdateMemory
+                - bedrock-agentcore:CreateMemory
+                - bedrock-agentcore:ListMemories
+                - bedrock-agentcore:ListSessions
+                - bedrock-agentcore:GetSession
+                - bedrock-agentcore:CreateSession
+                - bedrock-agentcore:ListMemoryRecords
+                - bedrock-agentcore:GetMemoryRecord
+                - bedrock-agentcore:RetrieveMemoryRecords
+              Resource: '*'
+            
+            # S3 File Storage (Read Only)
+            - Effect: Allow
+              Action:
+                - s3:GetObject
+              Resource: 
+                - !Sub
+                  - '${BucketArn}/*'
+                  - BucketArn: !ImportValue 
+                      Fn::Sub: '${ReceiverStackName}-FileStorageBucketArn'
+                - 'arn:aws:s3:::agentcore-web-channel-attachments-190825685292/*'
+      Tags:
+        Project: AgentCoreNexus
+        Component: ai-processor
+        Environment: !Ref AWS::StackName
+        ManagedBy: SAM
+
+  # CloudWatch Log Group
+  ProcessorLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${AgentProcessorFunction}'
+      RetentionInDays: 14
+
+  # EventBridge Permission for Lambda
+  ProcessorEventBridgePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref AgentProcessorFunction
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !Sub 'arn:aws:events:${AWS::Region}:${AWS::AccountId}:rule/*'
+
+Outputs:
+  ProcessorFunctionArn:
+    Description: AI Processor Lambda ARN
+    Value: !GetAtt AgentProcessorFunction.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-ProcessorArn'
+
+  ProcessorFunctionName:
+    Description: AI Processor Lambda Function Name
+    Value: !Ref AgentProcessorFunction
+    Export:
+      Name: !Sub '${AWS::StackName}-ProcessorName'
+
+  ProcessorLogGroup:
+    Description: CloudWatch Log Group for Processor
+    Value: !Ref ProcessorLogGroup
+
+  DeploymentInstructions:
+    Description: Deployment completed with automatic configuration
+    Value: !Sub |
+      Stack deployed successfully with automatic configuration:
+      - EVENT_BUS_NAME: Imported from ${ReceiverStackName}
+      - MEMORY_ID: Read from SSM Parameter Store
+      - FILE_STORAGE_BUCKET: Imported from ${ReceiverStackName}
+      
+      All configuration is automated. No manual steps required.

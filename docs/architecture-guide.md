@@ -1,13 +1,13 @@
 # AgentCore Nexus 整合改造指南
 
 本文件說明如何將現有兩個專案：
-- [telegram-lambda] — 接收層（Webhook + Allowlist + SQS）
-- [telegram-agentcore-bot] — 處理層（AgentCore 整合 + 對話代理 + 工具）
+- [telegram-adapter] — 接收層（Webhook + Allowlist + SQS）
+- [ai-processor] — 處理層（AgentCore 整合 + 對話代理 + 工具）
 整合並演進為多通道、事件驅動、可擴展的 AgentCore Nexus 架構。
 
 參考現況：
-- telegram-lambda 具備 API Gateway、Lambda、SQS、DynamoDB allowlist、Secrets、CloudWatch 監控與 SAM 基礎設施（template.yaml）
-- telegram-agentcore-bot 具備清晰分層（config/utils/tools/services/agents）、完整單元測試與 Memory/Browser 整合
+- telegram-adapter 具備 API Gateway、Lambda、SQS、DynamoDB allowlist、Secrets、CloudWatch 監控與 SAM 基礎設施（template.yaml）
+- ai-processor 具備清晰分層（config/utils/tools/services/agents）、完整單元測試與 Memory/Browser 整合
 
 ---
 
@@ -75,7 +75,7 @@
 │ Telegram     │    │ Web Channel  │   │ Discord      │
 │ Adapter      │    │ Adapter      │   │ Adapter      │
 │              │    │              │   │              │
-│(telegram-    │    │(web-channel/ │   │(未來)        │
+│(telegram-    │    │(web-adapter/ │   │(未來)        │
 │ lambda)      │    │ lambdas)     │   │              │
 └──────┬───────┘    └──────┬───────┘   └──────┬───────┘
        │ EventBridge       │                   │
@@ -92,7 +92,7 @@
                   ▼
      ┌──────────────────────────────────┐
      │  Agent Processor (Lambda)        │
-     │  (telegram-agentcore-bot)        │
+     │  (ai-processor)        │
      │                                  │
      │  - AgentCore Orchestrator        │
      │  - Bedrock Claude Integration    │
@@ -114,7 +114,7 @@
 │ Response     │   │ Response     │
 │ Router       │   │ Router       │
 │              │   │              │
-│(telegram-    │   │(web-channel/ │
+│(telegram-    │   │(web-adapter/ │
 │ lambda/      │   │ lambdas/     │
 │ router)      │   │ router)      │
 └──────┬───────┘   └──────┬───────┘
@@ -128,7 +128,7 @@
 **通道適配器層（Platform-Specific）**：
 - 各通道有獨立的入口和適配邏輯
 - 職責：接收 → 驗證 → 標準化 → 發送到 EventBridge
-- 範例：telegram-lambda 處理 Telegram，web-channel/lambdas 處理 Web
+- 範例：telegram-adapter 處理 Telegram，web-adapter/lambdas 處理 Web
 
 **統一事件層（Universal）**：
 - EventBridge 作為中央事件總線
@@ -157,7 +157,7 @@
 
 ## 代碼與資源改造
 
-### 1) telegram-lambda → Universal Message Adapter
+### 1) telegram-adapter → Universal Message Adapter
 
 目標：從「單一 Telegram Receiver + SQS」升級為「多通道 Adapter + EventBridge」。
 
@@ -294,7 +294,7 @@ Resources:
 
 ---
 
-### 2) telegram-agentcore-bot → Agent Processor
+### 2) ai-processor → Agent Processor
 
 目標：接收 EventBridge message.received 事件，透過 AgentCore 產生回應，發布 message.completed 或 message.failed。
 
@@ -497,7 +497,7 @@ Resources:
 
 ## 測試策略
 
-- 保留 telegram-agentcore-bot 下現有 69+ 測試
+- 保留 ai-processor 下現有 69+ 測試
 - 新增：
   - Adapter: 通道檢測、標準化、允許名單、事件發佈
   - Processor: 事件處理、AgentCore 回傳格式、錯誤分支
@@ -521,11 +521,11 @@ Resources:
 
 ```
 agentcore-nexus/
-├── adapters/                 # 改造自 telegram-lambda
+├── adapters/                 # 改造自 telegram-adapter
 │   ├── universal_adapter/
 │   │   ├── src/
 │   │   └── template.yaml
-├── processor/                # 整合 telegram-agentcore-bot
+├── processor/                # 整合 ai-processor
 │   ├── src/ (沿用 agents/services/tools/utils/config)
 │   ├── processor_entry.py
 │   └── template.yaml
@@ -547,7 +547,7 @@ agentcore-nexus/
 ## 部署與遷移建議
 
 - 先在相同 AWS 帳號/Region 內增設 EventBridge 與新的 Processor/Router，保留現有 Telegram 流程
-- 切換 telegram-lambda 的輸出至 EventBridge（同時保留 SQS 作為回退）
+- 切換 telegram-adapter 的輸出至 EventBridge（同時保留 SQS 作為回退）
 - 建立最小閉環（Telegram → Adapter → EventBridge → Processor → Router → Telegram）
 - 通道擴展（Web/Discord/Slack）逐步導入，並增加 allowlist/identity 映射
 
@@ -561,12 +561,12 @@ agentcore-nexus/
 3. 設置測試環境
 
 ### Step 2: 基礎架構升級
-1. 在 telegram-lambda 中新增 EventBridge 支援
+1. 在 telegram-adapter 中新增 EventBridge 支援
 2. 修改 SAM 模板加入 UniversalEventBus
 3. 實作通道檢測和訊息標準化
 
 ### Step 3: 處理層整合
-1. 在 telegram-agentcore-bot 中新增 processor_entry.py
+1. 在 ai-processor 中新增 processor_entry.py
 2. 建立 EventBridge 事件處理邏輯
 3. 實作跨通道上下文管理
 
@@ -608,7 +608,7 @@ A: 透過 EventBridge 的 DLQ、重試機制和詳細的 CloudWatch 監控
 
 ## 結論
 
-透過這個漸進式的整合方案，可以在保持現有功能穩定的前提下，逐步將 telegram-lambda 和 telegram-agentcore-bot 整合為一個強大的多通道 AI 助理平台。架構的事件驅動設計確保了良好的擴展性和維護性，為未來的功能擴展奠定了堅實的基礎。
+透過這個漸進式的整合方案，可以在保持現有功能穩定的前提下，逐步將 telegram-adapter 和 ai-processor 整合為一個強大的多通道 AI 助理平台。架構的事件驅動設計確保了良好的擴展性和維護性，為未來的功能擴展奠定了堅實的基礎。
 
 ---
 

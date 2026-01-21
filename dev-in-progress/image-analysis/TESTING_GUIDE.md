@@ -104,7 +104,7 @@ Bot: 圖片上的文字內容是：
 
 **Receiver Lambda**：
 ```bash
-aws logs tail /aws/lambda/telegram-lambda-receiver \
+aws logs tail /aws/lambda/telegram-adapter-receiver \
   --region us-west-2 --since 5m --follow
 ```
 
@@ -135,7 +135,7 @@ aws logs tail /aws/lambda/telegram-unified-bot-processor \
 **檢查**：
 ```bash
 # 查看 file_handler.py 的日誌
-grep "attachment_type" /aws/lambda/telegram-lambda-receiver/logs
+grep "attachment_type" /aws/lambda/telegram-adapter-receiver/logs
 ```
 
 **解決**：確認 `_detect_attachment_type()` 函數正常工作

@@ -50,7 +50,7 @@ sam deploy  # 沒有先測試導入
 from secrets_manager import get_secret_value  # 沒檢查是否存在
 
 # ✅ 正確：先檢查
-# 1. read_file telegram-lambda/src/secrets_manager.py
+# 1. read_file telegram-adapter/src/secrets_manager.py
 # 2. 確認有 get_telegram_secrets()
 # 3. 然後使用正確的函數
 from secrets_manager import get_telegram_secrets
@@ -68,7 +68,7 @@ from secrets_manager import get_telegram_secrets
 find . -name "*.py" -type f -exec python -m py_compile {} \;
 
 # 或針對特定目錄
-cd telegram-lambda/src
+cd telegram-adapter/src
 python -m py_compile *.py
 ```
 
@@ -77,12 +77,12 @@ python -m py_compile *.py
 #### 2. 導入測試（⭐ 最重要）
 ```bash
 # 測試每個主要模組
-cd telegram-lambda/src
+cd telegram-adapter/src
 python -c "import handler" || echo "❌ handler.py 導入失敗"
 python -c "import file_handler" || echo "❌ file_handler.py 導入失敗"
 python -c "import allowlist" || echo "❌ allowlist.py 導入失敗"
 
-cd ../../telegram-agentcore-bot
+cd ../../ai-processor
 python -c "import processor_entry" || echo "❌ processor_entry.py 導入失敗"
 ```
 
@@ -93,10 +93,10 @@ python -c "import processor_entry" || echo "❌ processor_entry.py 導入失敗"
 
 #### 3. SAM Template 驗證
 ```bash
-cd telegram-lambda
+cd telegram-adapter
 sam validate
 
-cd ../telegram-agentcore-bot
+cd ../ai-processor
 sam validate
 ```
 
@@ -152,7 +152,7 @@ aws logs tail /aws/lambda/FUNCTION_NAME --region us-west-2 --since 1m
 
 ### 創建測試腳本
 
-**telegram-lambda/test_imports.sh**:
+**telegram-adapter/test_imports.sh**:
 ```bash
 #!/bin/bash
 set -e
@@ -177,7 +177,7 @@ cd ..
 echo "✅ 所有導入測試通過"
 ```
 
-**telegram-agentcore-bot/test_imports.sh**:
+**ai-processor/test_imports.sh**:
 ```bash
 #!/bin/bash
 set -e
@@ -229,7 +229,7 @@ def get_bot_token():
 **如何避免**：
 ```bash
 # 1. 先檢查模組
-cat telegram-lambda/src/secrets_manager.py | grep "^def"
+cat telegram-adapter/src/secrets_manager.py | grep "^def"
 
 # 2. 看到只有：
 # def get_telegram_secrets()
@@ -270,7 +270,7 @@ audit_log(user_id, action, resource, details)  # ❌
 **如何避免**：
 ```bash
 # 1. 先檢查模組
-cat telegram-agentcore-bot/utils/audit.py | grep "^def\|^class"
+cat ai-processor/utils/audit.py | grep "^def\|^class"
 
 # 2. 看到只有：
 # class MemoryAuditLogger:
@@ -472,14 +472,14 @@ cat utils/audit.py | grep "^def\|^class"
 # 快速測試所有 Lambda 的導入
 
 echo "🔍 測試 Receiver Lambda..."
-cd telegram-lambda/src
+cd telegram-adapter/src
 python -c "import handler && import file_handler && import allowlist" \
   && echo "✅ Receiver imports OK" \
   || (echo "❌ Receiver imports FAILED" && exit 1)
 cd ../..
 
 echo "🔍 測試 Processor Lambda..."
-cd telegram-agentcore-bot
+cd ai-processor
 python -c "import processor_entry" \
   && echo "✅ Processor imports OK" \
   || (echo "❌ Processor imports FAILED" && exit 1)
@@ -542,7 +542,7 @@ echo "✅ 驗證通過"
 **使用**：
 ```bash
 sam deploy ...
-./post-deploy-verify.sh telegram-lambda-receiver
+./post-deploy-verify.sh telegram-adapter-receiver
 ```
 
 ---
@@ -607,10 +607,10 @@ quick-deploy:
 **使用**：
 ```bash
 # 推薦：帶測試的部署
-make deploy STACK_NAME=telegram-lambda-receiver
+make deploy STACK_NAME=telegram-adapter-receiver
 
 # 不推薦：跳過測試（緊急時）
-make quick-deploy STACK_NAME=telegram-lambda-receiver
+make quick-deploy STACK_NAME=telegram-adapter-receiver
 ```
 
 ### 2. Pre-commit Hook
@@ -623,7 +623,7 @@ make quick-deploy STACK_NAME=telegram-lambda-receiver
 echo "🔍 Pre-commit: 測試 Python 導入..."
 
 # 測試 Receiver
-cd telegram-lambda/src
+cd telegram-adapter/src
 python -c "import handler && import file_handler" || {
     echo "❌ Receiver 導入失敗，commit 被阻止"
     exit 1
@@ -631,7 +631,7 @@ python -c "import handler && import file_handler" || {
 cd ../..
 
 # 測試 Processor
-cd telegram-agentcore-bot
+cd ai-processor
 python -c "import processor_entry" || {
     echo "❌ Processor 導入失敗，commit 被阻止"
     exit 1

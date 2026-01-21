@@ -20,8 +20,8 @@
 1. Lambda 名稱（例如: message-processor）
 2. 用途描述（簡短說明功能）
 3. 屬於哪個 stack？
-   - telegram-lambda（接收器）
-   - telegram-agentcore-bot（處理器）
+   - telegram-adapter（接收器）
+   - ai-processor（處理器）
 4. 是否需要環境變數？（Y/N）
 5. 是否需要特殊 IAM 權限？（Y/N）
 ```
@@ -36,9 +36,9 @@
 
 根據 stack 類型創建 handler 文件：
 
-#### 如果是 telegram-lambda（接收器）
+#### 如果是 telegram-adapter（接收器）
 
-**文件路徑**: `telegram-lambda/src/[function_name]_handler.py`
+**文件路徑**: `telegram-adapter/src/[function_name]_handler.py`
 
 **基礎模板**：
 ```python
@@ -83,9 +83,9 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         }
 ```
 
-#### 如果是 telegram-agentcore-bot（處理器）
+#### 如果是 ai-processor（處理器）
 
-**文件路徑**: `telegram-agentcore-bot/[function_name].py`
+**文件路徑**: `ai-processor/[function_name].py`
 
 **基礎模板**：
 ```python
@@ -301,15 +301,15 @@ sam validate
 ```
 1. 名稱: message-processor
 2. 用途: 處理 Telegram 消息
-3. Stack: telegram-lambda
+3. Stack: telegram-adapter
 4. 環境變數: Y (TELEGRAM_BOT_TOKEN)
 5. IAM 權限: Y (DynamoDB 讀取)
 ```
 
 **結果**：
-- 創建 `telegram-lambda/src/message_processor_handler.py`
-- 創建 `telegram-lambda/tests/test_message_processor.py`
-- 更新 `telegram-lambda/template.yaml`
+- 創建 `telegram-adapter/src/message_processor_handler.py`
+- 創建 `telegram-adapter/tests/test_message_processor.py`
+- 更新 `telegram-adapter/template.yaml`
 
 ---
 
@@ -319,15 +319,15 @@ sam validate
 ```
 1. 名稱: data-transformer
 2. 用途: 轉換數據格式
-3. Stack: telegram-agentcore-bot
+3. Stack: ai-processor
 4. 環境變數: N
 5. IAM 權限: N
 ```
 
 **結果**：
-- 創建 `telegram-agentcore-bot/data_transformer.py`
-- 創建 `telegram-agentcore-bot/tests/test_data_transformer.py`
-- 更新 `telegram-agentcore-bot/template.yaml`
+- 創建 `ai-processor/data_transformer.py`
+- 創建 `ai-processor/tests/test_data_transformer.py`
+- 更新 `ai-processor/template.yaml`
 
 ---
 
@@ -360,9 +360,9 @@ sam validate
 - `docs/deployment-guide.md`
 
 ### 現有範例
-- `telegram-lambda/src/handler.py` - 主要 webhook handler
-- `telegram-lambda/src/file_handler.py` - 文件處理 handler
-- `telegram-agentcore-bot/processor_entry.py` - AI 處理器入口
+- `telegram-adapter/src/handler.py` - 主要 webhook handler
+- `telegram-adapter/src/file_handler.py` - 文件處理 handler
+- `ai-processor/processor_entry.py` - AI 處理器入口
 
 ---
 

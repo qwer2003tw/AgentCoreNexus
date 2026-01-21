@@ -72,9 +72,9 @@
 
 ### 相關文件
 - `.clinerules/PLAN_MODE_METHODOLOGY.md` - 工作方法論
-- `telegram-agentcore-bot/agents/conversation_agent.py` - Agent 實現
-- `telegram-agentcore-bot/processor_entry.py` - 處理器入口
-- `telegram-lambda/src/file_handler.py` - 檔案處理
+- `ai-processor/agents/conversation_agent.py` - Agent 實現
+- `ai-processor/processor_entry.py` - 處理器入口
+- `telegram-adapter/src/file_handler.py` - 檔案處理
 
 ## 🔄 更新日誌
 

@@ -45,8 +45,8 @@ make test-web         # Web 前端
 | 項目 | 要求 | 當前狀態 |
 |------|------|---------|
 | **新代碼覆蓋率** | **≥ 80%** | 強制檢查 |
-| telegram-lambda | > 70% | 74% ✅ |
-| telegram-agentcore-bot | > 70% | 87.84% ✅ |
+| telegram-adapter | > 70% | 74% ✅ |
+| ai-processor | > 70% | 87.84% ✅ |
 
 ### Pre-commit Hook（雙重保險）
 
@@ -200,16 +200,16 @@ pytest tests/ -v                 # ❌ 可能用錯版本
 ### 首次設置
 
 ```bash
-# telegram-lambda
-cd telegram-lambda
+# telegram-adapter
+cd telegram-adapter
 pip3.11 install -r requirements-test.txt
 
-# telegram-agentcore-bot  
-cd telegram-agentcore-bot
+# ai-processor  
+cd ai-processor
 pip3.11 install pytest pytest-cov pytest-asyncio coverage diff-cover
 
-# web-channel
-cd web-channel/e2e-tests
+# web-adapter
+cd web-adapter/e2e-tests
 npm install && npx playwright install --with-deps
 ```
 
@@ -268,7 +268,7 @@ python3.11 -m pytest tests/ -v
 ### 專案文檔
 - `docs/TESTING.md` - 完整測試指南
 - `.clinerules/QUICK_REFERENCE.md` - 快速參考
-- `telegram-lambda/tests/e2e/README.md` - E2E 測試
+- `telegram-adapter/tests/e2e/README.md` - E2E 測試
 
 ### 其他規範
 - `.clinerules/rules/code-quality.md` - 代碼質量規則

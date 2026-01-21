@@ -56,7 +56,7 @@ AWS Browser Sandbox 服務
 
 ### 修復 1: 正確初始化 Browser Service
 
-**文件**: `telegram-agentcore-bot/services/browser_service.py`
+**文件**: `ai-processor/services/browser_service.py`
 
 **修改前**（錯誤的導入）：
 ```python
@@ -117,7 +117,7 @@ with self.browser_session(self.region) as client:  # ✅ 正確使用
 
 ### 正在部署的修復
 
-**Stack**: `telegram-unified-bot`  
+**Stack**: `agentcore-ai-processor`  
 **狀態**: 部署中...  
 **包含的修復**：
 - ✅ 正確導入 browser_session 和 BrowserClient
@@ -136,7 +136,7 @@ with self.browser_session(self.region) as client:  # ✅ 正確使用
 ```
 用戶：「幫我看看 https://example.com 的內容」
        ↓
-處理器 Lambda (telegram-unified-bot-processor)
+處理器 Lambda (agentcore-ai-processor)
    ├─ AI 決定使用瀏覽器工具
    └─ browse_website_backup
        ↓

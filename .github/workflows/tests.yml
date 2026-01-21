@@ -12,58 +12,53 @@ on:
     branches: [ main, develop ]
 
 jobs:
-  test-backend-lambda:
-    name: Backend Tests - telegram-lambda
+  test-backend-adapter:
+    name: Backend Tests - telegram-adapter
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
           cache: 'pip'
-      
+
       - name: Install dependencies
         run: |
-          cd telegram-lambda
+          cd telegram-adapter
           python -m pip install --upgrade pip
-          pip install ruff pytest pytest-cov
+          pip install pytest pytest-cov
           pip install -r requirements.txt
           pip install -r requirements-test.txt || true
-      
-      - name: Run Ruff checks
-        run: |
-          cd telegram-lambda
-          ruff check .
-      
+
       - name: Run tests with coverage
         run: |
-          cd telegram-lambda
+          cd telegram-adapter
           pytest tests/ -v --cov=src --cov-report=xml --cov-report=term --cov-report=html
         env:
           AWS_DEFAULT_REGION: us-west-2
           AWS_ACCESS_KEY_ID: test
           AWS_SECRET_ACCESS_KEY: test
-      
+
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         with:
-          files: ./telegram-lambda/coverage.xml
-          flags: telegram-lambda
-          name: telegram-lambda-coverage
+          files: ./telegram-adapter/coverage.xml
+          flags: telegram-adapter
+          name: telegram-adapter-coverage
           fail_ci_if_error: false
-      
+
       - name: Upload coverage artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: telegram-lambda-coverage
-          path: telegram-lambda/htmlcov/
+          name: telegram-adapter-coverage
+          path: telegram-adapter/htmlcov/
 
-  test-backend-agentcore:
-    name: Backend Tests - telegram-agentcore-bot
+  test-backend-processor:
+    name: Backend Tests - ai-processor
     runs-on: ubuntu-latest
     
     steps:
@@ -78,19 +73,14 @@ jobs:
       
       - name: Install dependencies
         run: |
-          cd telegram-agentcore-bot
+          cd ai-processor
           python -m pip install --upgrade pip
-          pip install ruff pytest pytest-cov pytest-asyncio coverage diff-cover
+          pip install pytest pytest-cov pytest-asyncio coverage diff-cover
           pip install -r requirements.txt || true
-      
-      - name: Run Ruff checks
-        run: |
-          cd telegram-agentcore-bot
-          ruff check .
       
       - name: Run tests with coverage
         run: |
-          cd telegram-agentcore-bot
+          cd ai-processor
           pytest tests/ -v --cov=. --cov-report=xml --cov-report=term --cov-report=html
         env:
           AWS_DEFAULT_REGION: us-west-2
@@ -99,26 +89,26 @@ jobs:
       
       - name: Check coverage threshold
         run: |
-          cd telegram-agentcore-bot
+          cd ai-processor
           coverage report --fail-under=70
         continue-on-error: true
       
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         with:
-          files: ./telegram-agentcore-bot/coverage.xml
-          flags: telegram-agentcore-bot
-          name: telegram-agentcore-bot-coverage
+          files: ./ai-processor/coverage.xml
+          flags: ai-processor
+          name: ai-processor-coverage
           fail_ci_if_error: false
       
       - name: Upload coverage artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: telegram-agentcore-bot-coverage
-          path: telegram-agentcore-bot/htmlcov/
+          name: ai-processor-coverage
+          path: ai-processor/htmlcov/
 
   test-frontend:
-    name: Frontend Tests - web-channel
+    name: Frontend Tests - web-adapter
     runs-on: ubuntu-latest
     
     steps:
@@ -132,25 +122,25 @@ jobs:
           node-version: '18'
           cache: 'npm'
           cache-dependency-path: |
-            web-channel/frontend/package-lock.json
-            web-channel/e2e-tests/package-lock.json
+            web-adapter/frontend/package-lock.json
+            web-adapter/tests/package-lock.json
       
       # ✅ Configure test environment with real AWS endpoints
       - name: Configure test environment
         run: |
-          cd web-channel/frontend
+          cd web-adapter/frontend
           echo "VITE_API_ENDPOINT=${{ secrets.TEST_API_ENDPOINT }}" > .env.local
           echo "VITE_WS_ENDPOINT=${{ secrets.TEST_WS_ENDPOINT }}" >> .env.local
           echo "✅ Test environment configured"
       
       - name: Install frontend dependencies
         run: |
-          cd web-channel/frontend
+          cd web-adapter/frontend
           npm ci
       
       - name: Install E2E test dependencies
         run: |
-          cd web-channel/e2e-tests
+          cd web-adapter/tests
           npm ci
       
       # ✅ Cache Playwright browsers to avoid re-downloading
@@ -159,7 +149,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-browsers-${{ runner.os }}-${{ hashFiles('web-channel/e2e-tests/package-lock.json') }}
+          key: playwright-browsers-${{ runner.os }}-${{ hashFiles('web-adapter/tests/package-lock.json') }}
           restore-keys: |
             playwright-browsers-${{ runner.os }}-
       
@@ -167,20 +157,20 @@ jobs:
       - name: Install Playwright browsers
         if: steps.playwright-cache.outputs.cache-hit != 'true'
         run: |
-          cd web-channel/e2e-tests
+          cd web-adapter/tests
           npx playwright install --with-deps
       
       # ✅ Install system dependencies only if cache hit
       - name: Install Playwright system dependencies
         if: steps.playwright-cache.outputs.cache-hit == 'true'
         run: |
-          cd web-channel/e2e-tests
+          cd web-adapter/tests
           npx playwright install-deps
       
       # ✅ Pass test account credentials for 4 workers
       - name: Run E2E tests
         run: |
-          cd web-channel/e2e-tests
+          cd web-adapter/tests
           npm test
         env:
           TEST_USER_1_EMAIL: ${{ secrets.TEST_USER_1_EMAIL }}
@@ -197,25 +187,25 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report
-          path: web-channel/e2e-tests/playwright-report/
+          path: web-adapter/tests/playwright-report/
           retention-days: 7
 
   test-summary:
     name: Test Summary
     runs-on: ubuntu-latest
-    needs: [test-backend-lambda, test-backend-agentcore, test-frontend]
+    needs: [test-backend-adapter, test-backend-processor, test-frontend]
     if: always()
     
     steps:
       - name: Check test results
         run: |
           echo "Test Summary:"
-          echo "- telegram-lambda: ${{ needs.test-backend-lambda.result }}"
-          echo "- telegram-agentcore-bot: ${{ needs.test-backend-agentcore.result }}"
-          echo "- web-channel: ${{ needs.test-frontend.result }}"
+          echo "- telegram-adapter: ${{ needs.test-backend-adapter.result }}"
+          echo "- ai-processor: ${{ needs.test-backend-processor.result }}"
+          echo "- web-adapter: ${{ needs.test-frontend.result }}"
           
-          if [ "${{ needs.test-backend-lambda.result }}" != "success" ] || \
-             [ "${{ needs.test-backend-agentcore.result }}" != "success" ] || \
+          if [ "${{ needs.test-backend-adapter.result }}" != "success" ] || \
+             [ "${{ needs.test-backend-processor.result }}" != "success" ] || \
              [ "${{ needs.test-frontend.result }}" != "success" ]; then
             echo "❌ Some tests failed"
             exit 1

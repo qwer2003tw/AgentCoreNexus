@@ -41,7 +41,7 @@ AgentCoreNexus 專案在快速開發過程中缺乏統一的代碼質量工具�
 
 ## 📊 詳細成果
 
-### telegram-lambda（Webhook 接收器）
+### telegram-adapter（Webhook 接收器）
 
 | 指標 | 初始 | 最終 | 改善 |
 |------|------|------|------|
@@ -53,7 +53,7 @@ AgentCoreNexus 專案在快速開發過程中缺乏統一的代碼質量工具�
 - 4 個裸 except（安全考量，建議但非強制）
 - 1 個可簡化的 if-else（代碼風格建議）
 
-### telegram-agentcore-bot（AI 處理器）
+### ai-processor（AI 處理器）
 
 | 指標 | 初始 | 最終 | 改善 |
 |------|------|------|------|
@@ -95,11 +95,11 @@ select = ["E", "F", "I", "N", "UP", "W", "B", "C4", "SIM"]
 - 排除 `PLW0603`（允許 global 連接池模式）
 - 測試文件寬鬆規則
 
-### Phase 2: telegram-lambda 試點（25 分鐘）
+### Phase 2: telegram-adapter 試點（25 分鐘）
 
 **執行步驟**:
 ```bash
-cd telegram-lambda
+cd telegram-adapter
 ruff check . --statistics    # 發現 1,369 問題
 ruff check . --fix           # 自動修復 1,174 問題
 ruff format .                # 格式化 42 個文件
@@ -108,11 +108,11 @@ ruff check . --unsafe-fixes  # 處理剩餘問題
 
 **結果**: 1,369 → 5 問題
 
-### Phase 3: telegram-agentcore-bot 部署（30 分鐘）
+### Phase 3: ai-processor 部署（30 分鐘）
 
 **執行步驟**:
 ```bash
-cd telegram-agentcore-bot
+cd ai-processor
 ruff check . --statistics    # 發現 874 問題
 ruff check . --fix           # 自動修復 731 問題
 ruff format .                # 格式化 31 個文件
@@ -336,8 +336,8 @@ def get_eventbridge_client():
 |------|------|------|
 | 規劃與研究 | 15 分鐘 | Sequential Thinking 分析 |
 | 配置設置 | 15 分鐘 | pyproject.toml |
-| 試點運行 | 25 分鐘 | telegram-lambda |
-| 全面部署 | 30 分鐘 | telegram-agentcore-bot |
+| 試點運行 | 25 分鐘 | telegram-adapter |
+| 全面部署 | 30 分鐘 | ai-processor |
 | CI/CD 整合 | 10 分鐘 | GitHub Actions |
 | 文檔撰寫 | 15 分鐘 | CODE_QUALITY.md |
 | **總計** | **90 分鐘** | |

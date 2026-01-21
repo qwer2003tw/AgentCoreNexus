@@ -55,12 +55,12 @@ git status
 ```
 請選擇要部署的 Stack：
 
-1. telegram-lambda-receiver（接收器）
+1. telegram-adapter-receiver（接收器）
    - API Gateway
    - Webhook 接收 Lambda
    - 響應路由 Lambda
    
-2. telegram-unified-bot（處理器）
+2. agentcore-ai-processor（處理器）
    - AI 處理器 Lambda
    - Browser sandbox 整合
    
@@ -77,9 +77,9 @@ git status
 
 #### 選項 1: 部署接收器
 ```bash
-cd telegram-lambda
+cd telegram-adapter
 sam build
-sam deploy --stack-name telegram-lambda-receiver \
+sam deploy --stack-name telegram-adapter-receiver \
   --resolve-s3 \
   --capabilities CAPABILITY_IAM \
   --region us-west-2
@@ -87,9 +87,9 @@ sam deploy --stack-name telegram-lambda-receiver \
 
 #### 選項 2: 部署處理器
 ```bash
-cd telegram-agentcore-bot
+cd ai-processor
 sam build
-sam deploy --stack-name telegram-unified-bot \
+sam deploy --stack-name agentcore-ai-processor \
   --resolve-s3 \
   --capabilities CAPABILITY_IAM \
   --region us-west-2
@@ -146,12 +146,12 @@ aws lambda wait function-updated \
 
 ```bash
 # 檢查接收器日誌
-aws logs tail /aws/lambda/telegram-lambda-receiver \
+aws logs tail /aws/lambda/telegram-adapter-receiver \
   --region us-west-2 \
   --since 5m
 
 # 檢查處理器日誌
-aws logs tail /aws/lambda/telegram-unified-bot-processor \
+aws logs tail /aws/lambda/agentcore-ai-processor-processor \
   --region us-west-2 \
   --since 5m
 ```
@@ -237,8 +237,8 @@ aws lambda update-function-code \
 ```bash
 aws events list-targets-by-rule \
   --region us-west-2 \
-  --rule telegram-lambda-receiver-message-received \
-  --event-bus-name telegram-lambda-receiver-events
+  --rule telegram-adapter-receiver-message-received \
+  --event-bus-name telegram-adapter-receiver-events
 ```
 
 ---

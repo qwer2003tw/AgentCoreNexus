@@ -65,8 +65,8 @@ make coverage-report  # 查看所有組件覆蓋率
 |------|------|---------|
 | **新代碼覆蓋率** | **≥ 80%** | diff-cover（強制）|
 | 整體覆蓋率 | > 70% | pytest-cov（建議）|
-| telegram-lambda | > 70% | 當前：74% ✅ |
-| telegram-agentcore-bot | > 70% | 當前：87.84% ✅ |
+| telegram-adapter | > 70% | 當前：74% ✅ |
+| ai-processor | > 70% | 當前：87.84% ✅ |
 
 ### Pre-commit Hook（雙重保險機制）
 
@@ -104,7 +104,7 @@ make coverage-report  # 查看所有組件覆蓋率
 ### Step 1: 代碼質量檢查（Ruff）⭐
 
 ```bash
-cd [project-directory]  # telegram-lambda 或 telegram-agentcore-bot
+cd [project-directory]  # telegram-adapter 或 ai-processor
 ruff check . --fix      # 自動修復
 ruff format .           # 格式化
 ruff check .            # 最終驗證
@@ -124,10 +124,10 @@ ruff check .            # 最終驗證
 ### Step 2: 單元測試⭐
 
 ```bash
-# telegram-agentcore-bot
+# ai-processor
 python3.11 -m pytest tests/ -v
 
-# telegram-lambda  
+# telegram-adapter  
 python3.11 -m pytest tests/ --ignore=tests/e2e/ -v
 ```
 
@@ -145,14 +145,14 @@ python3.11 -m pytest tests/ --ignore=tests/e2e/ -v
 ### Step 3: E2E 測試⭐
 
 ```bash
-# telegram-lambda（有 E2E 測試）
-cd telegram-lambda
+# telegram-adapter（有 E2E 測試）
+cd telegram-adapter
 python3.11 -m pytest tests/e2e/ -v
 
-# telegram-agentcore-bot（目前無 E2E 測試，跳過）
+# ai-processor（目前無 E2E 測試，跳過）
 
-# web-channel（Playwright E2E）
-cd web-channel/e2e-tests
+# web-adapter（Playwright E2E）
+cd web-adapter/e2e-tests
 npm test
 ```
 
@@ -371,10 +371,10 @@ pytest tests/ -v
 
 ### 首次設置（僅需一次）
 
-#### telegram-lambda
+#### telegram-adapter
 
 ```bash
-cd telegram-lambda
+cd telegram-adapter
 
 # 1. 安裝測試依賴
 pip3.11 install -r requirements-test.txt
@@ -386,19 +386,19 @@ python3.11 tests/e2e/verify_setup.py
 python3.11 -m pytest tests/e2e/ -v
 ```
 
-#### telegram-agentcore-bot
+#### ai-processor
 
 ```bash
-cd telegram-agentcore-bot
+cd ai-processor
 
 # 安裝測試依賴
 pip3.11 install pytest pytest-cov pytest-asyncio coverage diff-cover
 ```
 
-#### web-channel
+#### web-adapter
 
 ```bash
-cd web-channel/e2e-tests
+cd web-adapter/e2e-tests
 
 # 安裝依賴
 npm install
@@ -425,12 +425,12 @@ npx playwright install --with-deps
 #### 組件級測試腳本
 
 ```bash
-# telegram-lambda
-cd telegram-lambda
+# telegram-adapter
+cd telegram-adapter
 ./run_all_tests.sh --cov        # 完整測試 + 覆蓋率
 
-# telegram-agentcore-bot
-cd telegram-agentcore-bot
+# ai-processor
+cd ai-processor
 ./run_tests_with_coverage.sh   # 測試 + 覆蓋率
 ```
 
@@ -506,7 +506,7 @@ Hook 會在每次 commit 時自動執行所有檢查。
 
 **解決**:
 ```bash
-cd telegram-lambda
+cd telegram-adapter
 pip install -r requirements-test.txt
 python3.11 -m pytest tests/e2e/ -v
 ```
@@ -575,7 +575,7 @@ pytest tests/ -v                 # ❌ 可能使用錯誤版本
 **解決**:
 
 ```bash
-cd web-channel/e2e-tests
+cd web-adapter/e2e-tests
 npx playwright install --with-deps
 npm test
 ```
@@ -661,9 +661,9 @@ npm test
 - `README.md` - 專案說明（包含測試章節）
 
 #### 組件測試文檔
-- `telegram-lambda/tests/e2e/README.md` - E2E 測試指南
-- `telegram-lambda/tests/e2e/QUICKSTART.md` - 快速開始
-- `web-channel/e2e-tests/README.md` - Web E2E 測試
+- `telegram-adapter/tests/e2e/README.md` - E2E 測試指南
+- `telegram-adapter/tests/e2e/QUICKSTART.md` - 快速開始
+- `web-adapter/e2e-tests/README.md` - Web E2E 測試
 
 #### 其他規範
 - `.clinerules/CODE_QUALITY_WORKFLOW.md` - 代碼質量工作流

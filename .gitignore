@@ -115,3 +115,8 @@ temp/
 *.wip
 *~
 telegram-agentcore-bot/coverage.xml
+
+# E2E test scripts with actual passwords (use .example templates instead)
+web-adapter/scripts/configure_github_secrets.sh
+web-adapter/scripts/rebuild_test_accounts.py
+web-adapter/scripts/sync-endpoints.sh

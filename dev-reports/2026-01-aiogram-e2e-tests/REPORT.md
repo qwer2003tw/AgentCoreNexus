@@ -329,7 +329,7 @@ Python 版本: 3.9.25 ✅
 ```python
 def create_mock_context() -> Mock:
     context = Mock()
-    context.function_name = "telegram-lambda-receiver"
+    context.function_name = "telegram-adapter-receiver"
     context.get_remaining_time_in_millis = MagicMock(return_value=30000)
     # ... 其他屬性
     return context
@@ -376,7 +376,7 @@ def create_mock_context() -> Mock:
 
 ```bash
 # 1. 進入目錄
-cd telegram-lambda
+cd telegram-adapter
 
 # 2. 安裝測試依賴
 pip install -r requirements-test.txt
@@ -490,9 +490,9 @@ git commit -m "feat: your feature"
 
 ### 專案文檔
 
-- `telegram-lambda/tests/e2e/README.md` - 完整測試指南
-- `telegram-lambda/tests/e2e/QUICKSTART.md` - 快速開始
-- `telegram-lambda/tests/e2e/IMPLEMENTATION_SUMMARY.md` - 實施總結
+- `telegram-adapter/tests/e2e/README.md` - 完整測試指南
+- `telegram-adapter/tests/e2e/QUICKSTART.md` - 快速開始
+- `telegram-adapter/tests/e2e/IMPLEMENTATION_SUMMARY.md` - 實施總結
 
 ### 外部資源
 
@@ -573,7 +573,7 @@ aiogram 的整合證明了：**正確的工具 + 聰明的策略 = 超出預期�
 ## 附錄：文件清單
 
 ```
-telegram-lambda/
+telegram-adapter/
 ├── requirements-test.txt          # 測試依賴
 ├── pytest.ini                     # pytest 配置
 ├── run_e2e_tests.sh              # 測試執行腳本 (可執行)

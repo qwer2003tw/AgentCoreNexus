@@ -8,11 +8,11 @@ AgentCoreNexus 使用多個 CloudFormation Stacks 實現模組化架構。
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│         telegram-lambda-receiver (接收層)                │
+│         telegram-adapter-receiver (接收層)                │
 │  - API Gateway (Telegram webhook)                       │
 │  - Receiver Lambda                                       │
 │  - Response Router Lambda                               │
-│  - EventBridge Bus (telegram-lambda-receiver-events)    │
+│  - EventBridge Bus (telegram-adapter-receiver-events)    │
 │  - Allowlist DynamoDB Table                             │
 │  - Secrets Manager (bot token)                          │
 └──────────────────────┬──────────────────────────────────┘
@@ -20,7 +20,7 @@ AgentCoreNexus 使用多個 CloudFormation Stacks 實現模組化架構。
                        │ EventBridge Events
                        ↓
 ┌─────────────────────────────────────────────────────────┐
-│         telegram-unified-bot (AI 處理層)                 │
+│         agentcore-ai-processor (AI 處理層)                 │
 │  - Processor Lambda (AgentCore)                         │
 │  - Memory Service                                        │
 │  - Browser Service                                       │
@@ -30,7 +30,7 @@ AgentCoreNexus 使用多個 CloudFormation Stacks 實現模組化架構。
                        │ EventBridge Events
                        ↓
 ┌─────────────────────────────────────────────────────────┐
-│         agentcore-web-channel (Web 通道層)               │
+│         agentcore-web-adapter (Web 通道層)               │
 │  - WebSocket API Gateway                                │
 │  - REST API Gateway                                     │
 │  - Web Adapter Lambdas (connect/disconnect/default)    │
@@ -48,7 +48,7 @@ AgentCoreNexus 使用多個 CloudFormation Stacks 實現模組化架構。
 
 ## 📋 Stack 職責劃分
 
-### 1. telegram-lambda-receiver（接收層）
+### 1. telegram-adapter-receiver（接收層）
 **職責**: Telegram 入口點
 - 接收 Telegram webhook
 - 驗證 allowlist
@@ -56,22 +56,22 @@ AgentCoreNexus 使用多個 CloudFormation Stacks 實現模組化架構。
 - 發送 EventBridge events
 
 **主要資源**:
-- Lambda: telegram-lambda-receiver
-- Lambda: telegram-lambda-response-router
+- Lambda: telegram-adapter-receiver
+- Lambda: telegram-adapter-response-router
 - DynamoDB: telegram-allowlist
-- EventBridge Bus: telegram-lambda-receiver-events
+- EventBridge Bus: telegram-adapter-receiver-events
 
 **部署**:
 ```bash
 make deploy-telegram
 # 或
-cd telegram-lambda
-sam deploy --stack-name telegram-lambda-receiver ...
+cd telegram-adapter
+sam deploy --stack-name telegram-adapter-receiver ...
 ```
 
 ---
 
-### 2. telegram-unified-bot（處理層）
+### 2. agentcore-ai-processor（處理層）
 **職責**: AI 核心處理
 - 監聽 EventBridge events
 - 處理 AI 對話（Bedrock Claude）
@@ -80,7 +80,7 @@ sam deploy --stack-name telegram-lambda-receiver ...
 - 發送回應 events
 
 **主要資源**:
-- Lambda: telegram-unified-bot-processor
+- Lambda: agentcore-ai-processor
 - AgentCore Memory
 - Bedrock Integration
 
@@ -88,13 +88,13 @@ sam deploy --stack-name telegram-lambda-receiver ...
 ```bash
 make deploy-processor
 # 或
-cd telegram-agentcore-bot
-sam deploy --stack-name telegram-unified-bot ...
+cd ai-processor
+sam deploy --stack-name agentcore-ai-processor ...
 ```
 
 ---
 
-### 3. agentcore-web-channel（Web 層）
+### 3. agentcore-web-adapter（Web 層）
 **職責**: Web 入口點 + 前端
 - 提供 Web 認證（email + password）
 - WebSocket 即時通訊
@@ -115,8 +115,8 @@ sam deploy --stack-name telegram-unified-bot ...
 ```bash
 make deploy-web
 # 或
-cd dev-in-progress/web-channel-expansion/infrastructure
-sam deploy --stack-name agentcore-web-channel ...
+cd dev-in-progress/web-adapter-expansion/infrastructure
+sam deploy --stack-name agentcore-web-adapter ...
 ```
 
 ---
@@ -126,23 +126,23 @@ sam deploy --stack-name agentcore-web-channel ...
 ### EventBridge（核心通訊機制）
 
 ```
-telegram-lambda-receiver
+telegram-adapter-receiver
   └─ 發送: message.received (Telegram 消息)
       ↓
-telegram-unified-bot-processor  
+agentcore-ai-processor  
   └─ 監聽: message.received
   └─ 發送: message.completed (AI 回應)
       ↓
-├─ telegram-lambda-response-router (Telegram 回應)
-└─ agentcore-web-channel-response-router (Web 回應)
+├─ telegram-adapter-response-router (Telegram 回應)
+└─ agentcore-web-adapter-response-router (Web 回應)
 ```
 
 ### ImportValue（Stack 輸出共享）
 
 ```yaml
-# web-channel-template.yaml
+# web-adapter-template.yaml
 ExistingEventBusName:
-  Default: telegram-lambda-receiver-events  # 從 Stack 1 來
+  Default: telegram-adapter-receiver-events  # 從 Stack 1 來
 
 # 使用
 EVENT_BUS_NAME: !Ref ExistingEventBusName
@@ -223,7 +223,7 @@ make logs STACK=web
 make update-frontend
 
 # 等同於
-cd dev-in-progress/web-channel-expansion
+cd dev-in-progress/web-adapter-expansion
 ./scripts/deploy-frontend.sh
 ```
 
@@ -315,13 +315,13 @@ aws cloudfront create-invalidation \
 ### 誰依賴誰？
 
 ```
-telegram-lambda-receiver (獨立)
+telegram-adapter-receiver (獨立)
   ↓ exports: EventBridge Bus
   
-telegram-unified-bot
+agentcore-ai-processor
   ↑ imports: EventBridge Bus
   
-agentcore-web-channel
+agentcore-web-adapter
   ↑ imports: EventBridge Bus
 ```
 
@@ -330,13 +330,13 @@ agentcore-web-channel
 **必須反向刪除**：
 ```bash
 # 1. 先刪除 Web（依賴 EventBridge）
-aws cloudformation delete-stack --stack-name agentcore-web-channel
+aws cloudformation delete-stack --stack-name agentcore-web-adapter
 
 # 2. 再刪除 Processor（依賴 EventBridge）
-aws cloudformation delete-stack --stack-name telegram-unified-bot
+aws cloudformation delete-stack --stack-name agentcore-ai-processor
 
 # 3. 最後刪除 Telegram（提供 EventBridge）
-aws cloudformation delete-stack --stack-name telegram-lambda-receiver
+aws cloudformation delete-stack --stack-name telegram-adapter-receiver
 
 # 或使用 Makefile（已處理順序）
 make clean
@@ -350,9 +350,9 @@ make clean
 
 | Stack | 主要費用 | 月成本 |
 |-------|---------|--------|
-| telegram-lambda | Lambda + DynamoDB | $5-10 |
-| telegram-unified-bot | Lambda + Bedrock | $10-20 |
-| agentcore-web-channel | Lambda + DynamoDB + S3 + CloudFront | $15-30 |
+| telegram-adapter | Lambda + DynamoDB | $5-10 |
+| agentcore-ai-processor | Lambda + Bedrock | $10-20 |
+| agentcore-web-adapter | Lambda + DynamoDB + S3 + CloudFront | $15-30 |
 | **總計** | | **$30-60** |
 
 ### 主要成本來源
@@ -375,10 +375,10 @@ make clean
 建議為不同環境使用不同 stack 名稱：
 ```bash
 # 開發環境
-make deploy-web STACK_NAME=agentcore-web-channel-dev
+make deploy-web STACK_NAME=agentcore-web-adapter-dev
 
 # 生產環境  
-make deploy-web STACK_NAME=agentcore-web-channel-prod
+make deploy-web STACK_NAME=agentcore-web-adapter-prod
 ```
 
 ### 2. 版本控制
@@ -408,9 +408,9 @@ git push --tags
 ## 📚 相關文檔
 
 - 根目錄 `Makefile` - 統一部署指令
-- `telegram-lambda/template.yaml` - Telegram 層 template
-- `telegram-agentcore-bot/template.yaml` - Processor 層 template
-- `web-channel/infrastructure/web-channel-template.yaml` - Web 層 template
+- `telegram-adapter/template.yaml` - Telegram 層 template
+- `ai-processor/template.yaml` - Processor 層 template
+- `web-adapter/infrastructure/web-adapter-template.yaml` - Web 層 template
 
 ---
 

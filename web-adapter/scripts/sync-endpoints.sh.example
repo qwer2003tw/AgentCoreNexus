@@ -1,0 +1,101 @@
+#!/bin/bash
+# 自動同步 API Endpoints 腳本範本
+# 從 CloudFormation Stack 獲取最新 endpoints 並更新所有配置
+#
+# 使用方式：
+# 1. 複製：cp sync-endpoints.sh.example sync-endpoints.sh
+# 2. 執行：./sync-endpoints.sh
+# 3. 重新 build 和部署前端
+
+set -e
+
+# 切換到專案根目錄
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+PROJECT_ROOT="$( cd "$SCRIPT_DIR/../.." && pwd )"
+cd "$PROJECT_ROOT"
+
+# ⚠️ 根據你的 Stack 名稱修改
+STACK_NAME="agentcore-web-adapter"
+REGION="us-west-2"
+
+echo "🔍 從 CloudFormation 獲取最新 endpoints..."
+echo "Stack: $STACK_NAME"
+echo "Region: $REGION"
+echo ""
+
+# 獲取 endpoints
+API_ENDPOINT=$(aws cloudformation describe-stacks \
+  --region $REGION \
+  --stack-name $STACK_NAME \
+  --query 'Stacks[0].Outputs[?OutputKey==`RestApiEndpoint`].OutputValue' \
+  --output text)
+
+WS_ENDPOINT=$(aws cloudformation describe-stacks \
+  --region $REGION \
+  --stack-name $STACK_NAME \
+  --query 'Stacks[0].Outputs[?OutputKey==`WebSocketApiEndpoint`].OutputValue' \
+  --output text)
+
+if [ -z "$API_ENDPOINT" ] || [ -z "$WS_ENDPOINT" ]; then
+    echo "❌ 錯誤：無法從 CloudFormation 獲取 endpoints"
+    echo "請確認 Stack 已部署且有正確的 Outputs"
+    exit 1
+fi
+
+echo "✅ 獲取成功："
+echo "  - API: $API_ENDPOINT"
+echo "  - WebSocket: $WS_ENDPOINT"
+echo ""
+
+# 更新前端 .env
+echo "📝 更新前端配置 (web-adapter/frontend/.env)..."
+cat > web-adapter/frontend/.env << EOF
+VITE_API_ENDPOINT=$API_ENDPOINT
+VITE_WS_ENDPOINT=$WS_ENDPOINT
+VITE_DEBUG=false
+EOF
+echo "  ✅ .env 已更新"
+
+# 更新前端 .env.local
+echo "📝 更新前端本地配置 (web-adapter/frontend/.env.local)..."
+cat > web-adapter/frontend/.env.local << EOF
+VITE_API_ENDPOINT=$API_ENDPOINT
+VITE_WS_ENDPOINT=$WS_ENDPOINT
+EOF
+echo "  ✅ .env.local 已更新"
+
+# 更新測試配置
+echo "📝 更新測試配置 (web-adapter/tests/.env.aws)..."
+sed -i "s|VITE_API_ENDPOINT=.*|VITE_API_ENDPOINT=$API_ENDPOINT|" web-adapter/tests/.env.aws
+sed -i "s|VITE_WS_ENDPOINT=.*|VITE_WS_ENDPOINT=$WS_ENDPOINT|" web-adapter/tests/.env.aws
+echo "  ✅ .env.aws 已更新"
+
+# 更新 GitHub Secrets（如果 gh CLI 已認證）
+if command -v gh &> /dev/null && gh auth status &> /dev/null; then
+    echo "📝 更新 GitHub Secrets..."
+    gh secret set TEST_API_ENDPOINT --body "$API_ENDPOINT"
+    gh secret set TEST_WS_ENDPOINT --body "$WS_ENDPOINT"
+    echo "  ✅ GitHub Secrets 已更新"
+else
+    echo "⚠️  跳過 GitHub Secrets 更新（gh CLI 未認證）"
+    echo "   手動更新：https://github.com/qwer2003tw/AgentCoreNexus/settings/secrets/actions"
+fi
+
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "✅ 所有配置已同步到最新 endpoints！"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "📊 配置摘要："
+echo "  - 前端 .env: $API_ENDPOINT"
+echo "  - 前端 .env.local: $API_ENDPOINT"
+echo "  - 測試 .env.aws: $API_ENDPOINT"
+echo "  - GitHub Secrets: 已更新（如已認證）"
+echo ""
+echo "🚀 下一步："
+echo "  1. 重新 build 前端： cd web-adapter/frontend && npm run build"
+echo "  2. 重新部署前端： aws s3 sync dist/ s3://bucket/ --delete"
+echo "  3. 清除 cache： aws cloudfront create-invalidation ..."
+echo "  4. 運行測試： cd web-adapter/tests && E2E_ENV=aws npm test"
+echo ""
+echo "💡 提示：將此腳本整合到部署流程中可自動化整個過程"

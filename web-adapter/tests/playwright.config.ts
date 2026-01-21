@@ -1,0 +1,64 @@
+import { defineConfig, devices } from '@playwright/test'
+import dotenv from 'dotenv'
+
+// Load environment-specific config
+const envFile = process.env.E2E_ENV === 'aws' ? '.env.aws' : '.env.local'
+dotenv.config({ path: envFile })
+
+export default defineConfig({
+  testDir: './tests',
+  
+  // Maximum time one test can run (increased for Lambda cold start)
+  timeout: 120 * 1000,  // Increased from 60s to 120s
+  
+  // Test execution settings
+  fullyParallel: true,  //  Enable parallel execution
+  forbidOnly: !!process.env.CI,
+  retries: process.env.CI ? 2 : 0,
+  workers: 4,  //  Use 4 workers for faster execution (local and CI)
+  
+  // Reporter
+  reporter: [
+    ['list'],
+    ['html', { outputFolder: 'playwright-report' }],
+    ['json', { outputFile: 'test-results.json' }]
+  ],
+  
+  // Shared settings
+  use: {
+    // Use real AWS URL if E2E_ENV=aws, otherwise local dev server
+    baseURL: process.env.E2E_ENV === 'aws' 
+      ? (process.env.FRONTEND_URL || 'https://d3hplgekizttn1.cloudfront.net')
+      : 'http://localhost:5173',
+    
+    // Increase timeout for real AWS (network latency + Lambda cold start)
+    actionTimeout: process.env.E2E_ENV === 'aws' ? 30000 : 10000,
+    trace: 'retain-on-failure',  //  Optimized: only keep trace on failure
+    screenshot: 'only-on-failure',
+    video: 'retain-on-failure',
+    actionTimeout: 15000,  // Increased from 10s to 15s for slow APIs
+  },
+  
+  // Configure projects for different browsers
+  projects: [
+    {
+      name: 'chromium',
+      use: { ...devices['Desktop Chrome'] },
+    },
+    // Can add more browsers later
+    // {
+    //   name: 'firefox',
+    //   use: { ...devices['Desktop Firefox'] },
+    // },
+  ],
+  
+  // Dev server configuration (only for local testing)
+  ...(process.env.E2E_ENV !== 'aws' && {
+    webServer: {
+      command: 'cd ../frontend && npm run dev',
+      url: 'http://localhost:5173',
+      reuseExistingServer: !process.env.CI,
+      timeout: 30000,
+    },
+  }),
+})

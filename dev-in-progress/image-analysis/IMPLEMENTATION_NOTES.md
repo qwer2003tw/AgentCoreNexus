@@ -97,7 +97,7 @@ else:
 ```
 用戶上傳圖片
     ↓
-telegram-lambda/file_handler.py
+telegram-adapter/file_handler.py
     - 識別為 'photo' 類型
     - 下載並上傳到 S3
     ↓

@@ -29,8 +29,8 @@ aws cloudformation describe-stacks \
 **報告格式**：
 ```
 📦 CloudFormation Stacks:
-- telegram-lambda-receiver: CREATE_COMPLETE ✅
-- telegram-unified-bot: UPDATE_COMPLETE ✅
+- telegram-adapter-receiver: CREATE_COMPLETE ✅
+- agentcore-ai-processor: UPDATE_COMPLETE ✅
 ```
 
 ---
@@ -54,9 +54,9 @@ aws lambda list-functions \
 **報告格式**：
 ```
 🔧 Lambda 函數:
-- telegram-lambda-receiver: Active (Successful) ✅
-- telegram-unified-bot-processor: Active (Successful) ✅
-- telegram-lambda-response-router: Active (Successful) ✅
+- telegram-adapter-receiver: Active (Successful) ✅
+- agentcore-ai-processor-processor: Active (Successful) ✅
+- telegram-adapter-response-router: Active (Successful) ✅
 ```
 
 ---
@@ -69,13 +69,13 @@ aws lambda list-functions \
 # 列出 rules
 aws events list-rules \
   --region us-west-2 \
-  --event-bus-name telegram-lambda-receiver-events
+  --event-bus-name telegram-adapter-receiver-events
 
 # 檢查每個 rule 的 targets
 aws events list-targets-by-rule \
   --region us-west-2 \
-  --rule telegram-lambda-receiver-message-received \
-  --event-bus-name telegram-lambda-receiver-events
+  --rule telegram-adapter-receiver-message-received \
+  --event-bus-name telegram-adapter-receiver-events
 ```
 
 **分析結果**：
@@ -98,19 +98,19 @@ aws events list-targets-by-rule \
 
 ```bash
 # 接收器日誌
-aws logs tail /aws/lambda/telegram-lambda-receiver \
+aws logs tail /aws/lambda/telegram-adapter-receiver \
   --region us-west-2 \
   --since 5m \
   --filter-pattern "ERROR"
 
 # 處理器日誌
-aws logs tail /aws/lambda/telegram-unified-bot-processor \
+aws logs tail /aws/lambda/agentcore-ai-processor-processor \
   --region us-west-2 \
   --since 5m \
   --filter-pattern "ERROR"
 
 # 路由器日誌
-aws logs tail /aws/lambda/telegram-lambda-response-router \
+aws logs tail /aws/lambda/telegram-adapter-response-router \
   --region us-west-2 \
   --since 5m \
   --filter-pattern "ERROR"
@@ -124,9 +124,9 @@ aws logs tail /aws/lambda/telegram-lambda-response-router \
 **報告格式**：
 ```
 📊 最近日誌 (5分鐘):
-- telegram-lambda-receiver: 無錯誤 ✅
-- telegram-unified-bot-processor: 無錯誤 ✅
-- telegram-lambda-response-router: 無錯誤 ✅
+- telegram-adapter-receiver: 無錯誤 ✅
+- agentcore-ai-processor-processor: 無錯誤 ✅
+- telegram-adapter-response-router: 無錯誤 ✅
 ```
 
 ---
@@ -139,7 +139,7 @@ aws logs tail /aws/lambda/telegram-lambda-response-router \
 # 檢查處理器的 EVENT_BUS_NAME
 aws lambda get-function-configuration \
   --region us-west-2 \
-  --function-name telegram-unified-bot-processor \
+  --function-name agentcore-ai-processor-processor \
   --query 'Environment.Variables.EVENT_BUS_NAME'
 ```
 
@@ -151,7 +151,7 @@ aws lambda get-function-configuration \
 **報告格式**：
 ```
 ⚙️ 關鍵配置:
-- EVENT_BUS_NAME: telegram-lambda-receiver-events ✅
+- EVENT_BUS_NAME: telegram-adapter-receiver-events ✅
 - BEDROCK_MODEL_ID: anthropic.claude-3-5-sonnet-... ✅
 ```
 
@@ -165,7 +165,7 @@ aws lambda get-function-configuration \
 # 需要 bot token（從 Secrets Manager 獲取或詢問用戶）
 BOT_TOKEN=$(aws secretsmanager get-secret-value \
   --region us-west-2 \
-  --secret-id telegram-lambda-receiver-secrets \
+  --secret-id telegram-adapter-receiver-secrets \
   --query SecretString --output text | jq -r .bot_token)
 
 curl "https://api.telegram.org/bot${BOT_TOKEN}/getWebhookInfo"
@@ -214,7 +214,7 @@ curl "https://api.telegram.org/bot${BOT_TOKEN}/getWebhookInfo"
 
 ✅ CloudFormation Stacks: 全部正常
 ✅ Lambda 函數: 全部 Active
-⚠️ EventBridge Rules: telegram-lambda-receiver-message-received 無 targets
+⚠️ EventBridge Rules: telegram-adapter-receiver-message-received 無 targets
 ✅ 最近日誌: 無錯誤
 ✅ 關鍵配置: 完整
 
@@ -232,7 +232,7 @@ curl "https://api.telegram.org/bot${BOT_TOKEN}/getWebhookInfo"
 ❌ 檢測到系統問題：
 
 問題 1: Lambda 函數狀態異常
-- telegram-unified-bot-processor: Failed
+- agentcore-ai-processor-processor: Failed
 - 建議: 查看詳細日誌並重新部署
 
 問題 2: EventBridge 配置缺失
@@ -266,7 +266,7 @@ aws lambda list-functions --region us-west-2 \
 ```bash
 aws logs filter-log-events \
   --region us-west-2 \
-  --log-group-name /aws/lambda/telegram-unified-bot-processor \
+  --log-group-name /aws/lambda/agentcore-ai-processor-processor \
   --filter-pattern "ERROR" \
   --start-time $(date -u -d '1 hour ago' +%s)000
 ```

@@ -270,21 +270,21 @@ expect(connectionStatus).toMatch(/未連接/)
 
 ### 測試文件
 
-**1. web-channel/e2e-tests/tests/errors.spec.ts**
+**1. web-adapter/e2e-tests/tests/errors.spec.ts**
 - 修復 WebSocket connection failure 測試邏輯
 - 改為檢查連接狀態指示器
 
-**2. web-channel/e2e-tests/tests/auth.spec.ts**
+**2. web-adapter/e2e-tests/tests/auth.spec.ts**
 - 移除基本登入測試中的 WebSocket 檢查
 - 保持測試單一責任
 
-**3. web-channel/e2e-tests/tests/conversations.spec.ts**
+**3. web-adapter/e2e-tests/tests/conversations.spec.ts**
 - 更新 3 個 skip 測試的註解
 - 詳細說明前端已實現但測試環境問題
 
 ### 前端文件
 
-**4. web-channel/frontend/src/components/Chat/ConversationItem.tsx**
+**4. web-adapter/frontend/src/components/Chat/ConversationItem.tsx**
 - 添加 explicit preventDefault 包裝
 - 改進右鍵選單事件處理（最佳實踐）
 
@@ -446,7 +446,7 @@ fix(frontend): add preventDefault to context menu handler
 
 ### 相關報告
 - `dev-reports/2026-01-e2e-optimization/REPORT.md` - E2E 優化報告
-- `web-channel/e2e-tests/BACKEND_FIX_FINAL_REPORT.md` - 後端修復
+- `web-adapter/e2e-tests/BACKEND_FIX_FINAL_REPORT.md` - 後端修復
 
 ---
 

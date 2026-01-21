@@ -4,7 +4,7 @@
 #
 # 用法:
 #   ./run_all_tests.sh              # 完整測試
-#   ./run_all_tests.sh --quick      # 快速測試（跳過 web-channel）
+#   ./run_all_tests.sh --quick      # 快速測試（跳過 web-adapter）
 #   ./run_all_tests.sh --help       # 顯示幫助
 
 set -e  # 遇到錯誤立即退出
@@ -39,7 +39,7 @@ while [[ $# -gt 0 ]]; do
             echo "用法: $0 [選項]"
             echo ""
             echo "選項:"
-            echo "  --quick       快速模式（跳過 web-channel E2E 測試）"
+            echo "  --quick       快速模式（跳過 web-adapter E2E 測試）"
             echo "  -h, --help    顯示此幫助訊息"
             echo ""
             echo "範例:"
@@ -84,34 +84,34 @@ echo -e "${BLUE}╚════════════════════�
 echo ""
 
 if [ "$QUICK_MODE" = true ]; then
-    echo -e "${CYAN}ℹ️  快速模式：跳過 web-channel E2E 測試${NC}"
+    echo -e "${CYAN}ℹ️  快速模式：跳過 web-adapter E2E 測試${NC}"
     echo ""
 fi
 
 # ========================================
-# 測試組件 1/3: telegram-agentcore-bot
+# 測試組件 1/3: ai-processor
 # ========================================
 echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${YELLOW}🤖 [1/3] telegram-agentcore-bot (AI 處理器)${NC}"
+echo -e "${YELLOW}🤖 [1/3] ai-processor (AI 處理器)${NC}"
 echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
 
-if [ ! -d "telegram-agentcore-bot" ]; then
-    echo -e "${RED}錯誤: 找不到 telegram-agentcore-bot 目錄${NC}"
-    handle_error "telegram-agentcore-bot"
+if [ ! -d "ai-processor" ]; then
+    echo -e "${RED}錯誤: 找不到 ai-processor 目錄${NC}"
+    handle_error "ai-processor"
 else
-    cd telegram-agentcore-bot || exit 1
+    cd ai-processor || exit 1
     
     if [ -f "run_tests.py" ]; then
         echo "執行 unittest 測試..."
         if python3.11 run_tests.py; then
-            handle_success "telegram-agentcore-bot"
+            handle_success "ai-processor"
         else
-            handle_error "telegram-agentcore-bot"
+            handle_error "ai-processor"
         fi
     else
         echo -e "${RED}錯誤: 找不到 run_tests.py${NC}"
-        handle_error "telegram-agentcore-bot"
+        handle_error "ai-processor"
     fi
     
     cd ..
@@ -120,18 +120,18 @@ fi
 echo ""
 
 # ========================================
-# 測試組件 2/3: telegram-lambda
+# 測試組件 2/3: telegram-adapter
 # ========================================
 echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${YELLOW}📱 [2/3] telegram-lambda (Webhook 接收器)${NC}"
+echo -e "${YELLOW}📱 [2/3] telegram-adapter (Webhook 接收器)${NC}"
 echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
 
-if [ ! -d "telegram-lambda" ]; then
-    echo -e "${RED}錯誤: 找不到 telegram-lambda 目錄${NC}"
-    handle_error "telegram-lambda"
+if [ ! -d "telegram-adapter" ]; then
+    echo -e "${RED}錯誤: 找不到 telegram-adapter 目錄${NC}"
+    handle_error "telegram-adapter"
 else
-    cd telegram-lambda || exit 1
+    cd telegram-adapter || exit 1
     
     # 檢查測試腳本
     if [ -f "run_all_tests.sh" ]; then
@@ -140,16 +140,16 @@ else
         
         echo "執行完整測試（Ruff + Unit + E2E + Coverage）..."
         if ./run_all_tests.sh --cov; then
-            handle_success "telegram-lambda"
+            handle_success "telegram-adapter"
         else
-            handle_error "telegram-lambda"
+            handle_error "telegram-adapter"
         fi
     else
         echo -e "${YELLOW}⚠️  未找到 run_all_tests.sh，使用 pytest...${NC}"
         if python3.11 -m pytest tests/ -v; then
-            handle_success "telegram-lambda"
+            handle_success "telegram-adapter"
         else
-            handle_error "telegram-lambda"
+            handle_error "telegram-adapter"
         fi
     fi
     
@@ -159,25 +159,25 @@ fi
 echo ""
 
 # ========================================
-# 測試組件 3/3: web-channel
+# 測試組件 3/3: web-adapter
 # ========================================
 if [ "$QUICK_MODE" = true ]; then
-    echo -e "${CYAN}⏭️  跳過 web-channel（快速模式）${NC}"
+    echo -e "${CYAN}⏭️  跳過 web-adapter（快速模式）${NC}"
 else
     echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "${YELLOW}🌐 [3/3] web-channel (Web 前端)${NC}"
+    echo -e "${YELLOW}🌐 [3/3] web-adapter (Web 前端)${NC}"
     echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
     
-    if [ ! -d "web-channel/e2e-tests" ]; then
-        echo -e "${YELLOW}⚠️  找不到 web-channel/e2e-tests 目錄${NC}"
-        echo -e "${YELLOW}   跳過 web-channel 測試${NC}"
+    if [ ! -d "web-adapter/tests" ]; then
+        echo -e "${YELLOW}⚠️  找不到 web-adapter/tests 目錄${NC}"
+        echo -e "${YELLOW}   跳過 web-adapter 測試${NC}"
     else
-        cd web-channel/e2e-tests || exit 1
+        cd web-adapter/tests || exit 1
         
         # 檢查 Node.js 是否安裝
         if ! command -v npm &> /dev/null; then
-            echo -e "${YELLOW}⚠️  npm 未安裝，跳過 web-channel 測試${NC}"
+            echo -e "${YELLOW}⚠️  npm 未安裝，跳過 web-adapter 測試${NC}"
             cd ../..
         else
             # 檢查依賴
@@ -194,9 +194,9 @@ else
             
             echo "執行 Playwright E2E 測試..."
             if npm test; then
-                handle_success "web-channel"
+                handle_success "web-adapter"
             else
-                handle_error "web-channel"
+                handle_error "web-adapter"
             fi
             
             cd ../..
