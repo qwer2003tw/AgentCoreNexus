@@ -206,14 +206,13 @@ class MemoryService:
             return False
 
         try:
-            from bedrock_agentcore.memory import MemoryClient
+            # 使用 boto3 bedrock-agentcore client（不是 MemoryClient）
+            import boto3
 
-            client = MemoryClient(region_name=settings.AWS_REGION)
+            client = boto3.client("bedrock-agentcore", region_name=settings.AWS_REGION)
 
-            # 列出該 actor 的所有 sessions
-            sessions_response = client.list_sessions(
-                memory_id=self.memory_id, actor_id=actor_id, max_results=100
-            )
+            # ListSessions API（使用 boto3 client）
+            sessions_response = client.list_sessions(memoryId=self.memory_id, maxResults=100)
 
             sessions = sessions_response.get("sessions", [])
 
@@ -227,7 +226,7 @@ class MemoryService:
                 session_id = session.get("sessionId")
                 if session_id:
                     try:
-                        client.delete_session(memory_id=self.memory_id, session_id=session_id)
+                        client.delete_session(memoryId=self.memory_id, sessionId=session_id)
                         deleted_count += 1
                         logger.info(f"Deleted session: {session_id}")
                     except Exception as e:
