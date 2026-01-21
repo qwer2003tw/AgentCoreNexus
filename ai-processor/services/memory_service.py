@@ -212,7 +212,7 @@ class MemoryService:
             client = boto3.client("bedrock-agentcore", region_name=settings.AWS_REGION)
 
             # ListSessions API（使用 boto3 client）
-            sessions_response = client.list_sessions(memoryId=self.memory_id, maxResults=100)
+            sessions_response = client.list_sessions(memoryId=self.memory_id, actorId=actor_id, maxResults=100)
 
             sessions = sessions_response.get("sessions", [])
 
