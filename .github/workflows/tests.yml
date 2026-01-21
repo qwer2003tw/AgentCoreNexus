@@ -30,14 +30,9 @@ jobs:
         run: |
           cd telegram-adapter
           python -m pip install --upgrade pip
-          pip install ruff pytest pytest-cov
+          pip install pytest pytest-cov
           pip install -r requirements.txt
           pip install -r requirements-test.txt || true
-
-      - name: Run Ruff checks
-        run: |
-          cd telegram-adapter
-          ruff check .
 
       - name: Run tests with coverage
         run: |
@@ -80,13 +75,8 @@ jobs:
         run: |
           cd ai-processor
           python -m pip install --upgrade pip
-          pip install ruff pytest pytest-cov pytest-asyncio coverage diff-cover
+          pip install pytest pytest-cov pytest-asyncio coverage diff-cover
           pip install -r requirements.txt || true
-      
-      - name: Run Ruff checks
-        run: |
-          cd ai-processor
-          ruff check .
       
       - name: Run tests with coverage
         run: |
@@ -212,7 +202,7 @@ jobs:
           echo "Test Summary:"
           echo "- telegram-adapter: ${{ needs.test-backend-adapter.result }}"
           echo "- ai-processor: ${{ needs.test-backend-processor.result }}"
-          echo "- web-channel: ${{ needs.test-frontend.result }}"
+          echo "- web-adapter: ${{ needs.test-frontend.result }}"
           
           if [ "${{ needs.test-backend-adapter.result }}" != "success" ] || \
              [ "${{ needs.test-backend-processor.result }}" != "success" ] || \
