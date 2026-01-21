@@ -26,10 +26,9 @@ def mock_dynamodb_table():
             BillingMode="PAY_PER_REQUEST",
         )
 
-        # 重新初始化 allowlist 模組的 table
-        allowlist.table = table
-
-        yield table
+        # Mock get_dynamodb_table 函數返回這個 table
+        with patch.object(allowlist, 'get_dynamodb_table', return_value=table):
+            yield table
 
 
 class TestAddToAllowlist:
@@ -57,9 +56,10 @@ class TestAddToAllowlist:
         response = mock_dynamodb_table.get_item(Key={"chat_id": 12345})
         assert response["Item"]["enabled"] is False
 
-    @patch("allowlist.table")
-    def test_add_user_client_error(self, mock_table):
+    @patch("allowlist.get_dynamodb_table")
+    def test_add_user_client_error(self, mock_get_table):
         """測試添加用戶時 DynamoDB 錯誤"""
+        mock_table = mock_get_table.return_value
         mock_table.put_item.side_effect = ClientError(
             {"Error": {"Code": "ProvisionedThroughputExceededException", "Message": "Throttled"}},
             "PutItem",
@@ -89,9 +89,10 @@ class TestRemoveFromAllowlist:
         response = mock_dynamodb_table.get_item(Key={"chat_id": 12345})
         assert "Item" not in response
 
-    @patch("allowlist.table")
-    def test_remove_user_client_error(self, mock_table):
+    @patch("allowlist.get_dynamodb_table")
+    def test_remove_user_client_error(self, mock_get_table):
         """測試移除用戶時 DynamoDB 錯誤"""
+        mock_table = mock_get_table.return_value
         mock_table.delete_item.side_effect = ClientError(
             {"Error": {"Code": "ResourceNotFoundException", "Message": "Not found"}}, "DeleteItem"
         )
@@ -125,9 +126,10 @@ class TestGetUserInfo:
 
         assert result is None
 
-    @patch("allowlist.table")
-    def test_get_user_client_error(self, mock_table):
+    @patch("allowlist.get_dynamodb_table")
+    def test_get_user_client_error(self, mock_get_table):
         """測試獲取用戶時 DynamoDB 錯誤"""
+        mock_table = mock_get_table.return_value
         mock_table.get_item.side_effect = ClientError(
             {"Error": {"Code": "InternalServerError", "Message": "Server error"}}, "GetItem"
         )
@@ -173,9 +175,10 @@ class TestListAllUsers:
 
         assert result == []
 
-    @patch("allowlist.table")
-    def test_list_users_client_error(self, mock_table):
+    @patch("allowlist.get_dynamodb_table")
+    def test_list_users_client_error(self, mock_get_table):
         """測試列表用戶時 DynamoDB 錯誤"""
+        mock_table = mock_get_table.return_value
         mock_table.scan.side_effect = ClientError(
             {"Error": {"Code": "InternalServerError", "Message": "Server error"}}, "Scan"
         )
@@ -217,9 +220,10 @@ class TestUpdateUserEnabled:
         response = mock_dynamodb_table.get_item(Key={"chat_id": 12345})
         assert response["Item"]["enabled"] is False
 
-    @patch("allowlist.table")
-    def test_update_enabled_client_error(self, mock_table):
+    @patch("allowlist.get_dynamodb_table")
+    def test_update_enabled_client_error(self, mock_get_table):
         """測試更新狀態時 DynamoDB 錯誤"""
+        mock_table = mock_get_table.return_value
         mock_table.update_item.side_effect = ClientError(
             {"Error": {"Code": "ConditionalCheckFailedException", "Message": "Failed"}},
             "UpdateItem",
@@ -260,9 +264,10 @@ class TestUpdateUserRole:
         response = mock_dynamodb_table.get_item(Key={"chat_id": 12345})
         assert response["Item"]["role"] == "user"
 
-    @patch("allowlist.table")
-    def test_update_role_client_error(self, mock_table):
+    @patch("allowlist.get_dynamodb_table")
+    def test_update_role_client_error(self, mock_get_table):
         """測試更新角色時 DynamoDB 錯誤"""
+        mock_table = mock_get_table.return_value
         mock_table.update_item.side_effect = ClientError(
             {"Error": {"Code": "ValidationException", "Message": "Invalid"}}, "UpdateItem"
         )
@@ -309,9 +314,10 @@ class TestGetStats:
         assert result["enabled_users"] == 0
         assert result["disabled_users"] == 0
 
-    @patch("allowlist.table")
-    def test_stats_client_error(self, mock_table):
+    @patch("allowlist.get_dynamodb_table")
+    def test_stats_client_error(self, mock_get_table):
         """測試統計時 DynamoDB 錯誤"""
+        mock_table = mock_get_table.return_value
         mock_table.scan.side_effect = ClientError(
             {"Error": {"Code": "InternalServerError", "Message": "Error"}}, "Scan"
         )
@@ -385,9 +391,10 @@ class TestCheckFilePermission:
 
         assert result is False
 
-    @patch("allowlist.table")
-    def test_file_permission_client_error(self, mock_table):
+    @patch("allowlist.get_dynamodb_table")
+    def test_file_permission_client_error(self, mock_get_table):
         """測試檢查權限時 DynamoDB 錯誤"""
+        mock_table = mock_get_table.return_value
         mock_table.get_item.side_effect = ClientError(
             {"Error": {"Code": "InternalServerError", "Message": "Error"}}, "GetItem"
         )
@@ -396,9 +403,10 @@ class TestCheckFilePermission:
 
         assert result is False
 
-    @patch("allowlist.table")
-    def test_file_permission_unexpected_error(self, mock_table):
+    @patch("allowlist.get_dynamodb_table")
+    def test_file_permission_unexpected_error(self, mock_get_table):
         """測試檢查權限時非預期錯誤"""
+        mock_table = mock_get_table.return_value
         mock_table.get_item.side_effect = RuntimeError("Unexpected error")
 
         result = allowlist.check_file_permission(12345)
@@ -436,9 +444,11 @@ class TestUpdateFilePermission:
 
         assert result is True
 
-    @patch("allowlist.table")
-    def test_update_file_permission_client_error(self, mock_table):
+    @patch("allowlist.get_dynamodb_table")
+    def test_update_file_permission_client_error(self, mock_get_table):
         """測試更新權限時 DynamoDB 錯誤"""
+        mock_table = mock_get_table.return_value
+        mock_table.get_item.return_value = {"Item": {"chat_id": 12345}}
         mock_table.update_item.side_effect = ClientError(
             {"Error": {"Code": "ValidationException", "Message": "Invalid"}}, "UpdateItem"
         )
@@ -447,9 +457,11 @@ class TestUpdateFilePermission:
 
         assert result is False
 
-    @patch("allowlist.table")
-    def test_update_file_permission_unexpected_error(self, mock_table):
+    @patch("allowlist.get_dynamodb_table")
+    def test_update_file_permission_unexpected_error(self, mock_get_table):
         """測試更新權限時非預期錯誤"""
+        mock_table = mock_get_table.return_value
+        mock_table.get_item.return_value = {"Item": {"chat_id": 12345}}
         mock_table.update_item.side_effect = RuntimeError("Unexpected error")
 
         result = allowlist.update_file_permission(12345, enabled=True)
@@ -488,9 +500,10 @@ class TestCheckAllowedErrorHandling:
 
         assert result is True  # 沒有 username 時跳過驗證
 
-    @patch("allowlist.table")
-    def test_check_allowed_unexpected_error(self, mock_table):
+    @patch("allowlist.get_dynamodb_table")
+    def test_check_allowed_unexpected_error(self, mock_get_table):
         """測試 check_allowed 時非預期錯誤"""
+        mock_table = mock_get_table.return_value
         mock_table.get_item.side_effect = RuntimeError("Unexpected error")
 
         result = allowlist.check_allowed(12345, "testuser")

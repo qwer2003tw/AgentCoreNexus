@@ -5,16 +5,41 @@ Allowlist Module - DynamoDB 允許名單驗證
 import os
 
 import boto3
+from botocore.config import Config
 from botocore.exceptions import ClientError
 
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
 
-# 初始化 DynamoDB 客戶端
-dynamodb = boto3.resource("dynamodb")
-table_name = os.environ.get("ALLOWLIST_TABLE_NAME", "telegram-allowlist")
-table = dynamodb.Table(table_name)
+# DynamoDB 配置（優化連接池和重試策略）
+_dynamodb_config = Config(
+    max_pool_connections=10,  # 連接池大小
+    retries={"max_attempts": 3},  # 重試策略
+    connect_timeout=5,  # 連接超時（秒）
+    read_timeout=10,  # 讀取超時（秒）
+)
+
+# 全局 DynamoDB resource（Lambda 容器會複用）
+_dynamodb_resource = None
+
+
+def get_dynamodb_table():
+    """
+    取得 DynamoDB table 單例
+
+    使用單例模式和連接池優化冷啟動性能
+
+    Returns:
+        boto3.resources.factory.dynamodb.Table: DynamoDB table resource
+    """
+    global _dynamodb_resource
+    if _dynamodb_resource is None:
+        _dynamodb_resource = boto3.resource("dynamodb", config=_dynamodb_config)
+        logger.info("DynamoDB resource initialized with connection pooling")
+
+    table_name = os.environ.get("ALLOWLIST_TABLE_NAME", "telegram-allowlist")
+    return _dynamodb_resource.Table(table_name)
 
 
 def check_allowed(chat_id: int, username: str = "") -> bool:
@@ -29,6 +54,7 @@ def check_allowed(chat_id: int, username: str = "") -> bool:
         bool: True 如果允許，False 如果拒絕
     """
     try:
+        table = get_dynamodb_table()
         # 查詢 DynamoDB
         response = table.get_item(Key={"chat_id": chat_id})
 
@@ -106,6 +132,7 @@ def add_to_allowlist(chat_id: int, username: str, enabled: bool = True) -> bool:
         bool: True 如果成功
     """
     try:
+        table = get_dynamodb_table()
         table.put_item(Item={"chat_id": chat_id, "username": username, "enabled": enabled})
         logger.info(
             "Added to allowlist",
@@ -134,6 +161,7 @@ def remove_from_allowlist(chat_id: int) -> bool:
         bool: True 如果成功
     """
     try:
+        table = get_dynamodb_table()
         table.delete_item(Key={"chat_id": chat_id})
         logger.info(
             "Removed from allowlist", extra={"chat_id": chat_id, "event_type": "allowlist_remove"}
@@ -156,6 +184,7 @@ def get_user_info(chat_id: int) -> dict | None:
         dict: 用戶信息，或 None 如果不存在
     """
     try:
+        table = get_dynamodb_table()
         response = table.get_item(Key={"chat_id": chat_id})
         return response.get("Item")
     except ClientError as e:
@@ -174,6 +203,7 @@ def list_all_users(limit: int = 50) -> list:
         list: 用戶列表
     """
     try:
+        table = get_dynamodb_table()
         response = table.scan(Limit=limit)
         items = response.get("Items", [])
 
@@ -198,6 +228,7 @@ def update_user_enabled(chat_id: int, enabled: bool) -> bool:
         bool: True 如果成功
     """
     try:
+        table = get_dynamodb_table()
         table.update_item(
             Key={"chat_id": chat_id},
             UpdateExpression="SET enabled = :enabled",
@@ -225,6 +256,7 @@ def update_user_role(chat_id: int, role: str) -> bool:
         bool: True 如果成功
     """
     try:
+        table = get_dynamodb_table()
         table.update_item(
             Key={"chat_id": chat_id},
             UpdateExpression="SET #role = :role",
@@ -249,6 +281,7 @@ def get_stats() -> dict:
         dict: 統計數據
     """
     try:
+        table = get_dynamodb_table()
         # 掃描整個表（注意：大表可能需要分頁）
         response = table.scan()
         items = response.get("Items", [])
@@ -284,6 +317,7 @@ def check_file_permission(chat_id: int) -> bool:
         bool: True 如果有權限
     """
     try:
+        table = get_dynamodb_table()
         response = table.get_item(Key={"chat_id": chat_id})
 
         if "Item" not in response:
@@ -346,6 +380,7 @@ def update_file_permission(chat_id: int, enabled: bool) -> bool:
         bool: True 如果成功
     """
     try:
+        table = get_dynamodb_table()
         # 讀取現有權限
         response = table.get_item(Key={"chat_id": chat_id})
         item = response.get("Item", {})
@@ -355,7 +390,8 @@ def update_file_permission(chat_id: int, enabled: bool) -> bool:
         permissions["file_reader"] = enabled
 
         # 更新整個 permissions Map
-        table.update_item(
+        table_update = get_dynamodb_table()
+        table_update.update_item(
             Key={"chat_id": chat_id},
             UpdateExpression="SET #perms = :perms",
             ExpressionAttributeNames={

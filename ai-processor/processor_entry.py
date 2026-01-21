@@ -8,6 +8,7 @@ import os
 from typing import Any
 
 import boto3
+from botocore.config import Config
 
 from agents.conversation_agent import ConversationAgent
 from services.file_service import file_service
@@ -22,15 +23,31 @@ logger = get_logger(__name__)
 # 初始化 Memory 服務（全域單例）
 memory_service = MemoryService()
 
+# EventBridge 配置（優化連接池和重試策略）
+_eventbridge_config = Config(
+    max_pool_connections=5,  # 連接池大小
+    retries={"max_attempts": 3},  # 重試策略
+    connect_timeout=3,  # 連接超時（秒）
+    read_timeout=10,  # 讀取超時（秒）
+)
+
 # EventBridge 客戶端
 _eventbridge_client = None
 
 
 def get_eventbridge_client():
-    """取得 EventBridge 客戶端單例"""
+    """
+    取得 EventBridge 客戶端單例
+
+    使用單例模式和連接池優化性能
+
+    Returns:
+        boto3.client: EventBridge client
+    """
     global _eventbridge_client
     if _eventbridge_client is None:
-        _eventbridge_client = boto3.client("events")
+        _eventbridge_client = boto3.client("events", config=_eventbridge_config)
+        logger.info("EventBridge client initialized with connection pooling")
     return _eventbridge_client
 
 
