@@ -39,58 +39,48 @@ def secure_actor_id(user_id: str) -> str:
     這個函數將原始 user_id 轉換為不可逆的雜湊值，
     防止 actor_id 被猜測，增強用戶隔離安全性。
 
-    重要：為了確保 actor_id 一致性，會移除通道前綴（tg:, web:, discord: 等）
-    這樣不論 user_id 格式如何（"316743844" 或 "tg:316743844"），
-    都會產生相同的 actor_id，保證 long-term memory 的持久性。
+    重要：直接 hash user_id，依賴 handler 提供正確的通道前綴格式。
+    這確保不同通道的相同 ID 會產生不同的 actor（隔離）。
 
     Args:
-        user_id: 原始用戶 ID (例如: "tg:316743844" 或 "316743844")
+        user_id: 用戶 ID（應包含通道前綴，例如 "tg:316743844", "web:123", "discord:456"）
 
     Returns:
-        雜湊後的 actor_id (例如: "actor-f3a8b2c1d4e5f6g7")
+        雜湊後的 actor_id (例如: "actor-04abc5a8c8e75b85")
 
     Examples:
         >>> secure_actor_id("tg:316743844")
-        "actor-eab80ef3908ed2ed"
+        "actor-04abc5a8c8e75b85"
 
-        >>> secure_actor_id("316743844")
-        "actor-eab80ef3908ed2ed"  # 相同！
+        >>> secure_actor_id("web:316743844")
+        "actor-cc96a282dd75ac01"  # 與 telegram 隔離
+
+        >>> secure_actor_id("discord:316743844")
+        "actor-dd68d5f92e9c4c43"  # 與其他通道隔離
 
     Note:
         - 使用 HMAC-SHA256 確保安全性
-        - 移除通道前綴確保跨格式一致性
-        - 相同的物理用戶總是產生相同的 actor_id（確定性）
+        - 直接 hash 完整 user_id（包含通道前綴）
+        - 不同通道的相同 ID 會產生不同 actor（安全隔離）
+        - 相同的 user_id 總是產生相同的 actor_id（確定性）
         - 不同的 SECRET_KEY 會產生不同的結果
         - 雜湊值不可逆，無法從 actor_id 還原 user_id
+        - ⚠️ 一次性遷移：舊格式（無前綴或不同前綴）的 memory 無法訪問
     """
     secret_key = get_secret_key()
 
-    # 移除通道前綴（如果存在），確保 actor_id 一致性
-    # 這樣 "tg:316743844" 和 "316743844" 會產生相同的 actor_id
-    clean_user_id = user_id
-    for prefix in ["tg:", "web:", "discord:", "slack:"]:
-        if user_id.startswith(prefix):
-            clean_user_id = user_id[len(prefix) :]
-            logger.debug(
-                "Removed channel prefix from user_id",
-                extra={"original": user_id, "cleaned": clean_user_id, "prefix": prefix},
-            )
-            break
-
-    # 使用 HMAC-SHA256 生成雜湊（使用清理後的 ID）
+    # 直接 hash（依賴 handler 提供正確格式）
     hmac_hash = hmac.new(
-        secret_key.encode("utf-8"), clean_user_id.encode("utf-8"), hashlib.sha256
+        secret_key.encode("utf-8"), user_id.encode("utf-8"), hashlib.sha256
     ).hexdigest()
 
     # 取前 16 位，添加 "actor-" 前綴
-    # 格式：actor-XXXXXXXXXXXXXXXX
     secure_id = f"actor-{hmac_hash[:16]}"
 
     logger.debug(
         "Generated secure actor_id",
         extra={
             "original_id_hash": hashlib.sha256(user_id.encode()).hexdigest()[:8],
-            "clean_id_hash": hashlib.sha256(clean_user_id.encode()).hexdigest()[:8],
             "secure_id": secure_id,
             "event_type": "actor_id_generated",
         },
