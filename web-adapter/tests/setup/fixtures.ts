@@ -3,19 +3,19 @@ import { test as base, Page } from '@playwright/test'
 // ✅ Support 4 test accounts for 4 workers (worker isolation)
 const TEST_USERS = [
   {
-    email: process.env.TEST_USER_1_EMAIL || 'test1@test.com',
+    email: process.env.TEST_USER_1_EMAIL || 'aws-e2e-test1@test.com',
     password: process.env.TEST_USER_1_PASSWORD || 'Test123!'
   },
   {
-    email: process.env.TEST_USER_2_EMAIL || 'test2@test.com',
+    email: process.env.TEST_USER_2_EMAIL || 'aws-e2e-test2@test.com',
     password: process.env.TEST_USER_2_PASSWORD || 'Test123!'
   },
   {
-    email: process.env.TEST_USER_3_EMAIL || 'test3@test.com',
+    email: process.env.TEST_USER_3_EMAIL || 'aws-e2e-test3@test.com',
     password: process.env.TEST_USER_3_PASSWORD || 'Test123!'
   },
   {
-    email: process.env.TEST_USER_4_EMAIL || 'test4@test.com',
+    email: process.env.TEST_USER_4_EMAIL || 'aws-e2e-test4@test.com',
     password: process.env.TEST_USER_4_PASSWORD || 'Test123!'
   }
 ]

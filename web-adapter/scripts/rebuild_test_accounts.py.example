@@ -1,0 +1,104 @@
+#!/usr/bin/env python3
+"""
+重建測試帳號腳本範本
+刪除所有現有帳號，創建新的測試帳號
+
+使用方式：
+1. 複製此文件：cp rebuild_test_accounts.py.example rebuild_test_accounts.py
+2. 編輯 rebuild_test_accounts.py，將 YOUR_PASSWORD_HERE 替換為實際密碼
+3. 執行：python3 rebuild_test_accounts.py
+"""
+import boto3
+import bcrypt
+from datetime import datetime, timezone
+
+# 配置
+REGION = 'us-west-2'
+TABLE_NAME = 'agentcore-web-adapter-web-users'
+
+# ⚠️ 請替換 YOUR_PASSWORD_HERE 為實際密碼
+TEST_PASSWORD = 'YOUR_PASSWORD_HERE'
+
+# 新的測試帳號
+NEW_ACCOUNTS = [
+    {'email': 'aws-e2e-test1@test.com', 'password': TEST_PASSWORD, 'name': 'E2E Test User 1'},
+    {'email': 'aws-e2e-test2@test.com', 'password': TEST_PASSWORD, 'name': 'E2E Test User 2'},
+    {'email': 'aws-e2e-test3@test.com', 'password': TEST_PASSWORD, 'name': 'E2E Test User 3'},
+    {'email': 'aws-e2e-test4@test.com', 'password': TEST_PASSWORD, 'name': 'E2E Test User 4'},
+    {'email': 'test@test.com', 'password': TEST_PASSWORD, 'name': 'General Test User'},
+]
+
+def hash_password(password: str) -> str:
+    """使用 bcrypt 加密密碼"""
+    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+def main():
+    # 驗證密碼已設置
+    if TEST_PASSWORD == 'YOUR_PASSWORD_HERE':
+        print("❌ 錯誤：請先在腳本中設置實際密碼")
+        print("   編輯此文件，將 TEST_PASSWORD 設為實際密碼")
+        return
+    
+    dynamodb = boto3.client('dynamodb', region_name=REGION)
+    
+    print(f"🔍 掃描現有帳號...")
+    # 掃描所有現有帳號
+    response = dynamodb.scan(TableName=TABLE_NAME)
+    existing_accounts = response.get('Items', [])
+    print(f"找到 {len(existing_accounts)} 個現有帳號")
+    
+    # 刪除所有現有帳號
+    if existing_accounts:
+        print(f"\n🗑️  刪除所有現有帳號...")
+        for item in existing_accounts:
+            email = item['email']['S']
+            try:
+                dynamodb.delete_item(
+                    TableName=TABLE_NAME,
+                    Key={'email': {'S': email}}
+                )
+                print(f"  ✅ 已刪除: {email}")
+            except Exception as e:
+                print(f"  ❌ 刪除失敗 {email}: {e}")
+    
+    # 創建新帳號
+    print(f"\n✨ 創建 {len(NEW_ACCOUNTS)} 個新帳號...")
+    created_count = 0
+    for account in NEW_ACCOUNTS:
+        email = account['email']
+        password_hash = hash_password(account['password'])
+        
+        try:
+            dynamodb.put_item(
+                TableName=TABLE_NAME,
+                Item={
+                    'email': {'S': email},
+                    'password': {'S': password_hash},
+                    'name': {'S': account['name']},
+                    'created_at': {'S': datetime.now(timezone.utc).isoformat()},
+                }
+            )
+            print(f"  ✅ 已創建: {email}")
+            created_count += 1
+        except Exception as e:
+            print(f"  ❌ 創建失敗 {email}: {e}")
+    
+    # 驗證
+    print(f"\n🔍 驗證新帳號...")
+    response = dynamodb.scan(TableName=TABLE_NAME)
+    final_accounts = response.get('Items', [])
+    final_emails = sorted([item['email']['S'] for item in final_accounts])
+    
+    print(f"\n📊 最終結果:")
+    print(f"  - 刪除: {len(existing_accounts)} 個")
+    print(f"  - 創建: {created_count} 個")
+    print(f"  - 當前: {len(final_accounts)} 個")
+    
+    print(f"\n✅ 完成！當前帳號列表:")
+    for email in final_emails:
+        print(f"  - {email}")
+    
+    print(f"\n🔑 所有帳號密碼: {TEST_PASSWORD}")
+
+if __name__ == '__main__':
+    main()
