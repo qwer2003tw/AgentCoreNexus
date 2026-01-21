@@ -191,9 +191,9 @@ class MemoryService:
 
     def clear_session(self, actor_id: str) -> bool:
         """
-        清除用戶的 Memory session
+        清除用戶的 Memory sessions
 
-        通過刪除 session 的所有事件來重置記憶
+        調用 Bedrock Memory API 列出並刪除所有 sessions
 
         Args:
             actor_id: 用戶的 actor ID（應該是 secure_actor_id）
@@ -206,40 +206,54 @@ class MemoryService:
             return False
 
         try:
-            # 使用 boto3 bedrock-agentcore client（不是 MemoryClient）
             import boto3
 
+            # 創建 bedrock-agentcore client
             client = boto3.client("bedrock-agentcore", region_name=settings.AWS_REGION)
 
-            # ListSessions API（使用 boto3 client）
-            sessions_response = client.list_sessions(memoryId=self.memory_id, actorId=actor_id, maxResults=100)
+            # 列出該 actor 的所有 sessions
+            try:
+                sessions_response = client.list_sessions(
+                    memoryId=self.memory_id, actorId=actor_id, maxResults=100
+                )
+            except client.exceptions.ResourceNotFoundException:
+                # Actor 不存在（可能從未對話過或是新用戶）
+                logger.info(
+                    "Actor not found in Memory (new user or no history)",
+                    extra={"actor_id": actor_id},
+                )
+                return True  # 不算錯誤，返回成功
 
             sessions = sessions_response.get("sessions", [])
 
             if not sessions:
-                logger.info(f"No sessions found for actor {actor_id}")
+                logger.info("No sessions found for actor", extra={"actor_id": actor_id})
                 return True
 
             # 刪除所有 sessions
             deleted_count = 0
             for session in sessions:
                 session_id = session.get("sessionId")
-                if session_id:
-                    try:
-                        client.delete_session(memoryId=self.memory_id, sessionId=session_id)
-                        deleted_count += 1
-                        logger.info(f"Deleted session: {session_id}")
-                    except Exception as e:
-                        logger.warning(f"Failed to delete session {session_id}: {e}")
+                if not session_id:
+                    logger.warning("Session without sessionId, skipping")
+                    continue
+
+                try:
+                    client.delete_session(memoryId=self.memory_id, sessionId=session_id)
+                    deleted_count += 1
+                    logger.debug(f"Deleted session: {session_id}")
+                except Exception as delete_error:
+                    logger.warning(
+                        f"Failed to delete session {session_id}: {delete_error}",
+                        extra={"session_id": session_id, "actor_id": actor_id},
+                    )
+                    # 繼續嘗試刪除其他 sessions（盡力而為）
 
             logger.info(
-                "✅ Session 清除完成",
-                extra={
-                    "actor_id": actor_id,
-                    "sessions_deleted": deleted_count,
-                    "total_sessions": len(sessions),
-                },
+                f"✅ Cleared {deleted_count}/{len(sessions)} sessions",
+                extra={"actor_id": actor_id, "total": len(sessions), "deleted": deleted_count},
             )
+
             return True
 
         except Exception as e:
