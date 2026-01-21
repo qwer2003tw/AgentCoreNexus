@@ -20,6 +20,22 @@ Parameters:
     Type: String
     Description: Bedrock Model ID for AgentCore
     Default: 'anthropic.claude-3-5-sonnet-20241022-v2:0'
+  
+  CreateMemoryParameter:
+    Type: String
+    Default: 'false'
+    AllowedValues:
+      - 'true'
+      - 'false'
+    Description: Whether to create SSM parameter for Memory ID (true for new deployments, false to use existing)
+  
+  MemoryId:
+    Type: String
+    Default: ''
+    Description: Bedrock Memory ID (required if CreateMemoryParameter=true)
+
+Conditions:
+  ShouldCreateMemoryParameter: !Equals [!Ref CreateMemoryParameter, 'true']
 
 Globals:
   Function:
@@ -33,6 +49,22 @@ Globals:
         LOG_LEVEL: INFO
 
 Resources:
+  # SSM Parameter - Bedrock Memory ID
+  # Created conditionally: new environments create it, existing environments use /agentcore/memory/telegram-bot
+  MemoryIdParameter:
+    Type: AWS::SSM::Parameter
+    Condition: ShouldCreateMemoryParameter
+    Properties:
+      Name: !Sub '/agentcore/memory/${AWS::StackName}'
+      Type: String
+      Value: !Ref MemoryId
+      Description: !Sub 'Bedrock AgentCore Memory ID for ${AWS::StackName}'
+      Tags:
+        Project: AgentCoreNexus
+        Component: ai-processor
+        Environment: !Ref AWS::StackName
+        ManagedBy: SAM
+
   # Agent Processor Lambda Function
   AgentProcessorFunction:
     Type: AWS::Serverless::Function
@@ -116,7 +148,7 @@ Resources:
                   - '${BucketArn}/*'
                   - BucketArn: !ImportValue 
                       Fn::Sub: '${ReceiverStackName}-FileStorageBucketArn'
-                - 'arn:aws:s3:::agentcore-web-channel-attachments-190825685292/*'
+                - !Sub 'arn:aws:s3:::agentcore-web-adapter-attachments-${AWS::AccountId}/*'
       Tags:
         Project: AgentCoreNexus
         Component: ai-processor

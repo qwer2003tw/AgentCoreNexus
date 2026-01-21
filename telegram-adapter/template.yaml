@@ -28,6 +28,18 @@ Parameters:
     MinValue: 1
     MaxValue: 365
     Description: Number of days to retain files in S3 before automatic deletion
+  
+  CreateAllowlistTable:
+    Type: String
+    Default: 'false'
+    AllowedValues:
+      - 'true'
+      - 'false'
+    Description: Whether to create a new allowlist table (true for new deployments, false to use existing telegram-allowlist table)
+
+# Conditions for resource creation
+Conditions:
+  ShouldCreateAllowlistTable: !Equals [!Ref CreateAllowlistTable, 'true']
 
 # Global configuration for all functions
 Globals:
@@ -121,14 +133,28 @@ Resources:
         Variables:
           TELEGRAM_SECRETS_ARN: !Ref TelegramSecrets
           SQS_QUEUE_URL: !Ref TelegramInboundQueue
-          ALLOWLIST_TABLE_NAME: telegram-allowlist
+          ALLOWLIST_TABLE_NAME: !If
+            - ShouldCreateAllowlistTable
+            - !Ref AllowlistTable
+            - telegram-allowlist
           STACK_NAME: !Ref AWS::StackName
           EVENT_BUS_NAME: !Ref UniversalEventBus
           FILE_STORAGE_BUCKET: !Ref FileStorageBucket
           ENVIRONMENT: !Ref Environment
       Policies:
-        - DynamoDBReadPolicy:
-            TableName: telegram-allowlist
+        - Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:GetItem
+                - dynamodb:Query
+                - dynamodb:Scan
+                - dynamodb:PutItem
+                - dynamodb:UpdateItem
+                - dynamodb:DeleteItem
+              Resource: !If
+                - ShouldCreateAllowlistTable
+                - !GetAtt AllowlistTable.Arn
+                - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/telegram-allowlist'
         - SQSSendMessagePolicy:
             QueueName: !GetAtt TelegramInboundQueue.QueueName
         - Statement:
@@ -212,8 +238,36 @@ Resources:
         - Key: auto-delete
           Value: "no"
 
-  # Note: telegram-allowlist DynamoDB table already exists from previous deployment
-  # Using existing table instead of creating new one
+  # DynamoDB Table - User Allowlist
+  # Created conditionally: new environments create it, existing environments use telegram-allowlist
+  AllowlistTable:
+    Type: AWS::DynamoDB::Table
+    Condition: ShouldCreateAllowlistTable
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      TableName: !Sub '${AWS::StackName}-allowlist'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: chat_id
+          AttributeType: N
+      KeySchema:
+        - AttributeName: chat_id
+          KeyType: HASH
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      SSESpecification:
+        SSEEnabled: true
+        SSEType: KMS
+      Tags:
+        - Key: Project
+          Value: AgentCoreNexus
+        - Key: Component
+          Value: telegram-adapter
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: SAM
 
   # Lambda Function - Response Router
   ResponseRouterFunction:
@@ -547,10 +601,22 @@ Outputs:
       Name: !Sub '${AWS::StackName}-QueueArn'
 
   AllowlistTableName:
-    Description: DynamoDB Allowlist Table Name (existing table)
-    Value: telegram-allowlist
+    Description: 'DynamoDB Allowlist Table Name (conditional: created or existing)'
+    Value: !If
+      - ShouldCreateAllowlistTable
+      - !Ref AllowlistTable
+      - telegram-allowlist
     Export:
       Name: !Sub '${AWS::StackName}-AllowlistTableName'
+  
+  AllowlistTableArn:
+    Description: DynamoDB Allowlist Table ARN
+    Value: !If
+      - ShouldCreateAllowlistTable
+      - !GetAtt AllowlistTable.Arn
+      - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/telegram-allowlist'
+    Export:
+      Name: !Sub '${AWS::StackName}-AllowlistTableArn'
 
   LambdaFunctionArn:
     Description: Lambda Function ARN
