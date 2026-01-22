@@ -11,7 +11,6 @@ import boto3
 from botocore.config import Config
 
 from agents.conversation_agent import ConversationAgent
-from services.file_service import file_service
 from services.memory_service import MemoryService
 from tools import AVAILABLE_TOOLS
 from utils.audit import MemoryAuditLogger
@@ -147,70 +146,53 @@ def process_eventbridge_event(event: dict[str, Any], context: Any) -> dict[str, 
     }
 
 
-def process_file_attachments(attachments: list, user_id: str) -> str | None:
+def build_attachment_message(attachments: list) -> str:
     """
-    處理檔案附件（非圖片）
+    為所有附件構建統一的訊息格式
+
+    讓 Agent 看到附件的 S3 URL 和描述，
+    由 Agent 決定是否需要分析以及如何分析。
 
     Args:
         attachments: 附件列表
-        user_id: 用戶 ID
 
     Returns:
-        檔案處理結果文字，或 None
+        附件資訊的文字描述
     """
-    if not file_service.is_available():
-        logger.info("File service not available, skipping file processing")
-        return None
+    if not attachments:
+        return ""
 
-    results = []
+    attachment_messages = []
 
-    for attachment in attachments:
-        try:
-            # 檢查是否有權限被拒絕標記
-            if attachment.get("permission_denied"):
-                logger.info(
-                    f"File permission denied for {attachment.get('type')}",
-                    extra={"user_id": user_id},
-                )
-                continue
+    for att in attachments:
+        # 檢查權限
+        if att.get("permission_denied"):
+            continue
 
-            # 檢查是否有 S3 URL
-            s3_url = attachment.get("s3_url")
-            if not s3_url:
-                logger.warning(f"No S3 URL in attachment: {attachment}")
-                continue
+        # 提取資訊
+        att_type = att.get("type", "document")
+        file_name = att.get("file_name", "unknown")
+        s3_url = att.get("s3_url", "")
+        task = att.get("task", "")
 
-            # 提取檔案資訊
-            filename = attachment.get("file_name", "unknown")
-            task = attachment.get("task", "摘要此檔案的內容")
+        if not s3_url:
+            continue
 
-            logger.info(
-                f"📁 Processing file: {filename}",
-                extra={"user_id": user_id, "file_name": filename, "task": task, "s3_url": s3_url},
-            )
+        # 根據類型使用不同的描述
+        type_display = "圖片" if att_type == "photo" else "檔案"
 
-            # 使用 file_service 處理檔案
-            process_result = file_service.process_file(
-                s3_url=s3_url, filename=filename, task=task, user_id=user_id
-            )
+        # 構建訊息
+        msg = f"[系統通知] 用戶上傳了{type_display}：\n  檔名：{file_name}\n  位置：{s3_url}"
 
-            if process_result.get("success"):
-                result_text = process_result.get("result", "處理完成")
-                results.append(f"📁 檔案：{filename}\n{result_text}")
-                logger.info(f"✅ File processed successfully: {filename}")
-            else:
-                error = process_result.get("error", "未知錯誤")
-                results.append(f"❌ 檔案 {filename} 處理失敗：{error}")
-                logger.warning(f"File processing failed: {filename} - {error}")
+        if task:
+            msg += f"\n  用戶要求：{task}"
 
-        except Exception as e:
-            logger.error(f"Error processing attachment: {e}", exc_info=True)
-            results.append(f"❌ 處理附件時發生錯誤：{str(e)}")
+        attachment_messages.append(msg)
 
-    if results:
-        return "\n\n".join(results)
+    if attachment_messages:
+        return "\n\n".join(attachment_messages)
 
-    return None
+    return ""
 
 
 def process_sqs_event(event: dict[str, Any], context: Any) -> dict[str, Any]:
@@ -324,76 +306,25 @@ def process_normalized_message(normalized: dict[str, Any]) -> dict[str, Any]:
             },
         )
 
-        # 分離圖片附件和其他檔案附件
-        image_attachments = []
-        file_attachments = []
+        # ✅ 新架構：統一處理所有附件（圖片 + 檔案）
+        # 構建訊息給 Agent，由 Agent 決定是否需要調用 tools
+        message_parts = []
 
-        for attachment in attachments:
-            if attachment.get("type") == "photo":
-                image_attachments.append(attachment)
-            else:
-                file_attachments.append(attachment)
+        # 1. 用戶文字
+        if text:
+            message_parts.append(text)
 
-        # 處理非圖片檔案附件
-        file_processing_result = None
-        if file_attachments:
-            file_processing_result = process_file_attachments(file_attachments, user_id)
+        # 2. 附件資訊（統一格式）
+        if attachments:
+            attachment_info = build_attachment_message(attachments)
+            if attachment_info:
+                message_parts.append(attachment_info)
 
-        # ✅ 新架構：使用 image_analysis tool 處理圖片
-        image_analysis_results = []
-        if image_attachments:
-            from tools.image_analysis import analyze_image
+        # 3. 組合完整訊息
+        full_message = "\n\n".join(message_parts)
 
-            logger.info(f"🖼️ 使用 Image Analysis Tool 處理 {len(image_attachments)} 張圖片")
-
-            for img_att in image_attachments:
-                s3_url = img_att.get("s3_url")
-                filename = img_att.get("file_name", "image")
-                task = img_att.get("task", "請詳細描述這張圖片的內容")
-
-                # 調用 image_analysis tool
-                analysis_result = analyze_image(
-                    image_s3_url=s3_url,
-                    user_id=secure_actor_id(user_id),
-                    task=task,
-                    filename=filename,
-                )
-
-                if analysis_result["success"]:
-                    # 成功：記錄分析結果
-                    analysis_text = analysis_result["analysis"]
-                    image_analysis_results.append(f"📸 圖片 {filename}：\n{analysis_text}")
-
-                    # 寫入 Memory
-                    if memory_service.enabled:
-                        memory_service.create_image_event(
-                            user_id=secure_actor_id(user_id),
-                            image_url=s3_url,
-                            analysis=analysis_text,
-                            task=task,
-                        )
-                else:
-                    # 失敗：記錄錯誤
-                    error = analysis_result.get("error", "未知錯誤")
-                    image_analysis_results.append(f"❌ 圖片 {filename} 分析失敗：{error}")
-
-        # 處理文字訊息或檔案訊息
-        if message_type in ["text", "file", "image", "video", "audio"] and (
-            text or file_processing_result or image_analysis_results
-        ):
-            # 構建完整訊息文字
-            full_text = text
-
-            # 添加檔案處理結果
-            if file_processing_result:
-                full_text = (
-                    f"{text}\n\n{file_processing_result}" if text else file_processing_result
-                )
-
-            # 添加圖片分析結果
-            if image_analysis_results:
-                image_summary = "\n\n".join(image_analysis_results)
-                full_text = f"{full_text}\n\n{image_summary}" if full_text else image_summary
+        # 處理文字訊息或附件訊息
+        if message_type in ["text", "file", "image", "video", "audio"] and full_message:
             # 驗證 user_id 格式
             if not validate_user_id(user_id):
                 logger.warning(f"Invalid user_id format: {user_id}")
@@ -407,7 +338,7 @@ def process_normalized_message(normalized: dict[str, Any]) -> dict[str, Any]:
             # 生成安全的 actor_id（雜湊化）
             secure_user_id = secure_actor_id(user_id)
 
-            # 建立帶 Memory 的 Agent
+            # ✅ 建立帶 Memory 的 Agent（不再禁用 Memory！）
             session_manager = None
             if memory_service.enabled:
                 try:
@@ -457,11 +388,12 @@ def process_normalized_message(normalized: dict[str, Any]) -> dict[str, Any]:
                         extra={"user_id": user_id, "secure_actor_id": secure_user_id},
                     )
 
-            # ✅ 建立 ConversationAgent（新架構：只傳文字）
+            # ✅ 建立 ConversationAgent（Memory 啟用，Agent 自主決策）
             agent = ConversationAgent(tools=AVAILABLE_TOOLS, session_manager=session_manager)
 
-            # ✅ 只傳遞文字給 Agent（圖片已通過 tool 處理並添加到 full_text）
-            response_dict = agent.process_message(full_text)
+            # ✅ 傳遞完整訊息給 Agent（包含附件的 S3 URL）
+            # Agent 會自己決定是否需要調用 analyze_image_tool 或 analyze_file_tool
+            response_dict = agent.process_message(full_message)
 
             # 提取回應字串
             response_text = (

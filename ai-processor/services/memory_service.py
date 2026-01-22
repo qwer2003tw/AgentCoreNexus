@@ -106,10 +106,11 @@ class MemoryService:
             Memory 配置物件
         """
         retrieval_config = {
-            f"/users/{actor_id}/facts": self._retrieval_config_class(top_k=3, relevance_score=0.5),
+            f"/users/{actor_id}/facts": self._retrieval_config_class(top_k=5, relevance_score=0.5),
             f"/users/{actor_id}/preferences": self._retrieval_config_class(
                 top_k=3, relevance_score=0.5
             ),
+            f"/users/{actor_id}/recent": self._retrieval_config_class(top_k=5, relevance_score=0.3),
         }
 
         return self._memory_config_class(
@@ -118,71 +119,6 @@ class MemoryService:
             actor_id=actor_id,
             retrieval_config=retrieval_config,
         )
-
-    def create_image_event(
-        self, user_id: str, image_url: str, analysis: str, task: str = ""
-    ) -> bool:
-        """
-        創建圖片分析的 Memory Event
-
-        將圖片分析記錄到 short-term memory，
-        讓 long-term memory 能自動提取 facts
-
-        Args:
-            user_id: 用戶 ID（應該是 secure_actor_id）
-            image_url: 圖片 S3 URL
-            analysis: 分析結果文字
-            task: 分析任務描述
-
-        Returns:
-            是否成功
-        """
-        if not self.enabled:
-            logger.info("Memory 未啟用，跳過圖片 event 記錄")
-            return False
-
-        try:
-            from datetime import datetime
-
-            from bedrock_agentcore.memory import MemoryClient
-
-            client = MemoryClient(region_name=settings.AWS_REGION)
-
-            # 提取檔名
-            filename = image_url.split("/")[-1]
-
-            # 構建 payload（Bedrock Memory API 格式）
-            payload = [
-                {
-                    "conversational": {
-                        "content": {"text": f"圖片分析：{filename}\n任務：{task}\n結果：{analysis}"},
-                        "role": "ASSISTANT",
-                    }
-                }
-            ]
-
-            # 創建 event（寫入 short-term memory）
-            client.create_event(
-                memory_id=self.memory_id,
-                actor_id=user_id,
-                session_id=user_id,
-                event_timestamp=datetime.utcnow(),
-                payload=payload,
-            )
-
-            logger.info(
-                "✅ 圖片分析已記錄到 Memory",
-                extra={
-                    "memory_id": self.memory_id,
-                    "actor_id": user_id,
-                    "image_url": image_url,
-                },
-            )
-            return True
-
-        except Exception as e:
-            logger.error(f"❌ 寫入圖片 Memory 失敗：{str(e)}", exc_info=True)
-            return False
 
     def clear_session(self, actor_id: str) -> bool:
         """

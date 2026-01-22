@@ -132,24 +132,57 @@ def _detect_image_format(filename: str) -> str:
 
 
 # Tool 函數（供 Strands Agent 註冊使用）
-def analyze_image_tool(image_url: str, task: str = "描述這張圖片") -> str:
+def analyze_image_tool(image_s3_url: str, task: str = "描述圖片內容") -> str:
     """
-    圖片分析工具（供 Agent 主動調用）
+    分析存儲在 S3 的圖片內容。
 
-    當 Agent 決定需要分析圖片時，可以調用此工具。
+    此工具使用 Bedrock Claude Vision API 分析圖片，支援各種視覺任務。
+
+    使用時機：
+    - 用戶上傳圖片並詢問相關問題
+    - 用戶提到「這張圖片」、「剛才那張圖」等（從 Memory 獲取 S3 URL）
+    - 需要視覺分析、OCR 識別、物體檢測等任務
+
+    支援的任務範例：
+    - "描述圖片內容"：完整的圖片描述
+    - "識別圖片中的物體"：列出圖片中的物體
+    - "讀取圖片中的文字"：OCR 文字識別
+    - "分析左邊/右邊/中間的部分"：聚焦特定區域
+    - 自訂任務：根據用戶的具體問題調整
 
     Args:
-        image_url: 圖片的 S3 URL
-        task: 分析任務描述
+        image_s3_url: 圖片的 S3 URL (格式: s3://bucket/key)
+        task: 分析任務的具體描述
 
     Returns:
-        圖片分析結果（文字）
-    """
-    # 注意：user_id 需要從 context 獲取
-    # 這裡先使用 "system" 作為預設值
-    result = analyze_image(image_s3_url=image_url, user_id="system", task=task)
+        圖片的詳細分析結果（文字）
 
-    if result["success"]:
-        return f"圖片分析結果：\n{result['analysis']}"
-    else:
-        return f"圖片分析失敗：{result.get('error', '未知錯誤')}"
+    範例：
+        >>> analyze_image_tool("s3://bucket/photo.jpg", "描述這張圖片")
+        "這張圖片顯示一碗泡麵，包含麵餅和多個調味包..."
+    """
+    logger.info("🖼️ Image Analysis Tool called", extra={"s3_url": image_s3_url, "task": task})
+
+    try:
+        # 提取檔名（用於日誌和錯誤訊息）
+        filename = image_s3_url.split("/")[-1]
+
+        # 調用核心分析函數
+        result = analyze_image(
+            image_s3_url=image_s3_url,
+            user_id="system",  # Tool 調用使用系統 ID
+            task=task,
+            filename=filename,
+        )
+
+        if result["success"]:
+            logger.info(f"✅ Image analysis completed: {len(result['analysis'])} chars")
+            return result["analysis"]
+        else:
+            error_msg = result.get("error", "未知錯誤")
+            logger.warning(f"Image analysis failed: {error_msg}")
+            return f"圖片分析失敗：{error_msg}\n請確認圖片格式正確且可訪問。"
+
+    except Exception as e:
+        logger.error(f"Image analysis tool error: {e}", exc_info=True)
+        return f"圖片分析工具執行失敗：{str(e)}"

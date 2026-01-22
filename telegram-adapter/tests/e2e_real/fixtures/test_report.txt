@@ -1,0 +1,19 @@
+AgentCoreNexus 測試報告
+
+第一章：系統架構
+AgentCoreNexus 是一個多通道 AI 助理系統，支援 Telegram、Web 等多個通道。
+
+第二章：核心功能
+1. 對話管理：使用 AgentCore Memory 管理上下文
+2. 工具整合：支援多種 tools（天氣、計算、瀏覽器、圖片分析、檔案分析）
+3. 多模態：支援文字、圖片、檔案的處理
+
+第三章：技術棧
+- AWS Lambda：Serverless 架構
+- Bedrock Claude：AI 模型
+- AgentCore Memory：記憶系統
+- EventBridge：事件驅動架構
+
+第四章：測試結論
+本系統採用 Tool-based 架構，符合業界最佳實踐，
+所有附件通過 S3 URL 引用，實現高效的 Memory 整合。
