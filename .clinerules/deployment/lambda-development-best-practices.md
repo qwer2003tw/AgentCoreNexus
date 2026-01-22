@@ -25,9 +25,15 @@ aws lambda update-function-configuration ...
 - 支援回滾和版本控制
 - 符合 Infrastructure as Code 原則
 
-**例外情況**：
-- 緊急修復時清除緩存（但之後必須 SAM 部署）
-- 調試時的臨時測試（不應該成為常態）
+**絕無例外**：
+- ❌ 不要因為「緊急」就繞過 SAM
+- ❌ 不要因為「清除緩存」使用 aws lambda update
+- ❌ 不要因為「快速測試」違反 IaC
+- ✅ 所有情況都使用 SAM，這是強制要求
+
+**技術強制**：
+- PreToolUse Hook 會自動阻止 `aws lambda update-*` 命令
+- 參考：`.clinerules/rules/deployment-iac.md`
 
 ### 原則 2: 部署前必須驗證導入
 ```bash

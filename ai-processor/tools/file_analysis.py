@@ -3,12 +3,15 @@
 負責使用 AgentCore Code Interpreter 分析各種類型的檔案
 """
 
+from strands import tool
+
 from services.file_service import file_service
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
 
 
+@tool
 def analyze_file_tool(file_s3_url: str, task: str = "摘要檔案內容") -> str:
     """
     分析存儲在 S3 的各種類型檔案。

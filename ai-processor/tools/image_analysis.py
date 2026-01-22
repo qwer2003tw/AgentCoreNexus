@@ -6,6 +6,7 @@
 from typing import Any
 
 import boto3
+from strands import tool
 
 from services.file_service import file_service
 from utils.logger import get_logger
@@ -132,6 +133,7 @@ def _detect_image_format(filename: str) -> str:
 
 
 # Tool 函數（供 Strands Agent 註冊使用）
+@tool
 def analyze_image_tool(image_s3_url: str, task: str = "描述圖片內容") -> str:
     """
     分析存儲在 S3 的圖片內容。

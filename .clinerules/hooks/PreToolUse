@@ -70,5 +70,52 @@ if [[ "$tool_name" == "write_to_file" ]]; then
   fi
 fi
 
+# ============================================
+# 規則 6: 強制 SAM 部署，禁止直接更新 Lambda ⭐⭐⭐
+# ============================================
+if [[ "$tool_name" == "execute_command" ]]; then
+  command=$(echo "$input" | jq -r '.preToolUse.parameters.command // empty')
+  
+  # 檢測禁止的 Lambda 更新命令
+  if echo "$command" | grep -E "aws lambda update-function-(code|configuration)" > /dev/null; then
+    error_msg="🚫 INFRASTRUCTURE AS CODE 違規
+
+❌ 檢測到禁止的命令：
+   $(echo "$command" | grep -o 'aws lambda update[^;]*')
+
+⛔ 此命令違反 Infrastructure as Code 原則！
+
+✅ 正確做法：使用 SAM 進行所有部署
+
+   方法 1（推薦）：使用 Workflow
+   /deploy-lambda.md
+   
+   方法 2：手動 SAM 部署
+   cd [component-directory]
+   sam build
+   sam deploy --stack-name STACK_NAME --region us-west-2
+
+📚 為什麼禁止：
+   • SAM 管理完整的基礎設施狀態
+   • 確保配置一致性和可追蹤
+   • 支援版本控制和回滾
+   • 下次 SAM deploy 會覆蓋手動變更
+
+📖 參考：.clinerules/rules/deployment-iac.md"
+    
+    jq -n --arg msg "$error_msg" '{"cancel": true, "errorMessage": $msg}'
+    exit 0
+  fi
+  
+  # 檢測其他繞過 IaC 的命令
+  if echo "$command" | grep -E "aws lambda (publish-version|create-alias|update-alias)" > /dev/null; then
+    error_msg="🚫 請使用 SAM 管理 Lambda 版本和別名
+
+template.yaml 中配置 AutoPublishAlias 或 Versions，不要使用 AWS CLI 直接操作。"
+    jq -n --arg msg "$error_msg" '{"cancel": true, "errorMessage": $msg}'
+    exit 0
+  fi
+fi
+
 # 所有檢查通過
 echo '{"cancel": false}'

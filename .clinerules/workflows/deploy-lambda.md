@@ -214,18 +214,23 @@ sam deploy ...
 
 **症狀**: Secrets 更新了但 Lambda 讀到舊值
 
-**解決**:
+**正確解決方式**:
 ```bash
-# 強制更新（緊急情況）
-aws lambda update-function-code \
-  --region us-west-2 \
-  --function-name [FUNCTION_NAME] \
-  --s3-bucket [BUCKET] \
-  --s3-key [KEY] \
-  --publish
+# 方法 1: 清除 SAM 緩存重新部署（推薦）
+rm -rf .aws-sam
+sam build --use-container
+sam deploy --stack-name [STACK_NAME] --region us-west-2
 
-# 之後必須再次 SAM deploy 確認
+# 方法 2: 等待 Lambda 自動更新（通常幾分鐘內）
+
+# 方法 3: 觸發新請求強制重新初始化
+# 發送測試消息給 bot
 ```
+
+**⚠️ 注意**: 
+- **不要**使用 `aws lambda update-function-code`（違反 IaC）
+- PreToolUse Hook 會阻止此類命令
+- 始終使用 SAM 進行所有變更
 
 ---
 

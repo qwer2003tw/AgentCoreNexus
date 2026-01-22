@@ -3,7 +3,7 @@ Transform: AWS::Serverless-2016-10-31
 Description: >
   agentcore-ai-processor
   
-  Channel-agnostic AI Processor for multi-channel message processing using AgentCore
+  Channel-agnostic AI Processor with S3 + Tool-based architecture for attachments
 
 Parameters:
   ReceiverStackName:
