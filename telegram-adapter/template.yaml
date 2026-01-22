@@ -132,7 +132,6 @@ Resources:
       Environment:
         Variables:
           TELEGRAM_SECRETS_ARN: !Ref TelegramSecrets
-          SQS_QUEUE_URL: !Ref TelegramInboundQueue
           ALLOWLIST_TABLE_NAME: !If
             - ShouldCreateAllowlistTable
             - !Ref AllowlistTable
@@ -155,8 +154,6 @@ Resources:
                 - ShouldCreateAllowlistTable
                 - !GetAtt AllowlistTable.Arn
                 - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/telegram-allowlist'
-        - SQSSendMessagePolicy:
-            QueueName: !GetAtt TelegramInboundQueue.QueueName
         - Statement:
             - Effect: Allow
               Action:
@@ -205,38 +202,6 @@ Resources:
         Component: api-gateway
         auto-delete: "no"
 
-  # SQS Queue - Telegram Inbound Messages
-  TelegramInboundQueue:
-    Type: AWS::SQS::Queue
-    Properties:
-      QueueName: telegram-inbound
-      VisibilityTimeout: 300
-      MessageRetentionPeriod: 1209600  # 14 days
-      ReceiveMessageWaitTimeSeconds: 20  # Long polling
-      RedrivePolicy:
-        deadLetterTargetArn: !GetAtt TelegramDLQ.Arn
-        maxReceiveCount: 3
-      Tags:
-        - Key: Service
-          Value: telegram-lambda
-        - Key: Component
-          Value: sqs-queue
-        - Key: auto-delete
-          Value: "no"
-
-  # Dead Letter Queue
-  TelegramDLQ:
-    Type: AWS::SQS::Queue
-    Properties:
-      QueueName: telegram-inbound-dlq
-      MessageRetentionPeriod: 1209600  # 14 days
-      Tags:
-        - Key: Service
-          Value: telegram-lambda
-        - Key: Component
-          Value: dlq
-        - Key: auto-delete
-          Value: "no"
 
   # DynamoDB Table - User Allowlist
   # Created conditionally: new environments create it, existing environments use telegram-allowlist
@@ -512,22 +477,6 @@ Resources:
           Value: !Ref TelegramReceiverFunction
       TreatMissingData: notBreaching
 
-  SQSQueueDepthAlarm:
-    Type: AWS::CloudWatch::Alarm
-    Properties:
-      AlarmName: !Sub '${AWS::StackName}-sqs-queue-depth'
-      AlarmDescription: Alert when SQS queue has too many messages
-      MetricName: ApproximateNumberOfMessagesVisible
-      Namespace: AWS/SQS
-      Statistic: Average
-      Period: 300
-      EvaluationPeriods: 2
-      Threshold: 100
-      ComparisonOperator: GreaterThanThreshold
-      Dimensions:
-        - Name: QueueName
-          Value: !GetAtt TelegramInboundQueue.QueueName
-      TreatMissingData: notBreaching
 
   # EventBridge Rule - Route message.received to Agent Processor
   MessageReceivedRule:
@@ -614,17 +563,6 @@ Outputs:
     Export:
       Name: !Sub '${AWS::StackName}-WebhookUrl'
 
-  QueueUrl:
-    Description: SQS Queue URL for telegram-processor Lambda
-    Value: !Ref TelegramInboundQueue
-    Export:
-      Name: !Sub '${AWS::StackName}-QueueUrl'
-
-  QueueArn:
-    Description: SQS Queue ARN
-    Value: !GetAtt TelegramInboundQueue.Arn
-    Export:
-      Name: !Sub '${AWS::StackName}-QueueArn'
 
   AllowlistTableName:
     Description: 'DynamoDB Allowlist Table Name (conditional: created or existing)'

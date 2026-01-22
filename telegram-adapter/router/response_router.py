@@ -105,9 +105,31 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             channel_id = ""
 
         user_info = detail["user"]
-        user_id = user_info.get("id", user_info.get("userId"))
+
+        # 優先使用 channelId（對話發生的地方）
+        # 群組對話：channelId = 群組 ID（負數）
+        # 私人對話：channelId = user_id（相同）
+        if isinstance(channel_info, dict):
+            user_id = channel_info.get("channelId") or user_info.get("id", user_info.get("userId"))
+        else:
+            # 向後兼容字串格式
+            user_id = user_info.get("id", user_info.get("userId"))
+
         response_content = detail["response"]
         metadata = detail.get("metadata", {})
+
+        logger.info(
+            "Extracted routing IDs",
+            extra={
+                "event_type": "router_ids_extracted",
+                "channel_id": channel_info.get("channelId")
+                if isinstance(channel_info, dict)
+                else "N/A",
+                "user_id_from_detail": user_info.get("id", "N/A"),
+                "final_user_id": user_id,
+                "channel": channel,
+            },
+        )
 
         logger.info(
             "Processing completed message",

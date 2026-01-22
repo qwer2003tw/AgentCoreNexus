@@ -122,11 +122,18 @@ def process_eventbridge_event(event: dict[str, Any], context: Any) -> dict[str, 
     # 提取標準化訊息
     normalized_message = detail
     message_id = normalized_message.get("messageId", "unknown")
-    channel_type = normalized_message.get("channel", {}).get("type", "unknown")
+    channel_info = normalized_message.get("channel", {})
+    channel_type = channel_info.get("type", "unknown")
+    channel_id = channel_info.get("channelId", "unknown")
 
     logger.info(
         f"Processing message from {channel_type}",
-        extra={"message_id": message_id, "channel": channel_type},
+        extra={
+            "message_id": message_id,
+            "channel": channel_type,
+            "channel_id": channel_id,
+            "channel_full": channel_info
+        },
     )
 
     # 處理訊息

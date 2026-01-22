@@ -103,20 +103,8 @@ def lambda_context():
 
 
 @pytest.fixture(scope="function")
-def mock_sqs():
-    """Mock SQS 客戶端"""
-
-    def mock_send(body):
-        # 總是返回成功
-        return True
-
-    with patch("handler.send_to_queue", side_effect=mock_send):
-        yield
-
-
-@pytest.fixture(scope="function")
 def full_mock_env(
-    mock_env, mock_secrets, mock_eventbridge, mock_telegram_api, mock_allowlist, mock_sqs
+    mock_env, mock_secrets, mock_eventbridge, mock_telegram_api, mock_allowlist
 ):
     """
     完整的測試環境

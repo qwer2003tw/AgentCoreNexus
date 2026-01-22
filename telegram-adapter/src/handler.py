@@ -19,7 +19,6 @@ from commands.handlers.new_handler import NewCommandHandler
 from commands.router import CommandRouter
 from file_handler import process_file_attachment
 from secrets_manager import get_telegram_secret_token
-from sqs_client import send_to_queue
 from telegram import Update
 
 from utils.logger import get_logger
@@ -38,9 +37,6 @@ from utils.metrics import (
     METRIC_MESSAGE_TYPE_VIDEO,
     METRIC_MESSAGES_PROCESSED,
     METRIC_MESSAGES_RECEIVED,
-    METRIC_SQS_DURATION,
-    METRIC_SQS_FAILURE,
-    METRIC_SQS_SUCCESS,
     METRIC_TOKEN_VALIDATION_SUCCESS,
     METRIC_TOTAL_DURATION,
     METRIC_WEBHOOK_PARSING_FALLBACK,
@@ -530,44 +526,30 @@ def lambda_handler(event: dict[str, Any], context: Any, metrics) -> dict[str, An
             extra={"message_id": normalized["messageId"], "session_id": session_id},
         )
 
-        # 發布到 EventBridge（新增的多通道事件匯流排）
+        # 發布到 EventBridge（主要消息路徑）
         eventbridge_success = publish_to_eventbridge(normalized)
-        if eventbridge_success:
-            logger.info(
-                "Message sent to EventBridge",
-                extra={
-                    "message_id": normalized["messageId"],
-                    "channel": channel,
-                    "event_type": "eventbridge_sent",
-                },
-            )
 
-        # 發送到 SQS（保持向後兼容，雙軌運行）
-        sqs_start_time = time.time()
-        success = send_to_queue(body)
-        sqs_duration = (time.time() - sqs_start_time) * 1000  # 轉換為毫秒
-
-        # 記錄 SQS 發送時間
-        record_duration_metric(metrics, METRIC_SQS_DURATION, sqs_duration)
-
-        if not success:
+        if not eventbridge_success:
             logger.error(
-                "Failed to send message to SQS",
-                extra={"chat_id": chat_id, "event_type": "sqs_error"},
+                "Failed to publish to EventBridge",
+                extra={"chat_id": chat_id, "event_type": "eventbridge_error"},
             )
-            # 記錄 SQS 發送失敗指標
-            record_count_metric(metrics, METRIC_SQS_FAILURE)
-            # 即使 SQS 發送失敗，也回應 200 OK 避免 Telegram 重試
-            # 錯誤已經記錄在日誌中，可以稍後處理
-            return create_response(200, {"status": "sqs_failed"})
+            # EventBridge 發送失敗，記錄錯誤
+            record_count_metric(metrics, METRIC_LAMBDA_ERROR)
+            # 仍然返回 200 OK 避免 Telegram 重試
+            return create_response(200, {"status": "eventbridge_failed"})
 
         logger.info(
             "Message processed successfully",
-            extra={"chat_id": chat_id, "username": username, "event_type": "success"},
+            extra={
+                "chat_id": chat_id,
+                "username": username,
+                "message_id": normalized["messageId"],
+                "event_type": "success",
+            },
         )
 
-        # 記錄 SQS 發送成功和訊息處理成功指標
-        record_count_metric(metrics, METRIC_SQS_SUCCESS)
+        # 記錄訊息處理成功指標
         record_count_metric(metrics, METRIC_MESSAGES_PROCESSED)
 
         # 記錄總執行時間
