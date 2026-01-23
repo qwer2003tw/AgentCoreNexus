@@ -468,17 +468,23 @@ def process_normalized_message(normalized: dict[str, Any]) -> dict[str, Any]:
 
             # ✨ 儲存 AI 回應到對話歷史（雙寫架構）
             conversation_service = get_conversation_service()
+            logger.info(
+                f"Attempting to save AI response: service={'available' if conversation_service else 'unavailable'}, response_length={len(response_text) if response_text else 0}"
+            )
+
             if conversation_service and response_text:
                 try:
                     # 構建 conversation_id（與 Telegram handler 一致）
                     channel_type = normalized.get("channel", {}).get("type", "unknown")
+                    # 使用縮寫格式（telegram → tg，與 handler 一致）
+                    channel_prefix = "tg" if channel_type == "telegram" else channel_type
                     if is_group:
-                        conv_id = f"{channel_type}:group:{conversation_id}"
+                        conv_id = f"{channel_prefix}:group:{conversation_id}"
                     else:
-                        conv_id = f"{channel_type}:{conversation_id}"
+                        conv_id = f"{channel_prefix}:{conversation_id}"
 
                     # 儲存 AI 回應
-                    conversation_service.save_message(
+                    save_result = conversation_service.save_message(
                         conversation_id=conv_id,
                         sender_id="ai",
                         sender_name="AI Assistant",
@@ -489,7 +495,10 @@ def process_normalized_message(normalized: dict[str, Any]) -> dict[str, Any]:
                             "has_memory": session_manager is not None,
                         },
                     )
-                    logger.debug(f"AI response saved to conversation history: {conv_id}")
+                    if save_result.get("success"):
+                        logger.info(f"✅ AI response saved to conversation history: {conv_id}")
+                    else:
+                        logger.error(f"❌ Failed to save AI response: {save_result.get('error')}")
                 except Exception as e:
                     # 對話記錄失敗不應阻止回應發送
                     logger.warning(
