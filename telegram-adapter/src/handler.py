@@ -49,6 +49,36 @@ from utils.response import create_response
 
 logger = get_logger(__name__)
 
+# 動態導入對話服務（如果配置了表名稱）
+_conversation_service = None
+
+
+def get_conversation_service():
+    """取得對話服務單例（如果已配置）"""
+    global _conversation_service
+    if _conversation_service is None:
+        history_table = os.getenv("CONVERSATION_HISTORY_TABLE")
+        metadata_table = os.getenv("CONVERSATION_METADATA_TABLE")
+
+        if history_table and metadata_table:
+            # 動態導入並創建服務
+            import sys
+
+            sys.path.insert(0, "/opt/python")  # Lambda Layer 路徑
+            from conversation_service import ConversationService
+
+            _conversation_service = ConversationService(history_table, metadata_table)
+            logger.info(
+                "ConversationService initialized",
+                extra={"history_table": history_table, "metadata_table": metadata_table},
+            )
+        else:
+            logger.info("Conversation storage not configured, conversation history disabled")
+            _conversation_service = False  # 標記為已檢查但未配置
+
+    return _conversation_service if _conversation_service else None
+
+
 # 初始化 EventBridge 客戶端
 _eventbridge_client = None
 
@@ -525,6 +555,39 @@ def lambda_handler(event: dict[str, Any], context: Any, metrics) -> dict[str, An
             f"Message normalized: {normalized['messageId']}",
             extra={"message_id": normalized["messageId"], "session_id": session_id},
         )
+
+        # ✨ 儲存訊息到對話歷史（如果已配置）
+        conversation_service = get_conversation_service()
+        if conversation_service:
+            try:
+                # 判斷是否為群組（chat_id < 0）
+                is_group = chat_id < 0
+
+                # 構建 conversation_id
+                if is_group:
+                    conversation_id = f"tg:group:{chat_id}"
+                else:
+                    conversation_id = f"tg:{chat_id}"
+
+                # 儲存用戶訊息
+                conversation_service.save_message(
+                    conversation_id=conversation_id,
+                    sender_id=f"tg:{update.effective_user.id}"
+                    if update and update.effective_user
+                    else f"tg:{chat_id}",
+                    sender_name=username or "Unknown",
+                    content=text or caption,
+                    message_type=normalized["content"]["messageType"],
+                    channel="telegram",
+                    metadata={
+                        "chat_type": "group" if is_group else "private",
+                        "attachments": normalized["content"]["attachments"],
+                    },
+                )
+                logger.debug(f"Message saved to conversation history: {conversation_id}")
+            except Exception as e:
+                # 對話記錄失敗不應阻止訊息處理
+                logger.warning(f"Failed to save conversation history: {str(e)}", exc_info=True)
 
         # 發布到 EventBridge（主要消息路徑）
         eventbridge_success = publish_to_eventbridge(normalized)

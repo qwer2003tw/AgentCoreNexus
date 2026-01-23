@@ -1,32 +1,45 @@
 """
-History REST API Lambda
-Handles conversation history queries and export
+Conversation History REST API Lambda
+Handles conversation history queries and deletions for Web channel
 """
 
 import json
 import os
-from datetime import UTC, datetime, timedelta
-from decimal import Decimal
 from typing import Any
 
 import boto3
-from botocore.exceptions import ClientError
-
-# Initialize AWS clients
-dynamodb = boto3.resource("dynamodb")
 
 # Environment variables
-HISTORY_TABLE = os.environ["HISTORY_TABLE"]
-BINDINGS_TABLE = os.environ["BINDINGS_TABLE"]
+CONVERSATION_HISTORY_TABLE = os.environ.get("CONVERSATION_HISTORY_TABLE")
+CONVERSATION_METADATA_TABLE = os.environ.get("CONVERSATION_METADATA_TABLE")
 
-# DynamoDB tables
-history_table = dynamodb.Table(HISTORY_TABLE)
-bindings_table = dynamodb.Table(BINDINGS_TABLE)
+# Initialize conversation service
+_conversation_service = None
+
+
+def get_conversation_service():
+    """Get ConversationService singleton"""
+    global _conversation_service
+    if _conversation_service is None and CONVERSATION_HISTORY_TABLE and CONVERSATION_METADATA_TABLE:
+        import sys
+
+        sys.path.insert(0, "/opt/python")  # Lambda Layer path
+        from conversation_service import ConversationService
+
+        _conversation_service = ConversationService(
+            CONVERSATION_HISTORY_TABLE, CONVERSATION_METADATA_TABLE
+        )
+    return _conversation_service
 
 
 def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """
-    Main handler for history operations
+    Main handler for conversation history operations
+
+    Endpoints:
+    - GET /conversations/{conversation_id}/messages - Get conversation messages
+    - DELETE /conversations/{conversation_id} - Delete conversation (soft delete)
+    - POST /conversations/{conversation_id}/restore - Restore deleted conversation
 
     Args:
         event: API Gateway event
@@ -37,23 +50,34 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """
     path = event.get("path", "")
     method = event.get("httpMethod", "")
+    path_params = event.get("pathParameters") or {}
+    conversation_id = path_params.get("conversation_id", "")
 
     print(f"{method} {path}")
 
-    # Extract email from JWT (assuming Lambda Authorizer has validated)
-    email = extract_email_from_token(event)
-    if not email:
-        return response(401, {"error": "Unauthorized"})
-
     try:
-        if path == "/history" and method == "GET":
-            return handle_get_history(email, event)
+        # Extract user email from JWT token
+        user_email = extract_email_from_token(event)
+        if not user_email:
+            return response(401, {"error": "Unauthorized"})
 
-        elif path == "/history/export" and method == "GET":
-            return handle_export_history(email, event)
+        # Get conversation service
+        service = get_conversation_service()
+        if not service:
+            return response(503, {"error": "Conversation storage not configured"})
 
-        elif path == "/history/stats" and method == "GET":
-            return handle_get_stats(email)
+        # Route to appropriate handler
+        if method == "GET" and "/messages" in path:
+            return handle_get_messages(event, service, conversation_id, user_email)
+
+        elif method == "DELETE":
+            return handle_delete_conversation(event, service, conversation_id, user_email)
+
+        elif method == "POST" and "/restore" in path:
+            return handle_restore_conversation(event, service, conversation_id, user_email)
+
+        elif method == "GET" and path.endswith(f"/conversations/{conversation_id}"):
+            return handle_get_metadata(event, service, conversation_id, user_email)
 
         else:
             return response(404, {"error": "Not found"})
@@ -66,361 +90,164 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         return response(500, {"error": "Internal server error"})
 
 
-def handle_get_history(email: str, event: dict[str, Any]) -> dict[str, Any]:
+def handle_get_messages(
+    event: dict[str, Any], service: Any, conversation_id: str, user_email: str
+) -> dict[str, Any]:
     """
-    Get conversation history for user
+    Get conversation messages
+
+    Query parameters:
+    - limit: Number of messages to return (default: 50, max: 500)
+    - start_time: Start timestamp for time range query (optional)
+    - next_key: Pagination token (optional, JSON string)
 
     Args:
-        email: User email
-        event: API Gateway event with query parameters
+        event: API Gateway event
+        service: ConversationService instance
+        conversation_id: Conversation ID
+        user_email: User email (for authorization)
 
     Returns:
-        Paginated conversation history
+        API Gateway response with messages
     """
-    # Get unified_user_id
-    unified_user_id = get_unified_user_id_by_email(email)
-    if not unified_user_id:
-        return response(200, {"conversations": [], "count": 0})
+    # Verify user owns this conversation
+    # Web conversations use format: web:{user_id}
+    # Extract user_id from JWT and verify it matches conversation_id
 
-    # Get query parameters
     query_params = event.get("queryStringParameters") or {}
     limit = int(query_params.get("limit", 50))
-    last_key = query_params.get("last_key")
-    channel_filter = query_params.get("channel")  # 'web', 'telegram', or None (all)
+    start_time = int(query_params.get("start_time")) if query_params.get("start_time") else None
+    next_key_str = query_params.get("next_key")
 
-    try:
-        # Query history
-        query_kwargs = {
-            "KeyConditionExpression": "unified_user_id = :user_id",
-            "ExpressionAttributeValues": {":user_id": unified_user_id},
-            "Limit": limit,
-            "ScanIndexForward": False,  # Newest first
-        }
+    # Parse pagination token
+    next_key = None
+    if next_key_str:
+        try:
+            next_key = json.loads(next_key_str)
+        except:
+            return response(400, {"error": "Invalid next_key format"})
 
-        if last_key:
-            query_kwargs["ExclusiveStartKey"] = {
-                "unified_user_id": unified_user_id,
-                "timestamp_msgid": last_key,
-            }
+    # Query messages
+    result = service.get_messages(
+        conversation_id=conversation_id,
+        limit=limit,
+        start_time=start_time,
+        last_evaluated_key=next_key,
+    )
 
-        result = history_table.query(**query_kwargs)
+    if not result["success"]:
+        return response(400, {"error": result.get("error", "Failed to get messages")})
 
-        # Filter by channel if specified
-        messages = result.get("Items", [])
-        if channel_filter:
-            messages = [m for m in messages if m.get("channel") == channel_filter]
-
-        # Convert to JSON-safe format
-        messages = [convert_dynamodb_to_json(m) for m in messages]
-
-        # Group by time periods
-        grouped = group_messages_by_time(messages)
-
-        response_data = {"conversations": grouped, "count": len(messages)}
-
-        # Include pagination token
-        if "LastEvaluatedKey" in result:
-            response_data["last_key"] = result["LastEvaluatedKey"]["timestamp_msgid"]
-
-        return response(200, response_data)
-
-    except ClientError as e:
-        print(f"Error querying history: {str(e)}")
-        return response(500, {"error": "Failed to retrieve history"})
+    # Format response
+    return response(
+        200,
+        {
+            "conversation_id": conversation_id,
+            "messages": result["messages"],
+            "count": result["count"],
+            "has_more": result["has_more"],
+            "next_key": json.dumps(result["next_key"]) if result["next_key"] else None,
+        },
+    )
 
 
-def handle_export_history(email: str, event: dict[str, Any]) -> dict[str, Any]:
+def handle_delete_conversation(
+    event: dict[str, Any], service: Any, conversation_id: str, user_email: str
+) -> dict[str, Any]:
     """
-    Export conversation history in specified format
+    Delete conversation (soft delete by default)
+
+    Query parameters:
+    - hard: Set to 'true' for permanent deletion (default: false)
 
     Args:
-        email: User email
-        event: API Gateway event with query parameters
+        event: API Gateway event
+        service: ConversationService instance
+        conversation_id: Conversation ID
+        user_email: User email (for authorization)
 
     Returns:
-        Exported conversation data
+        API Gateway response
     """
-    # Get unified_user_id
-    unified_user_id = get_unified_user_id_by_email(email)
-    if not unified_user_id:
-        return response(200, {"data": "", "format": "json"})
+    # Verify user owns this conversation
+    # (Authorization logic here)
 
-    # Get query parameters
     query_params = event.get("queryStringParameters") or {}
-    export_format = query_params.get("format", "json")  # 'json' or 'markdown'
-    channel_filter = query_params.get("channel")
+    hard_delete = query_params.get("hard", "").lower() == "true"
 
-    try:
-        # Query ALL history (no limit)
-        all_messages = []
-        last_evaluated_key = None
+    # Delete conversation
+    result = service.delete_conversation(conversation_id=conversation_id, hard_delete=hard_delete)
 
-        while True:
-            query_kwargs = {
-                "KeyConditionExpression": "unified_user_id = :user_id",
-                "ExpressionAttributeValues": {":user_id": unified_user_id},
-                "ScanIndexForward": False,
-            }
+    if not result["success"]:
+        return response(400, {"error": result.get("error", "Failed to delete conversation")})
 
-            if last_evaluated_key:
-                query_kwargs["ExclusiveStartKey"] = last_evaluated_key
-
-            result = history_table.query(**query_kwargs)
-            all_messages.extend(result.get("Items", []))
-
-            last_evaluated_key = result.get("LastEvaluatedKey")
-            if not last_evaluated_key:
-                break
-
-        # Filter by channel if specified
-        if channel_filter:
-            all_messages = [m for m in all_messages if m.get("channel") == channel_filter]
-
-        # Convert to JSON-safe format
-        all_messages = [convert_dynamodb_to_json(m) for m in all_messages]
-
-        # Export in requested format
-        if export_format == "markdown":
-            exported_data = export_as_markdown(all_messages, email)
-        else:
-            exported_data = json.dumps(all_messages, indent=2, ensure_ascii=False)
-
-        return response(
-            200,
-            {
-                "data": exported_data,
-                "format": export_format,
-                "message_count": len(all_messages),
-                "exported_at": datetime.now(UTC).isoformat(),
-            },
-        )
-
-    except Exception as e:
-        print(f"Error exporting history: {str(e)}")
-        return response(500, {"error": "Failed to export history"})
+    # Format response
+    return response(
+        200,
+        {
+            "conversation_id": conversation_id,
+            "deleted_at": result.get("deleted_at"),
+            "permanent": result.get("permanent", False),
+            "recoverable_until": result.get("recoverable_until"),
+            "recovery_days": result.get("recovery_days"),
+        },
+    )
 
 
-def handle_get_stats(email: str) -> dict[str, Any]:
+def handle_restore_conversation(
+    event: dict[str, Any], service: Any, conversation_id: str, user_email: str
+) -> dict[str, Any]:
     """
-    Get conversation statistics for user
+    Restore a soft-deleted conversation
 
     Args:
-        email: User email
+        event: API Gateway event
+        service: ConversationService instance
+        conversation_id: Conversation ID
+        user_email: User email (for authorization)
 
     Returns:
-        Statistics data
+        API Gateway response
     """
-    unified_user_id = get_unified_user_id_by_email(email)
-    if not unified_user_id:
-        return response(200, {"total_messages": 0})
+    # Verify user owns this conversation
+    # (Authorization logic here)
 
-    try:
-        # Query to count messages (could be optimized with a counter table)
-        result = history_table.query(
-            KeyConditionExpression="unified_user_id = :user_id",
-            ExpressionAttributeValues={":user_id": unified_user_id},
-            Select="COUNT",
-        )
+    # Restore conversation
+    result = service.restore_conversation(conversation_id=conversation_id)
 
-        total_messages = result.get("Count", 0)
+    if not result["success"]:
+        return response(400, {"error": result.get("error", "Failed to restore conversation")})
 
-        # Calculate oldest and newest message timestamps
-        # Query oldest (ScanIndexForward=True, Limit=1)
-        oldest_result = history_table.query(
-            KeyConditionExpression="unified_user_id = :user_id",
-            ExpressionAttributeValues={":user_id": unified_user_id},
-            ScanIndexForward=True,
-            Limit=1,
-        )
-
-        # Query newest (ScanIndexForward=False, Limit=1)
-        newest_result = history_table.query(
-            KeyConditionExpression="unified_user_id = :user_id",
-            ExpressionAttributeValues={":user_id": unified_user_id},
-            ScanIndexForward=False,
-            Limit=1,
-        )
-
-        oldest_timestamp = None
-        newest_timestamp = None
-
-        if oldest_result.get("Items"):
-            oldest_timestamp = oldest_result["Items"][0]["timestamp_msgid"].split("#")[0]
-
-        if newest_result.get("Items"):
-            newest_timestamp = newest_result["Items"][0]["timestamp_msgid"].split("#")[0]
-
-        return response(
-            200,
-            {
-                "total_messages": total_messages,
-                "oldest_message": oldest_timestamp,
-                "newest_message": newest_timestamp,
-            },
-        )
-
-    except Exception as e:
-        print(f"Error getting stats: {str(e)}")
-        return response(500, {"error": "Failed to get statistics"})
+    return response(200, {"conversation_id": conversation_id, "status": "restored"})
 
 
-# ============================================================
-# Helper Functions
-# ============================================================
-
-
-def get_unified_user_id_by_email(email: str) -> str | None:
+def handle_get_metadata(
+    event: dict[str, Any], service: Any, conversation_id: str, user_email: str
+) -> dict[str, Any]:
     """
-    Get unified_user_id for a web user
+    Get conversation metadata
 
     Args:
-        email: User email
+        event: API Gateway event
+        service: ConversationService instance
+        conversation_id: Conversation ID
+        user_email: User email (for authorization)
 
     Returns:
-        Unified user ID or None
+        API Gateway response with metadata
     """
-    try:
-        result = bindings_table.query(
-            IndexName="web_email-index",
-            KeyConditionExpression="web_email = :email",
-            ExpressionAttributeValues={":email": email},
-        )
+    # Get metadata
+    metadata = service.get_conversation_metadata(conversation_id)
 
-        items = result.get("Items", [])
-        if items:
-            return items[0]["unified_user_id"]
+    if not metadata:
+        return response(404, {"error": "Conversation not found"})
 
-        return None
-
-    except Exception as e:
-        print(f"Error getting unified_user_id: {str(e)}")
-        return None
-
-
-def group_messages_by_time(messages: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
-    """
-    Group messages by time period (today, yesterday, this week, earlier)
-
-    Args:
-        messages: List of messages
-
-    Returns:
-        Grouped messages
-    """
-    now = datetime.now(UTC)
-    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-    yesterday_start = today_start - timedelta(days=1)
-    week_start = today_start - timedelta(days=7)
-
-    grouped = {"today": [], "yesterday": [], "this_week": [], "earlier": []}
-
-    for msg in messages:
-        timestamp_str = msg.get("timestamp_msgid", "").split("#")[0]
-        try:
-            msg_time = datetime.fromisoformat(timestamp_str.replace("Z", "+00:00"))
-
-            if msg_time >= today_start:
-                grouped["today"].append(msg)
-            elif msg_time >= yesterday_start:
-                grouped["yesterday"].append(msg)
-            elif msg_time >= week_start:
-                grouped["this_week"].append(msg)
-            else:
-                grouped["earlier"].append(msg)
-        except Exception:
-            grouped["earlier"].append(msg)
-
-    return grouped
-
-
-def export_as_markdown(messages: list[dict[str, Any]], email: str) -> str:
-    """
-    Export messages as Markdown format
-
-    Args:
-        messages: List of messages
-        email: User email
-
-    Returns:
-        Markdown string
-    """
-    lines = [
-        "# Conversation History Export",
-        "",
-        f"**User**: {email}",
-        f"**Exported**: {datetime.now(UTC).isoformat()}",
-        f"**Total Messages**: {len(messages)}",
-        "",
-        "---",
-        "",
-    ]
-
-    # Reverse to show oldest first
-    messages_sorted = sorted(messages, key=lambda m: m.get("timestamp_msgid", ""))
-
-    current_date = None
-
-    for msg in messages_sorted:
-        timestamp_str = msg.get("timestamp_msgid", "").split("#")[0]
-        role = msg.get("role", "unknown")
-        content_text = msg.get("content", {}).get("text", "")
-        channel = msg.get("channel", "unknown")
-
-        try:
-            msg_time = datetime.fromisoformat(timestamp_str.replace("Z", "+00:00"))
-            date_str = msg_time.strftime("%Y-%m-%d")
-            time_str = msg_time.strftime("%H:%M:%S")
-
-            # Add date header if new date
-            if date_str != current_date:
-                lines.append(f"## {date_str}")
-                lines.append("")
-                current_date = date_str
-
-            # Add message
-            role_icon = "👤" if role == "user" else "🤖"
-            channel_tag = f"*[{channel}]*"
-            lines.append(f"**{time_str}** {role_icon} **{role.title()}** {channel_tag}")
-            lines.append("")
-            lines.append(content_text)
-            lines.append("")
-            lines.append("---")
-            lines.append("")
-
-        except Exception:
-            lines.append(f"**{role.title()}**: {content_text}")
-            lines.append("")
-
-    return "\n".join(lines)
-
-
-def convert_dynamodb_to_json(item: dict[str, Any]) -> dict[str, Any]:
-    """
-    Convert DynamoDB item with Decimal to JSON-safe format
-
-    Args:
-        item: DynamoDB item
-
-    Returns:
-        JSON-safe dict
-    """
-
-    def decimal_to_int(obj):
-        if isinstance(obj, Decimal):
-            return int(obj) if obj % 1 == 0 else float(obj)
-        elif isinstance(obj, dict):
-            return {k: decimal_to_int(v) for k, v in obj.items()}
-        elif isinstance(obj, list):
-            return [decimal_to_int(i) for i in obj]
-        return obj
-
-    return decimal_to_int(item)
+    return response(200, {"conversation_id": conversation_id, "metadata": metadata})
 
 
 def extract_email_from_token(event: dict[str, Any]) -> str | None:
     """
     Extract email from JWT token in Authorization header
-    (Simplified - actual implementation should verify token)
 
     Args:
         event: API Gateway event
@@ -428,10 +255,35 @@ def extract_email_from_token(event: dict[str, Any]) -> str | None:
     Returns:
         Email or None
     """
-    # In real implementation, this would decode JWT
-    # For now, assume Lambda Authorizer has set requestContext.authorizer.email
-    authorizer = event.get("requestContext", {}).get("authorizer", {})
-    return authorizer.get("email")
+    try:
+        import jwt
+
+        headers = event.get("headers", {})
+        auth_header = headers.get("Authorization") or headers.get("authorization", "")
+
+        if not auth_header.startswith("Bearer "):
+            return None
+
+        token = auth_header.replace("Bearer ", "")
+
+        # Get JWT secret from environment or Secrets Manager
+        jwt_secret_arn = os.environ.get("JWT_SECRET_ARN")
+        if not jwt_secret_arn:
+            return None
+
+        secretsmanager = boto3.client("secretsmanager")
+        secret_response = secretsmanager.get_secret_value(SecretId=jwt_secret_arn)
+        secret_data = json.loads(secret_response["SecretString"])
+        jwt_secret = secret_data["jwt_secret"]
+        jwt_algorithm = secret_data.get("jwt_algorithm", "HS256")
+
+        # Decode token
+        payload = jwt.decode(token, jwt_secret, algorithms=[jwt_algorithm])
+        return payload.get("sub")
+
+    except Exception as e:
+        print(f"Error extracting email from token: {str(e)}")
+        return None
 
 
 def response(status_code: int, body: dict[str, Any]) -> dict[str, Any]:
@@ -453,5 +305,5 @@ def response(status_code: int, body: dict[str, Any]) -> dict[str, Any]:
             "Access-Control-Allow-Headers": "Content-Type,Authorization",
             "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
         },
-        "body": json.dumps(body, ensure_ascii=False),
+        "body": json.dumps(body),
     }

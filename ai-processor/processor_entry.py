@@ -22,6 +22,36 @@ logger = get_logger(__name__)
 # 初始化 Memory 服務（全域單例）
 memory_service = MemoryService()
 
+# 動態導入對話服務（如果配置了表名稱）
+_conversation_service = None
+
+
+def get_conversation_service():
+    """取得對話服務單例（如果已配置）"""
+    global _conversation_service
+    if _conversation_service is None:
+        history_table = os.getenv("CONVERSATION_HISTORY_TABLE")
+        metadata_table = os.getenv("CONVERSATION_METADATA_TABLE")
+
+        if history_table and metadata_table:
+            # 導入並創建服務
+            import sys
+
+            sys.path.insert(0, "/opt/python")  # Lambda Layer 路徑
+            from conversation_service import ConversationService
+
+            _conversation_service = ConversationService(history_table, metadata_table)
+            logger.info(
+                "ConversationService initialized",
+                extra={"history_table": history_table, "metadata_table": metadata_table},
+            )
+        else:
+            logger.info("Conversation storage not configured, conversation history disabled")
+            _conversation_service = False  # 標記為已檢查但未配置
+
+    return _conversation_service if _conversation_service else None
+
+
 # EventBridge 配置（優化連接池和重試策略）
 _eventbridge_config = Config(
     max_pool_connections=5,  # 連接池大小
@@ -132,7 +162,7 @@ def process_eventbridge_event(event: dict[str, Any], context: Any) -> dict[str, 
             "message_id": message_id,
             "channel": channel_type,
             "channel_id": channel_id,
-            "channel_full": channel_info
+            "channel_full": channel_info,
         },
     )
 
@@ -301,33 +331,60 @@ def process_normalized_message(normalized: dict[str, Any]) -> dict[str, Any]:
         # 提取上下文
         context_info = normalized.get("context", {})
         session_id = context_info.get("sessionId", user_id)
+        conversation_id = context_info.get("conversationId", session_id)
 
         logger.info(
             f"Processing {message_type} message from {display_name}",
             extra={
                 "user_id": user_id,
                 "session_id": session_id,
+                "conversation_id": conversation_id,
                 "message_type": message_type,
                 "has_attachments": len(attachments) > 0,
                 "memory_enabled": memory_service.enabled,
             },
         )
 
+        # ✅ 檢查是否為群組對話（需要完整上下文）
+        channel_metadata = normalized.get("channel", {}).get("metadata", {})
+        is_group = channel_metadata.get("chat_type") == "group"
+
+        # ✅ 如果是群組，從 DynamoDB 讀取對話歷史（完整上下文）
+        group_context = ""
+        if is_group:
+            conversation_service = get_conversation_service()
+            if conversation_service:
+                try:
+                    # 取得群組對話歷史（最近 30 條，包含發送者名稱）
+                    group_context = conversation_service.format_messages_for_ai(
+                        conversation_id=f"tg:group:{conversation_id}",
+                        limit=30,
+                        include_sender_name=True,
+                    )
+                    if group_context:
+                        logger.info(f"Loaded group context for conversation {conversation_id}")
+                except Exception as e:
+                    logger.warning(f"Failed to load group context: {str(e)}", exc_info=True)
+
         # ✅ 新架構：統一處理所有附件（圖片 + 檔案）
         # 構建訊息給 Agent，由 Agent 決定是否需要調用 tools
         message_parts = []
 
-        # 1. 用戶文字
+        # 1. 群組上下文（如果有）
+        if group_context:
+            message_parts.append("【群組對話歷史】\n" + group_context + "\n【當前訊息】")
+
+        # 2. 用戶文字
         if text:
             message_parts.append(text)
 
-        # 2. 附件資訊（統一格式）
+        # 3. 附件資訊（統一格式）
         if attachments:
             attachment_info = build_attachment_message(attachments)
             if attachment_info:
                 message_parts.append(attachment_info)
 
-        # 3. 組合完整訊息
+        # 4. 組合完整訊息
         full_message = "\n\n".join(message_parts)
 
         # 處理文字訊息或附件訊息
@@ -408,6 +465,36 @@ def process_normalized_message(normalized: dict[str, Any]) -> dict[str, Any]:
                 if isinstance(response_dict, dict)
                 else str(response_dict)
             )
+
+            # ✨ 儲存 AI 回應到對話歷史（雙寫架構）
+            conversation_service = get_conversation_service()
+            if conversation_service and response_text:
+                try:
+                    # 構建 conversation_id（與 Telegram handler 一致）
+                    channel_type = normalized.get("channel", {}).get("type", "unknown")
+                    if is_group:
+                        conv_id = f"{channel_type}:group:{conversation_id}"
+                    else:
+                        conv_id = f"{channel_type}:{conversation_id}"
+
+                    # 儲存 AI 回應
+                    conversation_service.save_message(
+                        conversation_id=conv_id,
+                        sender_id="ai",
+                        sender_name="AI Assistant",
+                        content=response_text,
+                        message_type="text",
+                        channel=channel_type,
+                        metadata={
+                            "has_memory": session_manager is not None,
+                        },
+                    )
+                    logger.debug(f"AI response saved to conversation history: {conv_id}")
+                except Exception as e:
+                    # 對話記錄失敗不應阻止回應發送
+                    logger.warning(
+                        f"Failed to save AI response to history: {str(e)}", exc_info=True
+                    )
 
             logger.info(
                 "Message processed successfully",

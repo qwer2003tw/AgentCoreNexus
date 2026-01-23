@@ -77,6 +77,8 @@ class AdminCommandHandler(CommandHandler):
             "disable": self._handle_disable,
             "promote": self._handle_promote,
             "demote": self._handle_demote,
+            "grant_file": self._handle_grant_file,
+            "revoke_file": self._handle_revoke_file,
             "stats": self._handle_stats,
             "broadcast": self._handle_broadcast,
             "help": self._handle_help,
@@ -305,6 +307,62 @@ class AdminCommandHandler(CommandHandler):
         except ValueError:
             return self._send_error(admin_chat_id, "用法：`/admin demote <chat_id>`")
 
+    def _handle_grant_file(self, admin_chat_id: int, args: str) -> bool:
+        """處理 /admin grant_file 指令"""
+        try:
+            target_chat_id = int(args.strip())
+
+            # 檢查是否存在
+            user_info = allowlist.get_user_info(target_chat_id)
+            if not user_info:
+                return self._send_error(admin_chat_id, f"用戶 {target_chat_id} 不在名單中")
+
+            # 檢查是否已有權限
+            permissions = user_info.get("permissions", {})
+            if permissions.get("file_reader", False):
+                return self._send_error(admin_chat_id, "該用戶已有檔案讀取權限")
+
+            success = allowlist.update_file_permission(target_chat_id, True)
+
+            if success:
+                username = user_info.get("username", "Unknown")
+                chat_type = "👥 群組" if target_chat_id < 0 else "👤 用戶"
+                message = f"📁 已授予檔案讀取權限\n\n{chat_type}\nID: `{target_chat_id}`\n用戶名: @{username}\n\n✅ 現在可以處理圖片、文件等附件"
+                return telegram_client.send_message(admin_chat_id, message, parse_mode=None)
+            else:
+                return self._send_error(admin_chat_id, "授予權限失敗")
+
+        except ValueError:
+            return self._send_error(admin_chat_id, "用法：`/admin grant_file <chat_id>`")
+
+    def _handle_revoke_file(self, admin_chat_id: int, args: str) -> bool:
+        """處理 /admin revoke_file 指令"""
+        try:
+            target_chat_id = int(args.strip())
+
+            # 檢查是否存在
+            user_info = allowlist.get_user_info(target_chat_id)
+            if not user_info:
+                return self._send_error(admin_chat_id, f"用戶 {target_chat_id} 不在名單中")
+
+            # 檢查是否沒有權限
+            permissions = user_info.get("permissions", {})
+            if not permissions.get("file_reader", False):
+                return self._send_error(admin_chat_id, "該用戶沒有檔案讀取權限")
+
+            success = allowlist.update_file_permission(target_chat_id, False)
+
+            if success:
+                username = user_info.get("username", "Unknown")
+                chat_type = "👥 群組" if target_chat_id < 0 else "👤 用戶"
+                message = f"📁 已撤銷檔案讀取權限\n\n{chat_type}\nID: `{target_chat_id}`\n用戶名: @{username}\n\n⚠️ 將無法處理圖片、文件等附件"
+                return telegram_client.send_message(admin_chat_id, message, parse_mode=None)
+            else:
+                return self._send_error(admin_chat_id, "撤銷權限失敗")
+
+        except ValueError:
+            return self._send_error(admin_chat_id, "用法：`/admin revoke_file <chat_id>`")
+
     def _handle_stats(self, admin_chat_id: int, args: str) -> bool:
         """處理 /admin stats 指令"""
         stats = allowlist.get_stats()
@@ -395,6 +453,12 @@ class AdminCommandHandler(CommandHandler):
 /admin demote <chat_id>
   降級為普通用戶
 
+/admin grant_file <chat_id>
+  授予檔案讀取權限（圖片、文件等）
+
+/admin revoke_file <chat_id>
+  撤銷檔案讀取權限
+
 **系統管理：**
 /admin stats
   查看系統統計信息
@@ -405,7 +469,8 @@ class AdminCommandHandler(CommandHandler):
 **說明：**
 • chat_id 為正數：私聊 👤
 • chat_id 為負數：群組 👥
-• 所有操作需要管理員權限 👑"""
+• 所有操作需要管理員權限 👑
+• 檔案權限控制圖片/文件處理功能"""
 
         return telegram_client.send_message(admin_chat_id, help_text, parse_mode=None)
 

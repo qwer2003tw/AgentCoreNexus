@@ -1,0 +1,190 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  AgentCore Nexus - Conversation Storage Infrastructure
+  DynamoDB tables for conversation history and metadata
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues: [dev, staging, prod]
+    Description: Deployment environment
+
+Resources:
+  # ============================================================
+  # Conversation History Table - 對話訊息主表
+  # ============================================================
+  ConversationHistoryTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub 'agentcore-conversation-history-${Environment}'
+      BillingMode: PAY_PER_REQUEST
+      
+      # Keys
+      AttributeDefinitions:
+        - AttributeName: conversation_id
+          AttributeType: S
+        - AttributeName: timestamp
+          AttributeType: N
+      
+      KeySchema:
+        - AttributeName: conversation_id
+          KeyType: HASH  # Partition Key
+        - AttributeName: timestamp
+          KeyType: RANGE  # Sort Key
+      
+      # TTL Configuration (for soft delete)
+      TimeToLiveSpecification:
+        AttributeName: delete_at
+        Enabled: true
+      
+      # Point-in-Time Recovery (data protection)
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      
+      # Encryption
+      SSESpecification:
+        SSEEnabled: true
+      
+      # Tags
+      Tags:
+        - Key: Project
+          Value: AgentCoreNexus
+        - Key: Component
+          Value: conversation-storage
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: SAM
+
+  # ============================================================
+  # Conversation Metadata Table - 對話元數據
+  # ============================================================
+  ConversationMetadataTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub 'agentcore-conversation-metadata-${Environment}'
+      BillingMode: PAY_PER_REQUEST
+      
+      # Keys
+      AttributeDefinitions:
+        - AttributeName: conversation_id
+          AttributeType: S
+      
+      KeySchema:
+        - AttributeName: conversation_id
+          KeyType: HASH  # Partition Key only
+      
+      # Point-in-Time Recovery
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      
+      # Encryption
+      SSESpecification:
+        SSEEnabled: true
+      
+      # Tags
+      Tags:
+        - Key: Project
+          Value: AgentCoreNexus
+        - Key: Component
+          Value: conversation-storage
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: SAM
+
+  # ============================================================
+  # Identity Map Table - 跨通道身份綁定（Phase 2）
+  # ============================================================
+  IdentityMapTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub 'agentcore-identity-map-${Environment}'
+      BillingMode: PAY_PER_REQUEST
+      
+      # Keys
+      AttributeDefinitions:
+        - AttributeName: unified_user_id
+          AttributeType: S
+        - AttributeName: telegram_id
+          AttributeType: N
+        - AttributeName: web_id
+          AttributeType: S
+      
+      KeySchema:
+        - AttributeName: unified_user_id
+          KeyType: HASH  # Partition Key
+      
+      # GSI for reverse lookup
+      GlobalSecondaryIndexes:
+        - IndexName: telegram-id-index
+          KeySchema:
+            - AttributeName: telegram_id
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+        
+        - IndexName: web-id-index
+          KeySchema:
+            - AttributeName: web_id
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      
+      # Point-in-Time Recovery
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      
+      # Encryption
+      SSESpecification:
+        SSEEnabled: true
+      
+      # Tags
+      Tags:
+        - Key: Project
+          Value: AgentCoreNexus
+        - Key: Component
+          Value: conversation-storage
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: SAM
+
+Outputs:
+  ConversationHistoryTableName:
+    Description: Conversation history table name
+    Value: !Ref ConversationHistoryTable
+    Export:
+      Name: !Sub '${AWS::StackName}-ConversationHistoryTableName'
+  
+  ConversationHistoryTableArn:
+    Description: Conversation history table ARN
+    Value: !GetAtt ConversationHistoryTable.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-ConversationHistoryTableArn'
+  
+  ConversationMetadataTableName:
+    Description: Conversation metadata table name
+    Value: !Ref ConversationMetadataTable
+    Export:
+      Name: !Sub '${AWS::StackName}-ConversationMetadataTableName'
+  
+  ConversationMetadataTableArn:
+    Description: Conversation metadata table ARN
+    Value: !GetAtt ConversationMetadataTable.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-ConversationMetadataTableArn'
+  
+  IdentityMapTableName:
+    Description: Identity map table name
+    Value: !Ref IdentityMapTable
+    Export:
+      Name: !Sub '${AWS::StackName}-IdentityMapTableName'
+  
+  IdentityMapTableArn:
+    Description: Identity map table ARN
+    Value: !GetAtt IdentityMapTable.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-IdentityMapTableArn'

@@ -140,6 +140,9 @@ Resources:
           EVENT_BUS_NAME: !Ref UniversalEventBus
           FILE_STORAGE_BUCKET: !Ref FileStorageBucket
           ENVIRONMENT: !Ref Environment
+          # Conversation History (optional - will be set if conversation-storage stack exists)
+          CONVERSATION_HISTORY_TABLE: agentcore-conversation-history-prod
+          CONVERSATION_METADATA_TABLE: agentcore-conversation-metadata-prod
       Policies:
         - Statement:
             - Effect: Allow
@@ -154,6 +157,14 @@ Resources:
                 - ShouldCreateAllowlistTable
                 - !GetAtt AllowlistTable.Arn
                 - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/telegram-allowlist'
+            # Conversation History Tables (optional access)
+            - Effect: Allow
+              Action:
+                - dynamodb:PutItem
+                - dynamodb:Query
+              Resource:
+                - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/agentcore-conversation-history-*'
+                - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/agentcore-conversation-metadata-*'
         - Statement:
             - Effect: Allow
               Action:
