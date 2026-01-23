@@ -161,6 +161,7 @@ Resources:
                 - dynamodb:PutItem
                 - dynamodb:Query
                 - dynamodb:GetItem
+                - dynamodb:UpdateItem
               Resource:
                 - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/agentcore-conversation-history-*'
                 - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/agentcore-conversation-metadata-*'
