@@ -75,6 +75,8 @@ Resources:
       Description: Process messages from EventBridge using AgentCore
       Timeout: 300
       MemorySize: 1024
+      Layers:
+        - arn:aws:lambda:us-west-2:190825685292:layer:agentcore-conversation-service:1
       Environment:
         Variables:
           EVENT_BUS_NAME: !ImportValue 

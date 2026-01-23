@@ -129,6 +129,8 @@ Resources:
       CodeUri: src/
       Handler: handler.lambda_handler
       Description: Receives Telegram webhooks, validates allowlist, and forwards to SQS
+      Layers:
+        - arn:aws:lambda:us-west-2:190825685292:layer:agentcore-conversation-service:1
       Environment:
         Variables:
           TELEGRAM_SECRETS_ARN: !Ref TelegramSecrets

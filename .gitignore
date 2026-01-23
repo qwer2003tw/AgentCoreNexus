@@ -121,3 +121,15 @@ web-adapter/scripts/configure_github_secrets.sh
 web-adapter/scripts/rebuild_test_accounts.py
 web-adapter/scripts/sync-endpoints.sh
 ref/
+
+# Lambda Layer Ëú"iĞ¤ô	
+infrastructure/layers/*.zip
+infrastructure/layers/*/python/boto*
+infrastructure/layers/*/python/*dist-info/
+infrastructure/layers/*/python/bin/
+infrastructure/layers/*/python/jmespath/
+infrastructure/layers/*/python/s3transfer/
+infrastructure/layers/*/python/urllib3/
+infrastructure/layers/*/python/dateutil/
+infrastructure/layers/*/python/six.py
+!infrastructure/layers/*/python/conversation_service.py
