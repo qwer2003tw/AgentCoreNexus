@@ -13,9 +13,12 @@ from typing import Any
 import boto3
 from allowlist import check_allowed_with_session, check_file_permission
 from commands.handlers.admin_handler import AdminCommandHandler
+from commands.handlers.bind_handler import BindCommandHandler
 from commands.handlers.debug_handler import DebugCommandHandler
 from commands.handlers.info_handler import InfoCommandHandler
+from commands.handlers.mybindings_handler import MyBindingsCommandHandler
 from commands.handlers.new_handler import NewCommandHandler
+from commands.handlers.unbind_handler import UnbindCommandHandler
 from commands.router import CommandRouter
 from file_handler import process_file_attachment
 from secrets_manager import get_telegram_secret_token
@@ -380,6 +383,10 @@ def get_command_router() -> CommandRouter:
         _command_router.register(InfoCommandHandler())
         _command_router.register(AdminCommandHandler())
         _command_router.register(NewCommandHandler())
+        # 身份綁定命令
+        _command_router.register(BindCommandHandler())
+        _command_router.register(MyBindingsCommandHandler())
+        _command_router.register(UnbindCommandHandler())
         logger.info("Command router initialized with handlers")
     return _command_router
 

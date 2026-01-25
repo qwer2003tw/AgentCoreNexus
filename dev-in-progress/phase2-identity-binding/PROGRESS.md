@@ -26,11 +26,14 @@
 - [x] 實作 IdentityService 骨架
 - [x] 實作 generate_binding_code() 和 verify_and_bind()
 
-### Day 2-3: Telegram 命令整合
-- [ ] 實作 /bind 命令（生成綁定碼）
-- [ ] 實作 /mybindings 命令（查看已綁定身份）
-- [ ] 實作 /unbind 命令（解除綁定）
-- [ ] 添加命令測試
+### Day 2-3: Telegram 命令整合 ✅
+- [x] 實作 /bind 命令（生成綁定碼）
+- [x] 實作 /mybindings 命令（查看已綁定身份）
+- [x] 實作 /unbind 命令（解除綁定）
+- [x] 添加命令測試（12/12 passed）
+- [x] 註冊命令到 router
+- [x] 更新 template.yaml（環境變數 + IAM 權限）
+- [x] 重新命名 Lambda Layer 為 shared-services
 
 ### Day 4-5: Web API 整合
 - [ ] 實作 POST /bind 端點（Web 綁定 API）
@@ -90,7 +93,7 @@ class IdentityService:
 
 ## 📝 開發筆記
 
-### 2026-01-25
+### 2026-01-25 (Day 1)
 - ✅ 創建 Phase 2 開發目錄
 - ✅ 設計完成綁定流程（6位數字碼，10分鐘過期）
 - ✅ 創建 binding_codes DynamoDB 表定義（infrastructure/binding-codes-table.yaml）
@@ -101,9 +104,26 @@ class IdentityService:
   - unbind(): 解除綁定
   - get_unified_conversation_id(): 獲取統一對話 ID
 - ✅ 創建單元測試（shared/services/test_identity_service.py）
-  - 15+ 測試案例覆蓋所有核心功能
+  - 18 個測試案例（100% passed）
   - Mock DynamoDB 測試（使用 moto）
   - 測試邊界條件和錯誤處理
+
+### 2026-01-25 (Day 2) ✅
+- ✅ 重新命名 Lambda Layer: conversation-layer → shared-services
+- ✅ 更新 Layer 內容（加入 identity_service.py）
+- ✅ 創建 3 個 Telegram 命令處理器：
+  - bind_handler.py: 生成綁定碼（不顯示 Web URL）
+  - mybindings_handler.py: 顯示綁定列表
+  - unbind_handler.py: 解綁（/unbind confirm 自動識別用戶）
+- ✅ 註冊命令到 router（handler.py）
+- ✅ 更新 telegram-adapter/template.yaml：
+  - 添加 BINDING_CODES_TABLE 和 IDENTITY_MAP_TABLE 環境變數
+  - 添加 DynamoDB 訪問權限（包含 GSI）
+- ✅ 創建命令測試（tests/test_bind_commands.py）
+  - 12 個測試（100% passed）
+  - Mock identity_service 模組
+  - 測試所有命令場景
+- ✅ 驗證 template.yaml（sam validate passed）
 
 ---
 
@@ -133,9 +153,9 @@ class IdentityService:
 
 ## 📊 進度追蹤
 
-- **總進度**: 1/8 天完成（12.5%）
-- **當前階段**: Day 1 完成 ✅
-- **下一步**: Day 2 - Telegram 命令整合（實作 /bind, /mybindings, /unbind）
+- **總進度**: 2/8 天完成（25%）
+- **當前階段**: Day 2 完成 ✅
+- **下一步**: Day 3 - 部署到 AWS
 
 ## 🎉 Day 1 完成總結
 
@@ -143,10 +163,20 @@ class IdentityService:
 1. ✅ 綁定流程設計（6位數字碼機制）
 2. ✅ DynamoDB binding_codes 表定義
 3. ✅ IdentityService 完整實作（5個主要方法）
-4. ✅ 15+ 單元測試（涵蓋所有功能和邊界條件）
+4. ✅ 18 個單元測試（100% passed）
 
-下一步（Day 2-3）：
-1. 實作 Telegram /bind 命令
-2. 實作 /mybindings 命令
-3. 實作 /unbind 命令
-4. 添加命令測試
+## 🎉 Day 2 完成總結
+
+已完成：
+1. ✅ Layer 重新命名和重組
+2. ✅ 3 個 Telegram 命令處理器（bind, mybindings, unbind）
+3. ✅ 命令註冊和整合
+4. ✅ Template 更新（環境變數 + IAM 權限）
+5. ✅ 12 個命令測試（100% passed）
+
+下一步（Day 3）：
+1. 部署 binding_codes 表（獨立 stack）
+2. Build + Deploy shared-services Layer v2
+3. 更新兩個 Lambda 的 Layer ARN
+4. 部署 telegram-adapter 和 ai-processor
+5. 實際測試 3 個命令
