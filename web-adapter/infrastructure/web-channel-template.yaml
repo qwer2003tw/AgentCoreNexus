@@ -644,15 +644,16 @@ Resources:
           BINDING_CODES_TABLE: agentcore-binding-codes-prod
           IDENTITY_MAP_TABLE: agentcore-identity-map-prod
       Policies:
-        - DynamoDBCrudPolicy:
-            TableName: agentcore-binding-codes-prod
-        - DynamoDBCrudPolicy:
-            TableName: agentcore-identity-map-prod
         - Statement:
             - Effect: Allow
               Action:
+                - dynamodb:GetItem
+                - dynamodb:PutItem
+                - dynamodb:UpdateItem
                 - dynamodb:Query
               Resource:
+                - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/agentcore-binding-codes-prod'
+                - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/agentcore-identity-map-prod'
                 - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/agentcore-identity-map-prod/index/*'
       Events:
         VerifyCode:
