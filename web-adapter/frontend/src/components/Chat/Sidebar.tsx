@@ -1,6 +1,8 @@
+import { useState } from 'react'
 import { useAuthStore } from '@/stores/authStore'
-import { LogOut, X, User, Shield } from 'lucide-react'
+import { LogOut, X, User, Shield, Link2 } from 'lucide-react'
 import ConversationList from './ConversationList'
+import BindingDialog from '@/components/Binding/BindingDialog'
 
 interface SidebarProps {
   onClose: () => void
@@ -9,6 +11,7 @@ interface SidebarProps {
 export default function Sidebar({ onClose }: SidebarProps) {
   const { user, logout } = useAuthStore()
   const isAdmin = user?.role === 'admin'
+  const [bindingOpen, setBindingOpen] = useState(false)
   
   return (
     <div className="h-full bg-dark-surface border-r border-dark-border flex flex-col">
@@ -45,6 +48,17 @@ export default function Sidebar({ onClose }: SidebarProps) {
       {/* Conversation List */}
       <ConversationList />
       
+      {/* Binding section */}
+      <div className="p-4 border-t border-dark-border">
+        <button
+          onClick={() => setBindingOpen(true)}
+          className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-dark-text-secondary hover:bg-dark-surface-hover transition-colors"
+        >
+          <Link2 className="w-5 h-5" />
+          <span>綁定 Telegram</span>
+        </button>
+      </div>
+      
       {/* Footer with logout */}
       <div className="p-4 border-t border-dark-border">
         <button
@@ -59,6 +73,12 @@ export default function Sidebar({ onClose }: SidebarProps) {
           <span>登出</span>
         </button>
       </div>
+      
+      {/* Binding Dialog */}
+      <BindingDialog 
+        isOpen={bindingOpen} 
+        onClose={() => setBindingOpen(false)} 
+      />
     </div>
   )
 }

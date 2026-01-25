@@ -276,24 +276,41 @@ class ApiClient {
     return this.request('/history/stats')
   }
   
-  // Binding endpoints
-  async generateBindingCode(): Promise<{
-    code: string
-    expires_at: string
-    expires_in: number
+  // Binding endpoints - Phase 2
+  async verifyBindingCode(code: string): Promise<{
+    success: boolean
+    unified_conversation_id: string
+    telegram_user_id: string
     message: string
   }> {
-    return this.request('/binding/generate-code', { method: 'POST' })
+    return this.request('/binding/verify', {
+      method: 'POST',
+      body: JSON.stringify({ code })
+    })
   }
   
   async getBindingStatus(): Promise<{
     bound: boolean
-    unified_user_id?: string
+    identity_id?: string
+    unified_conversation_id?: string
     telegram_bound?: boolean
-    binding_status?: string
-    created_at?: string
+    bound_identities?: Array<{
+      platform: string
+      user_id: string
+      identity_id: string
+      bound_at: number
+    }>
+    created_at?: number
+    message?: string
   }> {
     return this.request('/binding/status')
+  }
+  
+  async unbindIdentity(): Promise<{
+    success: boolean
+    message: string
+  }> {
+    return this.request('/binding/unbind', { method: 'DELETE' })
   }
   
   // Conversations endpoints

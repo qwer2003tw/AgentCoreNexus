@@ -1,31 +1,40 @@
 """
-Binding REST API Lambda
-Handles account binding operations
+Binding REST API Lambda - Phase 2
+Handles identity binding using IdentityService
+
+Flow:
+1. Telegram: /bind ’ generates 6-digit code
+2. Web: enters code ’ calls verify_and_bind()
+3. System: creates unified_conversation_id
 """
 
 import json
 import os
-import random
-from datetime import UTC, datetime
+import sys
 from typing import Any
 
-import boto3
+# Import IdentityService from Lambda Layer
+sys.path.insert(0, '/opt/python')
+from identity_service import IdentityService
 
-# Initialize AWS clients
-dynamodb = boto3.resource("dynamodb")
-
-# Environment variables
-BINDINGS_TABLE = os.environ["BINDINGS_TABLE"]
+# Initialize IdentityService
 BINDING_CODES_TABLE = os.environ["BINDING_CODES_TABLE"]
+IDENTITY_MAP_TABLE = os.environ["IDENTITY_MAP_TABLE"]
 
-# DynamoDB tables
-bindings_table = dynamodb.Table(BINDINGS_TABLE)
-binding_codes_table = dynamodb.Table(BINDING_CODES_TABLE)
+identity_service = IdentityService(
+    binding_codes_table_name=BINDING_CODES_TABLE,
+    identity_map_table_name=IDENTITY_MAP_TABLE
+)
 
 
 def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """
     Main handler for binding operations
+
+    Endpoints:
+    - POST /binding/verify: Verify binding code and bind identities
+    - GET /binding/status: Get binding status
+    - DELETE /binding/unbind: Unbind identity
 
     Args:
         event: API Gateway event
@@ -45,11 +54,14 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         return response(401, {"error": "Unauthorized"})
 
     try:
-        if path == "/binding/generate-code" and method == "POST":
-            return handle_generate_code(email)
+        if path == "/binding/verify" and method == "POST":
+            return handle_verify_code(email, event)
 
         elif path == "/binding/status" and method == "GET":
             return handle_get_status(email)
+
+        elif path == "/binding/unbind" and method == "DELETE":
+            return handle_unbind(email)
 
         else:
             return response(404, {"error": "Not found"})
@@ -57,171 +69,154 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     except Exception as e:
         print(f"Error: {str(e)}")
         import traceback
-
         traceback.print_exc()
         return response(500, {"error": "Internal server error"})
 
 
-def handle_generate_code(email: str) -> dict[str, Any]:
+def handle_verify_code(email: str, event: dict[str, Any]) -> dict[str, Any]:
     """
-    Generate a 6-digit binding code for web user
+    Verify binding code and bind Web user to Telegram user
 
     Args:
-        email: User email
+        email: Web user email
+        event: API Gateway event (contains body with code)
 
     Returns:
-        Binding code and expiry time
+        Binding result
     """
     try:
-        # Check if user already has an active code
-        existing_codes = get_active_codes(email)
-        if existing_codes:
-            # Return existing code
-            code_item = existing_codes[0]
-            return response(
-                200,
-                {
-                    "code": code_item["code"],
-                    "expires_at": code_item["expires_at"],
-                    "expires_in": 300,
-                    "message": "Use this code in Telegram with /bind command",
-                },
-            )
+        # Parse request body
+        body = json.loads(event.get("body", "{}"))
+        code = body.get("code", "").strip()
 
-        # Generate new 6-digit code
-        code = generate_6_digit_code()
+        if not code:
+            return response(400, {"error": "Binding code is required"})
 
-        # Ensure code is unique
-        while code_exists(code):
-            code = generate_6_digit_code()
+        if len(code) != 6 or not code.isdigit():
+            return response(400, {"error": "Invalid code format (must be 6 digits)"})
 
-        # Calculate expiry (5 minutes)
-        now = datetime.now(UTC)
-        expires_at = now.timestamp() + 300
-        expires_at_iso = datetime.fromtimestamp(expires_at, tz=UTC).isoformat()
-        ttl = int(expires_at) + 300  # TTL = expiry + 5 min buffer
-
-        # Save code to DynamoDB
-        binding_codes_table.put_item(
-            Item={
-                "code": code,
-                "web_email": email,
-                "created_at": now.isoformat(),
-                "expires_at": expires_at_iso,
-                "status": "pending",
-                "ttl": ttl,
-            }
+        # Use IdentityService to verify and bind
+        result = identity_service.verify_and_bind(
+            code=code,
+            web_user_id=email,
+            web_email=email
         )
 
-        print(f"Generated binding code for {email}: {code}")
+        print(f"Binding successful: {email} ’ {result['unified_conversation_id']}")
 
-        return response(
-            200,
-            {
-                "code": code,
-                "expires_at": expires_at_iso,
-                "expires_in": 300,
-                "message": "Use this code in Telegram with /bind command within 5 minutes",
-            },
-        )
+        return response(200, {
+            "success": result['success'],
+            "unified_conversation_id": result['unified_conversation_id'],
+            "telegram_user_id": result['telegram_user_id'],
+            "message": "Binding successful! Your Telegram and Web accounts are now linked."
+        })
+
+    except ValueError as e:
+        # IdentityService raises ValueError for invalid/expired/used codes
+        error_msg = str(e)
+        print(f"Binding failed: {error_msg}")
+        
+        if "Invalid binding code" in error_msg:
+            return response(404, {"error": "Invalid binding code"})
+        elif "expired" in error_msg:
+            return response(400, {"error": "Binding code has expired"})
+        elif "already used" in error_msg:
+            return response(400, {"error": "Binding code has already been used"})
+        else:
+            return response(400, {"error": error_msg})
 
     except Exception as e:
-        print(f"Error generating code: {str(e)}")
-        return response(500, {"error": "Failed to generate binding code"})
+        print(f"Error verifying code: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return response(500, {"error": "Failed to verify binding code"})
 
 
 def handle_get_status(email: str) -> dict[str, Any]:
     """
-    Get binding status for user
+    Get binding status for Web user
 
     Args:
-        email: User email
+        email: Web user email
 
     Returns:
-        Binding status information
+        Binding status and bound identities
     """
     try:
-        # Query bindings by web_email
-        result = bindings_table.query(
-            IndexName="web_email-index",
-            KeyConditionExpression="web_email = :email",
-            ExpressionAttributeValues={":email": email},
-        )
+        web_identity_id = f"web:{email}"
+        bindings = identity_service.get_bindings(web_identity_id)
 
-        items = result.get("Items", [])
+        if not bindings:
+            return response(200, {
+                "bound": False,
+                "message": "No binding found. Use /bind command in Telegram to get a binding code."
+            })
 
-        if not items:
-            return response(200, {"bound": False, "message": "No binding found"})
+        # Format bound identities
+        bound_identities = []
+        for identity in bindings.get('bound_identities', []):
+            bound_identities.append({
+                "platform": identity.get('platform'),
+                "user_id": identity.get('user_id'),
+                "identity_id": identity.get('identity_id'),
+                "bound_at": identity.get('bound_at')
+            })
 
-        binding = items[0]
-
-        has_telegram = binding.get("telegram_chat_id") is not None
-
-        return response(
-            200,
-            {
-                "bound": has_telegram,
-                "unified_user_id": binding["unified_user_id"],
-                "telegram_bound": has_telegram,
-                "binding_status": binding.get("binding_status", "unknown"),
-                "created_at": binding.get("created_at"),
-            },
-        )
+        return response(200, {
+            "bound": True,
+            "identity_id": web_identity_id,
+            "unified_conversation_id": bindings.get('unified_conversation_id'),
+            "telegram_bound": any(b['platform'] == 'telegram' for b in bound_identities),
+            "bound_identities": bound_identities,
+            "created_at": bindings.get('metadata', {}).get('bound_at')
+        })
 
     except Exception as e:
         print(f"Error getting binding status: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return response(500, {"error": "Failed to get binding status"})
+
+
+def handle_unbind(email: str) -> dict[str, Any]:
+    """
+    Unbind Web user identity
+
+    Args:
+        email: Web user email
+
+    Returns:
+        Unbind result
+    """
+    try:
+        web_identity_id = f"web:{email}"
+        success = identity_service.unbind(web_identity_id)
+
+        if success:
+            print(f"Unbind successful: {email}")
+            return response(200, {
+                "success": True,
+                "message": "Your Web identity has been unbound from Telegram."
+            })
+        else:
+            return response(404, {
+                "success": False,
+                "message": "No binding found to unbind."
+            })
+
+    except Exception as e:
+        print(f"Error unbinding: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return response(500, {"error": "Failed to unbind identity"})
 
 
 # ============================================================
 # Helper Functions
 # ============================================================
 
-
-def generate_6_digit_code() -> str:
-    """Generate a random 6-digit code"""
-    return f"{random.randint(0, 999999):06d}"
-
-
-def code_exists(code: str) -> bool:
-    """Check if code already exists in database"""
-    try:
-        result = binding_codes_table.get_item(Key={"code": code})
-        return "Item" in result
-    except Exception:
-        return False
-
-
-def get_active_codes(email: str) -> list[dict[str, Any]]:
-    """
-    Get active (non-expired, pending) codes for email
-
-    Args:
-        email: User email
-
-    Returns:
-        List of active codes
-    """
-    try:
-        now = datetime.now(UTC).isoformat()
-
-        result = binding_codes_table.query(
-            IndexName="web_email-index",
-            KeyConditionExpression="web_email = :email",
-            FilterExpression="expires_at > :now AND #status = :pending",
-            ExpressionAttributeNames={"#status": "status"},
-            ExpressionAttributeValues={":email": email, ":now": now, ":pending": "pending"},
-        )
-
-        return result.get("Items", [])
-
-    except Exception as e:
-        print(f"Error getting active codes: {str(e)}")
-        return []
-
-
 def extract_email_from_token(event: dict[str, Any]) -> str | None:
-    """Extract email from JWT token (simplified)"""
+    """Extract email from JWT token"""
     authorizer = event.get("requestContext", {}).get("authorizer", {})
     return authorizer.get("email")
 
