@@ -700,13 +700,27 @@ Resources:
           CONVERSATIONS_TABLE: !Ref ConversationsTable
           WEBSOCKET_API_ENDPOINT: !Sub 'https://${WebSocketApi}.execute-api.${AWS::Region}.amazonaws.com/${WebSocketStage}'
       Policies:
-        - DynamoDBReadPolicy:
-            TableName: !Ref WebSocketConnectionsTable
-        - DynamoDBCrudPolicy:
-            TableName: !Ref ConversationHistoryTable
-        - DynamoDBCrudPolicy:
-            TableName: !Ref ConversationsTable
         - Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:GetItem
+                - dynamodb:Query
+                - dynamodb:Scan
+              Resource:
+                - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${WebSocketConnectionsTable}'
+                - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${WebSocketConnectionsTable}/index/*'
+            - Effect: Allow
+              Action:
+                - dynamodb:GetItem
+                - dynamodb:PutItem
+                - dynamodb:UpdateItem
+                - dynamodb:Query
+                - dynamodb:DeleteItem
+              Resource:
+                - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${ConversationHistoryTable}'
+                - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${ConversationHistoryTable}/index/*'
+                - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${ConversationsTable}'
+                - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${ConversationsTable}/index/*'
             - Effect: Allow
               Action:
                 - execute-api:ManageConnections
@@ -937,7 +951,7 @@ Outputs:
   
   ConversationsTableArn:
     Description: Conversations DynamoDB table ARN
-    Value: !GetAtt ConversationsTable.Arn
+    Value: !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${ConversationsTable}'
     Export:
       Name: !Sub '${AWS::StackName}-ConversationsTableArn'
   
