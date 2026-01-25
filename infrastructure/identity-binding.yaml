@@ -1,6 +1,8 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
-Description: 'AgentCore - Identity Map Table for cross-channel identity binding'
+Description: >
+  AgentCore - Identity Binding Infrastructure
+  DynamoDB tables for binding codes and identity mapping (Phase 2)
 
 Parameters:
   Environment:
@@ -13,6 +15,45 @@ Parameters:
     Description: Deployment environment
 
 Resources:
+  # ============================================================
+  # Binding Codes Table - 臨時綁定碼存儲
+  # ============================================================
+  BindingCodesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub 'agentcore-binding-codes-${Environment}'
+      BillingMode: PAY_PER_REQUEST
+      
+      AttributeDefinitions:
+        - AttributeName: code
+          AttributeType: S
+      
+      KeySchema:
+        - AttributeName: code
+          KeyType: HASH
+      
+      # TTL 配置：自動刪除過期的綁定碼
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+      
+      # Point-in-time recovery
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      
+      Tags:
+        - Key: Project
+          Value: AgentCoreNexus
+        - Key: Component
+          Value: identity-binding
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: SAM
+
+  # ============================================================
+  # Identity Map Table - 跨通道身份綁定映射
+  # ============================================================
   IdentityMapTable:
     Type: AWS::DynamoDB::Table
     Properties:
@@ -47,7 +88,6 @@ Resources:
       SSESpecification:
         SSEEnabled: true
       
-      # Tags
       Tags:
         - Key: Project
           Value: AgentCoreNexus
@@ -59,6 +99,18 @@ Resources:
           Value: SAM
 
 Outputs:
+  BindingCodesTableName:
+    Description: Binding codes table name
+    Value: !Ref BindingCodesTable
+    Export:
+      Name: !Sub '${AWS::StackName}-BindingCodesTableName'
+  
+  BindingCodesTableArn:
+    Description: Binding codes table ARN
+    Value: !GetAtt BindingCodesTable.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-BindingCodesTableArn'
+  
   IdentityMapTableName:
     Description: Identity map table name
     Value: !Ref IdentityMapTable
