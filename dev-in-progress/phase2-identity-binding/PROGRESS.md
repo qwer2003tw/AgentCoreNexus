@@ -126,20 +126,30 @@ class IdentityService:
 - ✅ 驗證 template.yaml（sam validate passed）
 
 ### 2026-01-25 (Day 3) ✅
-- ✅ 部署 DynamoDB 表（IaC 合規）：
-  - agentcore-binding-codes-prod（綁定碼，TTL）
-  - agentcore-identity-map-prod（身份映射，GSI）
-- ✅ Build + Publish Lambda Layer v1：
-  - agentcore-shared-services:1（17MB）
-  - 包含 conversation_service + identity_service
-- ✅ 更新兩個 Lambda 使用新 Layer：
-  - telegram-adapter-receiver: Active ✅
-  - ai-processor-main: Active ✅
-- ✅ 驗證環境變數和 IAM 權限配置
-- ✅ Stack 架構優化（6 → 5）：
-  - 合併 binding-codes + identity-map → identity-binding
-  - 理由：邏輯相關，簡化管理
-  - 符合 IaC 原則（刪除舊 stack，部署新 stack）
+- ✅ 部署 DynamoDB 表（IaC 合規）
+- ✅ Build + Publish Lambda Layer v1 → v2（修復 identity_service 導入）
+- ✅ 更新兩個 Lambda 使用 Layer v2
+- ✅ Stack 架構優化（6 → 5 stacks）
+- ✅ 100% IaC 合規確認
+
+### 2026-01-25 (Day 4) ✅
+- ✅ Web 後端整合：
+  - 重寫 binding.py 使用 IdentityService
+  - POST /binding/verify（驗證綁定碼）
+  - GET /binding/status（查詢狀態）
+  - DELETE /binding/unbind（解除綁定）
+- ✅ Web 前端整合：
+  - BindingDialog 改為輸入碼模式
+  - Sidebar 添加「綁定 Telegram」按鈕
+  - api.ts 更新方法
+
+### 2026-01-25 (Day 5) ✅
+- ✅ 修復 Telegram 端（Layer v2）
+- ✅ 部署 Web adapter（BindingFunction）
+- ✅ 配置完成：
+  - BindingFunction: Active, Layer v2 ✅
+  - 環境變數：BINDING_CODES_TABLE, IDENTITY_MAP_TABLE ✅
+  - IAM 權限：DynamoDB 訪問（含 GSI）✅
 
 ### IaC 合規性確認 ✅
 - ✅ 所有 5 個 DynamoDB 表都在 CloudFormation 管理
@@ -175,9 +185,9 @@ class IdentityService:
 
 ## 📊 進度追蹤
 
-- **總進度**: 3/8 天完成（37.5%）
-- **當前階段**: Day 3 完成 ✅
-- **下一步**: 測試 3 個綁定命令
+- **總進度**: 5/8 天完成（62.5%）
+- **當前階段**: Day 5 - Web 整合部署完成 ✅
+- **下一步**: E2E 測試綁定流程
 
 ## 🎉 Day 1 完成總結
 
