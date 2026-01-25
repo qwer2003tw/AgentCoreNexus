@@ -95,62 +95,8 @@ Resources:
         - Key: ManagedBy
           Value: SAM
 
-  # ============================================================
-  # Identity Map Table - 跨通道身份綁定（Phase 2）
-  # ============================================================
-  IdentityMapTable:
-    Type: AWS::DynamoDB::Table
-    Properties:
-      TableName: !Sub 'agentcore-identity-map-${Environment}'
-      BillingMode: PAY_PER_REQUEST
-      
-      # Keys
-      AttributeDefinitions:
-        - AttributeName: unified_user_id
-          AttributeType: S
-        - AttributeName: telegram_id
-          AttributeType: N
-        - AttributeName: web_id
-          AttributeType: S
-      
-      KeySchema:
-        - AttributeName: unified_user_id
-          KeyType: HASH  # Partition Key
-      
-      # GSI for reverse lookup
-      GlobalSecondaryIndexes:
-        - IndexName: telegram-id-index
-          KeySchema:
-            - AttributeName: telegram_id
-              KeyType: HASH
-          Projection:
-            ProjectionType: ALL
-        
-        - IndexName: web-id-index
-          KeySchema:
-            - AttributeName: web_id
-              KeyType: HASH
-          Projection:
-            ProjectionType: ALL
-      
-      # Point-in-Time Recovery
-      PointInTimeRecoverySpecification:
-        PointInTimeRecoveryEnabled: true
-      
-      # Encryption
-      SSESpecification:
-        SSEEnabled: true
-      
-      # Tags
-      Tags:
-        - Key: Project
-          Value: AgentCoreNexus
-        - Key: Component
-          Value: conversation-storage
-        - Key: Environment
-          Value: !Ref Environment
-        - Key: ManagedBy
-          Value: SAM
+  # Note: Identity Map Table moved to separate stack (agentcore-identity-map)
+  # This allows independent management and avoids GSI update limitations
 
 Outputs:
   ConversationHistoryTableName:
@@ -176,15 +122,3 @@ Outputs:
     Value: !GetAtt ConversationMetadataTable.Arn
     Export:
       Name: !Sub '${AWS::StackName}-ConversationMetadataTableArn'
-  
-  IdentityMapTableName:
-    Description: Identity map table name
-    Value: !Ref IdentityMapTable
-    Export:
-      Name: !Sub '${AWS::StackName}-IdentityMapTableName'
-  
-  IdentityMapTableArn:
-    Description: Identity map table ARN
-    Value: !GetAtt IdentityMapTable.Arn
-    Export:
-      Name: !Sub '${AWS::StackName}-IdentityMapTableArn'

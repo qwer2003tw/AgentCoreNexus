@@ -1,0 +1,72 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: 'AgentCore - Identity Map Table for cross-channel identity binding'
+
+Parameters:
+  Environment:
+    Type: String
+    Default: prod
+    AllowedValues:
+      - dev
+      - staging
+      - prod
+    Description: Deployment environment
+
+Resources:
+  IdentityMapTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub 'agentcore-identity-map-${Environment}'
+      BillingMode: PAY_PER_REQUEST
+      
+      # Keys - Phase 2 design
+      AttributeDefinitions:
+        - AttributeName: identity_id
+          AttributeType: S
+        - AttributeName: unified_conversation_id
+          AttributeType: S
+      
+      KeySchema:
+        - AttributeName: identity_id
+          KeyType: HASH  # Partition Key (e.g., "tg:316743844", "web:user123")
+      
+      # GSI for querying all identities with same unified_conversation_id
+      GlobalSecondaryIndexes:
+        - IndexName: UnifiedConversationIndex
+          KeySchema:
+            - AttributeName: unified_conversation_id
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      
+      # Point-in-Time Recovery
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      
+      # Encryption
+      SSESpecification:
+        SSEEnabled: true
+      
+      # Tags
+      Tags:
+        - Key: Project
+          Value: AgentCoreNexus
+        - Key: Component
+          Value: identity-binding
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: SAM
+
+Outputs:
+  IdentityMapTableName:
+    Description: Identity map table name
+    Value: !Ref IdentityMapTable
+    Export:
+      Name: !Sub '${AWS::StackName}-IdentityMapTableName'
+  
+  IdentityMapTableArn:
+    Description: Identity map table ARN
+    Value: !GetAtt IdentityMapTable.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-IdentityMapTableArn'

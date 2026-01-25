@@ -1,9 +1,9 @@
 #!/bin/bash
-# Build Lambda Layer for Conversation Service
+# Build Lambda Layer for Shared Services
 
 set -e
 
-LAYER_DIR="conversation-layer"
+LAYER_DIR="shared-services"
 
 echo "🔨 Building Lambda Layer: $LAYER_DIR"
 
