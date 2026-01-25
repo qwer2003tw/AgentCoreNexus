@@ -125,6 +125,28 @@ class IdentityService:
   - 測試所有命令場景
 - ✅ 驗證 template.yaml（sam validate passed）
 
+### 2026-01-25 (Day 3) ✅
+- ✅ 部署 DynamoDB 表（IaC 合規）：
+  - agentcore-binding-codes-prod（綁定碼，TTL）
+  - agentcore-identity-map-prod（身份映射，GSI）
+- ✅ Build + Publish Lambda Layer v1：
+  - agentcore-shared-services:1（17MB）
+  - 包含 conversation_service + identity_service
+- ✅ 更新兩個 Lambda 使用新 Layer：
+  - telegram-adapter-receiver: Active ✅
+  - ai-processor-main: Active ✅
+- ✅ 驗證環境變數和 IAM 權限配置
+- ✅ Stack 架構優化（6 → 5）：
+  - 合併 binding-codes + identity-map → identity-binding
+  - 理由：邏輯相關，簡化管理
+  - 符合 IaC 原則（刪除舊 stack，部署新 stack）
+
+### IaC 合規性確認 ✅
+- ✅ 所有 5 個 DynamoDB 表都在 CloudFormation 管理
+- ✅ Day 3 沒有使用 `aws lambda update-*`
+- ✅ 所有部署都通過 SAM
+- ✅ Layer 發佈符合標準做法
+
 ---
 
 ## ⚠️ 問題與風險
@@ -153,30 +175,38 @@ class IdentityService:
 
 ## 📊 進度追蹤
 
-- **總進度**: 2/8 天完成（25%）
-- **當前階段**: Day 2 完成 ✅
-- **下一步**: Day 3 - 部署到 AWS
+- **總進度**: 3/8 天完成（37.5%）
+- **當前階段**: Day 3 完成 ✅
+- **下一步**: 測試 3 個綁定命令
 
 ## 🎉 Day 1 完成總結
 
 已完成：
 1. ✅ 綁定流程設計（6位數字碼機制）
-2. ✅ DynamoDB binding_codes 表定義
-3. ✅ IdentityService 完整實作（5個主要方法）
+2. ✅ DynamoDB 表定義
+3. ✅ IdentityService 完整實作（5個方法）
 4. ✅ 18 個單元測試（100% passed）
 
 ## 🎉 Day 2 完成總結
 
 已完成：
 1. ✅ Layer 重新命名和重組
-2. ✅ 3 個 Telegram 命令處理器（bind, mybindings, unbind）
+2. ✅ 3 個 Telegram 命令處理器
 3. ✅ 命令註冊和整合
-4. ✅ Template 更新（環境變數 + IAM 權限）
+4. ✅ Template 更新（環境變數 + IAM）
 5. ✅ 12 個命令測試（100% passed）
 
-下一步（Day 3）：
-1. 部署 binding_codes 表（獨立 stack）
-2. Build + Deploy shared-services Layer v2
-3. 更新兩個 Lambda 的 Layer ARN
-4. 部署 telegram-adapter 和 ai-processor
-5. 實際測試 3 個命令
+## 🎉 Day 3 完成總結
+
+已完成：
+1. ✅ 部署 2 個 DynamoDB 表（IaC 合規）
+2. ✅ Build + Publish shared-services Layer v1（17MB）
+3. ✅ 更新兩個 Lambda（Active，新 Layer）
+4. ✅ Stack 架構優化（6 → 5 stacks）
+5. ✅ 100% IaC 合規確認
+
+下一步：
+1. 測試 /bind 命令（生成綁定碼）
+2. 測試 /mybindings 命令（查看狀態）
+3. 測試 /unbind 命令（解除綁定）
+4. 驗證 CloudWatch 日誌
