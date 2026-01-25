@@ -76,7 +76,7 @@ Resources:
       Timeout: 300
       MemorySize: 1024
       Layers:
-        - arn:aws:lambda:us-west-2:190825685292:layer:agentcore-shared-services:1
+        - arn:aws:lambda:us-west-2:190825685292:layer:agentcore-shared-services:2
       Environment:
         Variables:
           EVENT_BUS_NAME: !ImportValue 
