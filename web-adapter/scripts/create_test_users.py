@@ -14,11 +14,15 @@ REGION = "us-west-2"
 
 # 測試帳號列表
 TEST_USERS = [
-    {"email": "test1@test.com", "password": "Test123!"},
-    {"email": "test2@test.com", "password": "Test123!"},
-    {"email": "test3@test.com", "password": "Test123!"},
-    {"email": "test4@test.com", "password": "Test123!"},
-    {"email": "test5@test.com", "password": "Test123!"},
+    # E2E 測試帳號（4 workers）
+    {"email": "aws-e2e-test1@test.com", "password": "Test123!", "role": "user"},
+    {"email": "aws-e2e-test2@test.com", "password": "Test123!", "role": "user"},
+    {"email": "aws-e2e-test3@test.com", "password": "Test123!", "role": "user"},
+    {"email": "aws-e2e-test4@test.com", "password": "Test123!", "role": "user"},
+    # 綁定功能測試帳號
+    {"email": "binding@test.com", "password": "Test123!", "role": "user"},
+    # 管理員測試帳號
+    {"email": "admin@test.com", "password": "Admin123!", "role": "admin"},
 ]
 
 
@@ -48,6 +52,8 @@ def create_test_users():
         item = {
             "email": email,
             "password_hash": hashed_password,
+            "role": user.get("role", "user"),
+            "enabled": True,
             "created_at": datetime.utcnow().isoformat() + "Z",
         }
 

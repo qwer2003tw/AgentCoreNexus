@@ -5,7 +5,7 @@ set -e
 
 # 配置
 API_BASE="https://jooap0xv8l.execute-api.us-west-2.amazonaws.com/prod"
-TEST_EMAIL="test1@test.com"
+TEST_EMAIL="binding@test.com"
 TEST_PASSWORD="Test123!"
 
 echo "🧪 Phase 2 綁定功能測試"
