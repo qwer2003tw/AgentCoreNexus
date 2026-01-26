@@ -6,6 +6,7 @@
 
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import { api } from '@/services/api'
 
 interface Conversation {
   conversation_id: string
@@ -45,30 +46,14 @@ export function ConversationListPage() {
     setError(null)
     
     try {
-      // 構建查詢參數
-      const params = new URLSearchParams()
-      params.append('limit', '50')
-      
-      if (filters.channel) params.append('channel', filters.channel)
-      if (filters.startTime) params.append('start_time', filters.startTime)
-      if (filters.endTime) params.append('end_time', filters.endTime)
-      if (token) params.append('next_token', token)
-      
-      // 調用 API
-      const response = await fetch(
-        `/admin/conversations?${params.toString()}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        }
-      )
-      
-      if (!response.ok) {
-        throw new Error(`API error: ${response.status}`)
-      }
-      
-      const data = await response.json()
+      // 使用 API client
+      const data = await api.listAllConversations({
+        limit: 50,
+        next_token: token,
+        channel: filters.channel || undefined,
+        start_time: filters.startTime || undefined,
+        end_time: filters.endTime || undefined
+      })
       
       if (token) {
         // 追加數據（加載更多）
@@ -79,8 +64,8 @@ export function ConversationListPage() {
       }
       
       setNextToken(data.next_token || null)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load conversations')
+    } catch (err: any) {
+      setError(err.error || 'Failed to load conversations')
       console.error('Error loading conversations:', err)
     } finally {
       setLoading(false)

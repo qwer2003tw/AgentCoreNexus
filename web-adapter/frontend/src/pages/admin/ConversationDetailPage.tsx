@@ -6,6 +6,7 @@
 
 import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
+import { api } from '@/services/api'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -54,23 +55,10 @@ export function ConversationDetailPage() {
     setError(null)
     
     try {
-      const response = await fetch(
-        `/admin/conversations/${conversation_id}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        }
-      )
-      
-      if (!response.ok) {
-        throw new Error(`API error: ${response.status}`)
-      }
-      
-      const data = await response.json()
+      const data = await api.getConversationDetail(conversation_id!)
       setConversation(data)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load conversation')
+    } catch (err: any) {
+      setError(err.error || 'Failed to load conversation')
       console.error('Error loading conversation:', err)
     } finally {
       setLoading(false)
@@ -82,24 +70,10 @@ export function ConversationDetailPage() {
     
     setGeneratingSummary(true)
     try {
-      const response = await fetch(
-        `/admin/conversations/${conversation_id}/summary`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        }
-      )
-      
-      if (!response.ok) {
-        throw new Error('Failed to generate summary')
-      }
-      
-      const data = await response.json()
+      const data = await api.generateConversationSummary(conversation_id)
       alert(`摘要已生成：\n\n${data.summary}`)
-    } catch (err) {
-      alert('生成摘要失敗：' + (err instanceof Error ? err.message : 'Unknown error'))
+    } catch (err: any) {
+      alert('生成摘要失敗：' + (err.error || 'Unknown error'))
     } finally {
       setGeneratingSummary(false)
     }

@@ -452,6 +452,74 @@ class ApiClient {
       body: JSON.stringify({ role })
     })
   }
+  
+  // Admin conversation management endpoints - Day 5-6
+  async listAllConversations(params?: {
+    limit?: number
+    next_token?: string
+    channel?: string
+    start_time?: string
+    end_time?: string
+  }): Promise<{
+    conversations: Array<{
+      conversation_id: string
+      user_id: string
+      channel: string
+      timestamp: string
+      message_count?: number
+      last_message?: string
+    }>
+    count: number
+    next_token?: string
+  }> {
+    const queryParams = new URLSearchParams()
+    if (params?.limit) queryParams.set('limit', params.limit.toString())
+    if (params?.next_token) queryParams.set('next_token', params.next_token)
+    if (params?.channel) queryParams.set('channel', params.channel)
+    if (params?.start_time) queryParams.set('start_time', params.start_time)
+    if (params?.end_time) queryParams.set('end_time', params.end_time)
+    
+    const query = queryParams.toString()
+    return this.request(`/admin/conversations${query ? '?' + query : ''}`)
+  }
+  
+  async getConversationDetail(conversationId: string): Promise<{
+    conversation_id: string
+    user_id: string
+    channel: string
+    messages: Array<{
+      role: 'user' | 'assistant'
+      content: string
+      timestamp?: string
+      attachments?: Array<{
+        type: string
+        url?: string
+        file_name?: string
+        content_type?: string
+      }>
+    }>
+    created_at?: string
+    updated_at?: string
+    statistics?: {
+      message_count: number
+      attachments: {
+        images: number
+        files: number
+        total: number
+      }
+    }
+  }> {
+    return this.request(`/admin/conversations/${conversationId}`)
+  }
+  
+  async generateConversationSummary(conversationId: string): Promise<{
+    summary: string
+    generated_at: string
+  }> {
+    return this.request(`/admin/conversations/${conversationId}/summary`, {
+      method: 'POST'
+    })
+  }
 }
 
 export const api = new ApiClient()
