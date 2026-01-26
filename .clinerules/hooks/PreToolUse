@@ -36,7 +36,7 @@ if [[ "$tool_name" == "write_to_file" ]] && [[ "$file_path" == *"test_"* ]]; the
 fi
 
 # ============================================
-# 規則 3: 確保測試命令使用 Python 3.11
+# 規則 3: 確保測試命令使用 Python 3.12
 # ============================================
 if [[ "$tool_name" == "execute_command" ]]; then
   command=$(echo "$input" | jq -r '.preToolUse.parameters.command // empty')
