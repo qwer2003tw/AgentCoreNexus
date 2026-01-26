@@ -1,0 +1,211 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  AgentCore Nexus - Admin Panel Infrastructure
+  DynamoDB tables for admin features: summaries, audit logs, system config
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues: [dev, staging, prod]
+    Description: Deployment environment
+
+Resources:
+  # ============================================================
+  # Conversation Summaries Table - AI 對話摘要
+  # ============================================================
+  ConversationSummariesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub 'agentcore-conversation-summaries-${Environment}'
+      BillingMode: PAY_PER_REQUEST
+      
+      # Keys
+      AttributeDefinitions:
+        - AttributeName: conversation_id
+          AttributeType: S
+      
+      KeySchema:
+        - AttributeName: conversation_id
+          KeyType: HASH  # Partition Key
+      
+      # Point-in-Time Recovery (data protection)
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      
+      # Encryption
+      SSESpecification:
+        SSEEnabled: true
+      
+      # Tags
+      Tags:
+        - Key: Project
+          Value: AgentCoreNexus
+        - Key: Component
+          Value: admin-panel
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: SAM
+
+  # ============================================================
+  # Admin Audit Logs Table - 審計日誌
+  # ============================================================
+  AdminAuditLogsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub 'agentcore-admin-audit-logs-${Environment}'
+      BillingMode: PAY_PER_REQUEST
+      
+      # Keys
+      AttributeDefinitions:
+        - AttributeName: log_id
+          AttributeType: S
+        - AttributeName: timestamp
+          AttributeType: N
+        - AttributeName: admin_email
+          AttributeType: S
+        - AttributeName: resource_id
+          AttributeType: S
+        - AttributeName: action
+          AttributeType: S
+      
+      KeySchema:
+        - AttributeName: log_id
+          KeyType: HASH   # Partition Key
+        - AttributeName: timestamp
+          KeyType: RANGE  # Sort Key
+      
+      # GSI-1: Query by admin email
+      GlobalSecondaryIndexes:
+        - IndexName: AdminEmailIndex
+          KeySchema:
+            - AttributeName: admin_email
+              KeyType: HASH
+            - AttributeName: timestamp
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        
+        # GSI-2: Query by resource ID
+        - IndexName: ResourceIdIndex
+          KeySchema:
+            - AttributeName: resource_id
+              KeyType: HASH
+            - AttributeName: timestamp
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        
+        # GSI-3: Query by action type
+        - IndexName: ActionIndex
+          KeySchema:
+            - AttributeName: action
+              KeyType: HASH
+            - AttributeName: timestamp
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      
+      # TTL Configuration (auto-cleanup after retention period)
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+      
+      # Point-in-Time Recovery (critical for audit logs)
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      
+      # Encryption
+      SSESpecification:
+        SSEEnabled: true
+      
+      # Tags
+      Tags:
+        - Key: Project
+          Value: AgentCoreNexus
+        - Key: Component
+          Value: admin-panel
+        - Key: DataType
+          Value: audit-logs
+        - Key: Sensitivity
+          Value: high
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: SAM
+
+  # ============================================================
+  # Admin System Config Table - 系統配置
+  # ============================================================
+  AdminSystemConfigTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub 'agentcore-admin-system-config-${Environment}'
+      BillingMode: PAY_PER_REQUEST
+      
+      # Keys
+      AttributeDefinitions:
+        - AttributeName: config_key
+          AttributeType: S
+      
+      KeySchema:
+        - AttributeName: config_key
+          KeyType: HASH  # Partition Key only
+      
+      # Point-in-Time Recovery
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      
+      # Encryption
+      SSESpecification:
+        SSEEnabled: true
+      
+      # Tags
+      Tags:
+        - Key: Project
+          Value: AgentCoreNexus
+        - Key: Component
+          Value: admin-panel
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: ManagedBy
+          Value: SAM
+
+Outputs:
+  ConversationSummariesTableName:
+    Description: Conversation summaries table name
+    Value: !Ref ConversationSummariesTable
+    Export:
+      Name: !Sub '${AWS::StackName}-ConversationSummariesTableName'
+  
+  ConversationSummariesTableArn:
+    Description: Conversation summaries table ARN
+    Value: !GetAtt ConversationSummariesTable.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-ConversationSummariesTableArn'
+  
+  AdminAuditLogsTableName:
+    Description: Admin audit logs table name
+    Value: !Ref AdminAuditLogsTable
+    Export:
+      Name: !Sub '${AWS::StackName}-AdminAuditLogsTableName'
+  
+  AdminAuditLogsTableArn:
+    Description: Admin audit logs table ARN
+    Value: !GetAtt AdminAuditLogsTable.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-AdminAuditLogsTableArn'
+  
+  AdminSystemConfigTableName:
+    Description: Admin system config table name
+    Value: !Ref AdminSystemConfigTable
+    Export:
+      Name: !Sub '${AWS::StackName}-AdminSystemConfigTableName'
+  
+  AdminSystemConfigTableArn:
+    Description: Admin system config table ARN
+    Value: !GetAtt AdminSystemConfigTable.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-AdminSystemConfigTableArn'

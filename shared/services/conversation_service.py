@@ -85,6 +85,7 @@ class ConversationService:
             "content": content,
             "message_type": message_type,
             "channel": channel,
+            "global_partition": "ALL",  # ⭐ 用於 GlobalTimestampIndex GSI（管理員查詢）
         }
 
         # 添加 metadata（如果提供）

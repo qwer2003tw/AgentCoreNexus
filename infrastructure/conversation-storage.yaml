@@ -27,12 +27,38 @@ Resources:
           AttributeType: S
         - AttributeName: timestamp
           AttributeType: N
+        - AttributeName: global_partition
+          AttributeType: S
+        - AttributeName: channel
+          AttributeType: S
       
       KeySchema:
         - AttributeName: conversation_id
           KeyType: HASH  # Partition Key
         - AttributeName: timestamp
           KeyType: RANGE  # Sort Key
+      
+      # Global Secondary Indexes (for admin queries)
+      GlobalSecondaryIndexes:
+        # GSI-1: Query all conversations by time (fastest for admin)
+        - IndexName: GlobalTimestampIndex
+          KeySchema:
+            - AttributeName: global_partition
+              KeyType: HASH
+            - AttributeName: timestamp
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        
+        # GSI-2: Query by channel and time
+        - IndexName: ChannelTimestampIndex
+          KeySchema:
+            - AttributeName: channel
+              KeyType: HASH
+            - AttributeName: timestamp
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
       
       # TTL Configuration (for soft delete)
       TimeToLiveSpecification:
