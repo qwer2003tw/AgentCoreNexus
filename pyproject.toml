@@ -5,7 +5,7 @@ description = "多通道 AI 助理平台（Telegram + Web + EventBridge）"
 
 [tool.ruff]
 # 專案配置
-target-version = "py311"
+target-version = "py312"
 line-length = 100  # 稍微寬鬆，適合 Lambda 代碼
 exclude = [
     ".git",

@@ -406,7 +406,7 @@ make coverage-report # 查看覆蓋率報告
 ### Backend
 - **AWS Services**: Lambda, EventBridge, API Gateway, DynamoDB, Secrets Manager, S3, CloudFront
 - **AI/ML**: AWS Bedrock AgentCore, Claude 3.5 Sonnet
-- **語言**: Python 3.11
+- **語言**: **Python 3.12** ⭐ (升級自 3.11)
 - **框架**: AWS SAM (Serverless Application Model)
 - **測試**: pytest, unittest
 - **代碼質量**: Ruff (Linter + Formatter)
