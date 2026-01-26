@@ -20,7 +20,7 @@ if [[ -d "telegram-lambda" ]] && [[ -d "telegram-agentcore-bot" ]]; then
   
   # 強制性規範提醒
   context+=" MANDATORY: 修改 Python 代碼後必須執行完整測試流程。"
-  context+=" 使用 Python 3.11 執行測試。新代碼覆蓋率必須 ≥ 80%。"
+  context+=" 使用 Python 3.12 執行測試。新代碼覆蓋率必須 ≥ 80%。"
 fi
 
 # 檢測當前工作目錄組件
@@ -45,7 +45,7 @@ fi
 
 # Python 專案檢測
 if [[ -f "requirements.txt" ]] || [[ -f "pyproject.toml" ]]; then
-  context+=" TECH_STACK: Python 3.11 + AWS Lambda + SAM。"
+  context+=" TECH_STACK: Python 3.12 + AWS Lambda + SAM。"
   context+=" 代碼質量工具：Ruff（linting + formatting）。"
   context+=" 測試框架：pytest + pytest-cov。"
 fi

@@ -42,8 +42,8 @@ if [[ "$tool_name" == "execute_command" ]]; then
   command=$(echo "$input" | jq -r '.preToolUse.parameters.command // empty')
   
   # 檢查是否為 pytest 命令
-  if echo "$command" | grep -q "pytest" && ! echo "$command" | grep -q "python3.11"; then
-    context="TESTING_STANDARD: 測試必須使用 python3.11 執行。檢測到直接使用 pytest 命令。正確格式應為：'python3.11 -m pytest ...'。這確保使用正確的 Python 版本和測試依賴。"
+  if echo "$command" | grep -q "pytest" && ! echo "$command" | grep -q "python3.12"; then
+    context="TESTING_STANDARD: 測試必須使用 python3.12 執行。檢測到直接使用 pytest 命令。正確格式應為：'python3.12 -m pytest ...'。這確保使用正確的 Python 版本和測試依賴。"
     jq -n --arg ctx "$context" '{"cancel": false, "contextModification": $ctx}'
     exit 0
   fi
