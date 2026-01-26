@@ -680,6 +680,64 @@ Resources:
             Method: DELETE
             Auth:
               Authorizer: MyLambdaTokenAuthorizer
+  
+  # Admin API Function - Day 5
+  AdminApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-admin-api'
+      CodeUri: ../lambdas/rest/
+      Handler: admin_api.lambda_handler
+      Description: Admin API for conversation management (Day 5-6)
+      Timeout: 30
+      Layers:
+        - arn:aws:lambda:us-west-2:190825685292:layer:agentcore-shared-services:2
+      Environment:
+        Variables:
+          CONVERSATION_TABLE_NAME: conversation-history
+          AUDIT_LOGS_TABLE: admin-audit-logs
+          SUMMARIES_TABLE: conversation-summaries
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:Query
+                - dynamodb:GetItem
+              Resource:
+                - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/conversation-history'
+                - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/conversation-history/index/GlobalTimestampIndex'
+                - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/conversation-history/index/ChannelTimestampIndex'
+            - Effect: Allow
+              Action:
+                - dynamodb:PutItem
+                - dynamodb:UpdateItem
+                - dynamodb:Query
+              Resource:
+                - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/admin-audit-logs'
+                - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/admin-audit-logs/index/*'
+            - Effect: Allow
+              Action:
+                - dynamodb:GetItem
+                - dynamodb:PutItem
+              Resource:
+                - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/conversation-summaries'
+      Events:
+        ListConversations:
+          Type: Api
+          Properties:
+            RestApiId: !Ref RestApi
+            Path: /admin/conversations
+            Method: GET
+            Auth:
+              Authorizer: MyLambdaTokenAuthorizer
+        GetConversationDetail:
+          Type: Api
+          Properties:
+            RestApiId: !Ref RestApi
+            Path: /admin/conversations/{conversation_id}
+            Method: GET
+            Auth:
+              Authorizer: MyLambdaTokenAuthorizer
 
   # ============================================================
   # Response Router Updates (to be integrated with existing)
@@ -797,6 +855,12 @@ Resources:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub '/aws/lambda/${BindingFunction}'
+      RetentionInDays: 14
+  
+  AdminApiFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${AdminApiFunction}'
       RetentionInDays: 14
   
   # ============================================================

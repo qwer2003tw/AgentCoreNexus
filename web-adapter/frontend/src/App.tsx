@@ -3,10 +3,16 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useAuthStore } from '@/stores/authStore'
 import { useChatStore } from '@/stores/chatStore'
 
-// Pages (to be created)
+// Pages
 import LoginPage from '@/pages/LoginPage'
 import ChatPage from '@/pages/ChatPage'
 import ChangePasswordPage from '@/pages/ChangePasswordPage'
+
+// Admin components
+import { ProtectedRoute } from '@/components/Admin/ProtectedRoute'
+import { AdminLayout } from '@/components/Admin/AdminLayout'
+import ConversationListPage from '@/pages/admin/ConversationListPage'
+import ConversationDetailPage from '@/pages/admin/ConversationDetailPage'
 
 function App() {
   const { token, user, loadUser } = useAuthStore()
@@ -50,6 +56,17 @@ function App() {
         ) : (
           <>
             <Route path="/" element={<ChatPage />} />
+            
+            {/* Admin routes */}
+            <Route path="/admin" element={
+              <ProtectedRoute requiredRole="admin">
+                <AdminLayout />
+              </ProtectedRoute>
+            }>
+              <Route index element={<ConversationListPage />} />
+              <Route path="conversations/:conversation_id" element={<ConversationDetailPage />} />
+            </Route>
+            
             <Route path="*" element={<Navigate to="/" replace />} />
           </>
         )}
