@@ -91,11 +91,11 @@ deploy-web:
 	@echo "🌐 部署 Web 通道層..."
 	@echo "📦 安裝 Lambda 依賴..."
 	@cd web-adapter/lambdas/websocket && \
-		pip3.11 install -r requirements.txt -t . --quiet
+		pip3.12 install -r requirements.txt -t . --quiet
 	@cd web-adapter/lambdas/rest && \
-		pip3.11 install -r requirements.txt -t . --quiet
+		pip3.12 install -r requirements.txt -t . --quiet
 	@cd web-adapter/lambdas/router && \
-		pip3.11 install -r requirements.txt -t . --quiet
+		pip3.12 install -r requirements.txt -t . --quiet
 	@echo "✅ 依賴安裝完成"
 	@echo "🔨 建構和部署..."
 	cd web-adapter/infrastructure && \
@@ -225,7 +225,7 @@ test-agentcore:
 		if [ -f "run_tests_with_coverage.sh" ]; then \
 			./run_tests_with_coverage.sh; \
 		else \
-			python3.11 run_tests.py; \
+			python3.12 run_tests.py; \
 		fi
 
 # Webhook 接收器測試
@@ -235,7 +235,7 @@ test-lambda:
 		if [ -f "run_all_tests.sh" ]; then \
 			./run_all_tests.sh --cov; \
 		else \
-			python3.11 -m pytest tests/ -v; \
+			python3.12 -m pytest tests/ -v; \
 		fi
 
 # 前端測試
@@ -261,7 +261,7 @@ coverage-report:
 	@echo "🤖 ai-processor:"
 	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 	@if [ -f "ai-processor/coverage.xml" ]; then \
-		cd ai-processor && python3.11 -m coverage report 2>/dev/null || echo "  請先運行測試以生成覆蓋率報告"; \
+		cd ai-processor && python3.12 -m coverage report 2>/dev/null || echo "  請先運行測試以生成覆蓋率報告"; \
 	else \
 		echo "  未找到覆蓋率報告，請運行: make test-agentcore"; \
 	fi
@@ -270,7 +270,7 @@ coverage-report:
 	@echo "📱 telegram-adapter:"
 	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 	@if [ -f "telegram-adapter/coverage.xml" ]; then \
-		cd telegram-adapter && python3.11 -m coverage report 2>/dev/null || echo "  請先運行測試以生成覆蓋率報告"; \
+		cd telegram-adapter && python3.12 -m coverage report 2>/dev/null || echo "  請先運行測試以生成覆蓋率報告"; \
 	else \
 		echo "  未找到覆蓋率報告，請運行: make test-lambda"; \
 	fi
