@@ -202,11 +202,11 @@ pytest tests/ -v                 # ❌ 可能用錯版本
 ```bash
 # telegram-adapter
 cd telegram-adapter
-pip3.11 install -r requirements-test.txt
+pip3.12 install -r requirements-test.txt
 
 # ai-processor  
 cd ai-processor
-pip3.11 install pytest pytest-cov pytest-asyncio coverage diff-cover
+pip3.12 install pytest pytest-cov pytest-asyncio coverage diff-cover
 
 # web-adapter
 cd web-adapter/e2e-tests

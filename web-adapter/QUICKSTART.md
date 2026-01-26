@@ -52,9 +52,9 @@ cd /home/ec2-user/Projects/AgentCoreNexus
 cd dev-in-progress/web-adapter-expansion
 
 # 1. 安裝 Lambda 依賴
-cd lambdas/websocket && pip3.11 install -r requirements.txt -t . && cd ../..
-cd lambdas/rest && pip3.11 install -r requirements.txt -t . && cd ../..
-cd lambdas/router && pip3.11 install -r requirements.txt -t . && cd ../..
+cd lambdas/websocket && pip3.12 install -r requirements.txt -t . && cd ../..
+cd lambdas/rest && pip3.12 install -r requirements.txt -t . && cd ../..
+cd lambdas/router && pip3.12 install -r requirements.txt -t . && cd ../..
 
 # 2. 建構和部署
 cd infrastructure

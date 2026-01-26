@@ -377,7 +377,7 @@ pytest tests/ -v
 cd telegram-adapter
 
 # 1. 安裝測試依賴
-pip3.11 install -r requirements-test.txt
+pip3.12 install -r requirements-test.txt
 
 # 2. 驗證環境（可選）
 python3.12 tests/e2e/verify_setup.py
@@ -392,7 +392,7 @@ python3.12 -m pytest tests/e2e/ -v
 cd ai-processor
 
 # 安裝測試依賴
-pip3.11 install pytest pytest-cov pytest-asyncio coverage diff-cover
+pip3.12 install pytest pytest-cov pytest-asyncio coverage diff-cover
 ```
 
 #### web-adapter

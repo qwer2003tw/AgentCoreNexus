@@ -47,13 +47,13 @@ cd /home/ec2-user/Projects/AgentCoreNexus/dev-in-progress/web-adapter-expansion
 
 # 為每個 Lambda 目錄安裝依賴
 cd lambdas/websocket
-pip3.11 install -r requirements.txt -t .
+pip3.12 install -r requirements.txt -t .
 
 cd ../rest
-pip3.11 install -r requirements.txt -t .
+pip3.12 install -r requirements.txt -t .
 
 cd ../router
-pip3.11 install -r requirements.txt -t .
+pip3.12 install -r requirements.txt -t .
 ```
 
 ### Step 1.2: 驗證 SAM Template
