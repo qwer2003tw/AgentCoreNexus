@@ -168,7 +168,7 @@ AgentCoreNexus/
 - ✅ AWS 帳號（需要 Bedrock 權限）
 - ✅ AWS CLI 已配置（`aws configure`）
 - ✅ SAM CLI 已安裝（[安裝指南](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/install-sam-cli.html)）
-- ✅ Python 3.11+
+- ✅ Python 3.12+
 - ✅ Node.js 18+（如果開發 Web 前端）
 
 ### AWS 準備

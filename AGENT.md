@@ -46,7 +46,7 @@ ruff check .
 
 ## 🧪 Testing 標準（強制）
 
-- **Python 3.11** 執行測試（Lambda Runtime 一致）。
+- **Python 3.12** 執行測試（Lambda Runtime 一致）。
 - **新代碼覆蓋率 ≥ 80%**（強制）。
 - 建議使用一鍵測試：
 

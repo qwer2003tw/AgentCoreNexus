@@ -99,7 +99,7 @@ telegram-adapter/
 
 ### 前置需求
 
-- Python 3.11+
+- Python 3.12+
 - AWS CLI
 - AWS SAM CLI
 - AWS 帳戶與適當的 IAM 權限

@@ -125,10 +125,10 @@ ruff check .            # 最終驗證
 
 ```bash
 # ai-processor
-python3.11 -m pytest tests/ -v
+python3.12 -m pytest tests/ -v
 
 # telegram-adapter  
-python3.11 -m pytest tests/ --ignore=tests/e2e/ -v
+python3.12 -m pytest tests/ --ignore=tests/e2e/ -v
 ```
 
 **要求**: `XX passed` 且沒有 `failed`
@@ -147,7 +147,7 @@ python3.11 -m pytest tests/ --ignore=tests/e2e/ -v
 ```bash
 # telegram-adapter（有 E2E 測試）
 cd telegram-adapter
-python3.11 -m pytest tests/e2e/ -v
+python3.12 -m pytest tests/e2e/ -v
 
 # ai-processor（目前無 E2E 測試，跳過）
 
@@ -169,7 +169,7 @@ npm test
 
 ```bash
 # 生成覆蓋率報告
-python3.11 -m pytest tests/ --cov=. --cov-report=term-missing --cov-report=xml
+python3.12 -m pytest tests/ --cov=. --cov-report=term-missing --cov-report=xml
 
 # 檢查新代碼覆蓋率（使用 diff-cover）
 diff-cover coverage.xml --compare-branch=main --fail-under=80
@@ -223,13 +223,13 @@ make test  # 或 ./run_all_tests.sh
 ruff check . --fix && ruff format . && ruff check .
 
 # Step 2: 單元測試
-python3.11 -m pytest tests/ --ignore=tests/e2e/ -v
+python3.12 -m pytest tests/ --ignore=tests/e2e/ -v
 
 # Step 3: E2E 測試（如適用）
-python3.11 -m pytest tests/e2e/ -v
+python3.12 -m pytest tests/e2e/ -v
 
 # Step 4: 覆蓋率
-python3.11 -m pytest tests/ --cov=. --cov-report=xml
+python3.12 -m pytest tests/ --cov=. --cov-report=xml
 diff-cover coverage.xml --compare-branch=main --fail-under=80
 ```
 
@@ -280,10 +280,10 @@ diff-cover coverage.xml --compare-branch=main --fail-under=80
 [執行 execute_command: ruff check . --fix && ruff format . && ruff check .]
 ✅ 代碼質量檢查通過（0 errors）
 
-[執行 execute_command: python3.11 -m pytest tests/ -v]
+[執行 execute_command: python3.12 -m pytest tests/ -v]
 ✅ 單元測試通過（31 passed, 0 failed）
 
-[執行 execute_command: python3.11 -m pytest tests/e2e/ -v]
+[執行 execute_command: python3.12 -m pytest tests/e2e/ -v]
 ✅ E2E 測試通過（17 passed）
 
 [執行 execute_command: pytest tests/ --cov=. --cov-report=xml]
@@ -354,20 +354,20 @@ git push
 
 ### Python 版本要求⭐
 
-**必須使用 Python 3.11 執行測試**：
+**必須使用 Python 3.12 執行測試**：
 
 ```bash
 # ✅ 正確
-python3.11 -m pytest tests/ -v
+python3.12 -m pytest tests/ -v
 
 # ❌ 錯誤（可能使用其他版本）
 pytest tests/ -v
 ```
 
 **原因**：
-- Lambda Runtime 使用 `python3.11`
+- Lambda Runtime 使用 `python3.12`
 - 代碼使用 Python 3.10+ 類型注解（`dict | None`）
-- 測試依賴安裝在 python3.11 環境
+- 測試依賴安裝在 python3.12 環境
 
 ### 首次設置（僅需一次）
 
@@ -380,10 +380,10 @@ cd telegram-adapter
 pip3.11 install -r requirements-test.txt
 
 # 2. 驗證環境（可選）
-python3.11 tests/e2e/verify_setup.py
+python3.12 tests/e2e/verify_setup.py
 
 # 3. 確保測試可運行
-python3.11 -m pytest tests/e2e/ -v
+python3.12 -m pytest tests/e2e/ -v
 ```
 
 #### ai-processor
@@ -508,7 +508,7 @@ Hook 會在每次 commit 時自動執行所有檢查。
 ```bash
 cd telegram-adapter
 pip install -r requirements-test.txt
-python3.11 -m pytest tests/e2e/ -v
+python3.12 -m pytest tests/e2e/ -v
 ```
 
 ---
@@ -559,10 +559,10 @@ make test
 
 ```bash
 # 檢查版本
-python3.11 --version
+python3.12 --version
 
 # 確保使用正確版本
-python3.11 -m pytest tests/ -v  # ✅
+python3.12 -m pytest tests/ -v  # ✅
 pytest tests/ -v                 # ❌ 可能使用錯誤版本
 ```
 

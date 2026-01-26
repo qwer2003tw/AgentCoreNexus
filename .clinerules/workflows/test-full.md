@@ -112,7 +112,7 @@ git push
 ## 注意事項
 
 ### Python 版本
-- 必須使用 `python3.11` 執行測試
+- 必須使用 `python3.12` 執行測試
 - 不要使用 `pytest` 直接命令（可能使用錯誤版本）
 
 ### 執行時間
@@ -142,7 +142,7 @@ make test-web        # Web 前端
 
 ### 查看詳細測試輸出
 ```bash
-python3.11 -m pytest tests/ -v --tb=long
+python3.12 -m pytest tests/ -v --tb=long
 ```
 
 ---

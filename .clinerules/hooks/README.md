@@ -47,7 +47,7 @@
 **範例規則**:
 - ❌ 阻止在 Python 專案創建 TypeScript 文件
 - ⚠️ 警告測試文件使用 print()
-- ⚠️ 提醒測試命令使用 python3.11
+- ⚠️ 提醒測試命令使用 python3.12
 
 ---
 
@@ -61,7 +61,7 @@
 **注入信息**:
 - 專案類型（AgentCoreNexus）
 - 當前組件（receiver/processor/web）
-- 技術棧（Python 3.11, React 等）
+- 技術棧（Python 3.12, React 等）
 - 可用的 workflows
 - Git 狀態
 

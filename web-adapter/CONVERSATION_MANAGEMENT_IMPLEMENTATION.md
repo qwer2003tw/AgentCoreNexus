@@ -957,7 +957,7 @@ def response(status_code: int, body: dict[str, Any]) -> dict[str, Any]:
       FunctionName: !Sub '${AWS::StackName}-conversations-api'
       CodeUri: ../lambdas/rest/
       Handler: conversations.handler
-      Runtime: python3.11
+      Runtime: python3.12
       Timeout: 30
       MemorySize: 256
       Environment:

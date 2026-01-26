@@ -256,7 +256,7 @@ cd ai-processor && ruff check . --statistics
 
 - Ruff 非常快（10-100x faster than alternatives）
 - 一個工具替代多個工具（Black, isort, Flake8, etc.）
-- 與 Python 3.11 完美配合
+- 與 Python 3.12 完美配合
 - 適合 Lambda 的快速 CI/CD
 
 ---

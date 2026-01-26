@@ -199,7 +199,7 @@ web-adapter-expansion/
 ## 🎓 技術棧
 
 ### Backend
-- AWS Lambda (Python 3.11)
+- AWS Lambda (Python 3.12)
 - API Gateway (WebSocket + REST)
 - DynamoDB (5 tables)
 - EventBridge (事件驅動)

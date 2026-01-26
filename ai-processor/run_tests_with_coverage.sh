@@ -20,9 +20,9 @@ echo -e "${GREEN}========================================${NC}"
 echo ""
 
 # 檢查依賴
-if ! python3.11 -c "import pytest" 2>/dev/null; then
+if ! python3.12 -c "import pytest" 2>/dev/null; then
     echo -e "${YELLOW}⚠️  pytest 未安裝，正在安裝測試依賴...${NC}"
-    python3.11 -m pip install pytest pytest-cov pytest-asyncio coverage diff-cover
+    python3.12 -m pip install pytest pytest-cov pytest-asyncio coverage diff-cover
 fi
 
 # 解析參數
@@ -35,7 +35,7 @@ fi
 echo -e "${YELLOW}📊 Step 1: 運行測試並生成覆蓋率報告...${NC}"
 echo ""
 
-python3.11 -m pytest tests/ $VERBOSE \
+python3.12 -m pytest tests/ $VERBOSE \
     --cov=. \
     --cov-report=term-missing \
     --cov-report=html \
@@ -55,7 +55,7 @@ echo ""
 echo -e "${YELLOW}📈 Step 2: 檢查整體覆蓋率...${NC}"
 
 # 使用 coverage report 獲取總覆蓋率
-COVERAGE=$(python3.11 -m coverage report | grep TOTAL | awk '{print $4}' | sed 's/%//')
+COVERAGE=$(python3.12 -m coverage report | grep TOTAL | awk '{print $4}' | sed 's/%//')
 
 echo -e "整體覆蓋率: ${CYAN}${COVERAGE}%${NC}"
 

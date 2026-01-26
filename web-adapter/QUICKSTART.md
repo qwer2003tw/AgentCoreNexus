@@ -10,7 +10,7 @@
 - AWS CLI 已配置
 - SAM CLI 已安裝
 - Node.js 18+ 已安裝
-- Python 3.11 已安裝
+- Python 3.12 已安裝
 
 ---
 

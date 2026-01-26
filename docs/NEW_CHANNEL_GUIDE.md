@@ -22,7 +22,7 @@ Before starting, ensure you have:
 - [ ] AWS account with appropriate permissions
 - [ ] Understanding of the target platform's API
 - [ ] API credentials for the platform
-- [ ] Knowledge of Python 3.11 and AWS Lambda
+- [ ] Knowledge of Python 3.12 and AWS Lambda
 - [ ] Familiarity with AgentCoreNexus architecture
 
 ---
@@ -326,7 +326,7 @@ Resources:
       FunctionName: !Sub '${AWS::StackName}-receiver'
       CodeUri: src/
       Handler: handler.handler
-      Runtime: python3.11
+      Runtime: python3.12
       Timeout: 30
       Environment:
         Variables:
@@ -351,7 +351,7 @@ Resources:
       FunctionName: !Sub '${AWS::StackName}-response-router'
       CodeUri: router/
       Handler: response_router.handler
-      Runtime: python3.11
+      Runtime: python3.12
       Timeout: 60
       Environment:
         Variables:
@@ -587,7 +587,7 @@ deploy-discord:
 
 test-discord:
 	cd discord-adapter && \
-	python3.11 -m pytest tests/ -v
+	python3.12 -m pytest tests/ -v
 ```
 
 ---

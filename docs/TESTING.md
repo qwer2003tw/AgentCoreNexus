@@ -61,20 +61,20 @@ cd ai-processor
 ./run_tests_with_coverage.sh
 
 # 方法 2: 使用 pytest 直接執行
-python3.11 -m pytest tests/ -v
+python3.12 -m pytest tests/ -v
 
 # 方法 3: 使用原有的 unittest 腳本
-python3.11 run_tests.py
+python3.12 run_tests.py
 
 # 帶覆蓋率報告
-python3.11 -m pytest tests/ --cov=. --cov-report=html
+python3.12 -m pytest tests/ --cov=. --cov-report=html
 ```
 
 **查看覆蓋率報告**：
 
 ```bash
 # 終端顯示
-python3.11 -m coverage report
+python3.12 -m coverage report
 
 # 瀏覽器查看詳細報告
 open htmlcov/index.html  # macOS
@@ -98,13 +98,13 @@ cd telegram-adapter
 ./run_all_tests.sh --cov
 
 # 只運行單元測試
-python3.11 -m pytest tests/ --ignore=tests/e2e/ -v
+python3.12 -m pytest tests/ --ignore=tests/e2e/ -v
 
 # 只運行 E2E 測試
-python3.11 -m pytest tests/e2e/ -v
+python3.12 -m pytest tests/e2e/ -v
 
 # 特定測試文件
-python3.11 -m pytest tests/e2e/test_commands.py -v
+python3.12 -m pytest tests/e2e/test_commands.py -v
 ```
 
 **覆蓋率要求**：
@@ -258,14 +258,14 @@ pip install pytest pytest-cov pytest-asyncio
 
 #### 問題 2: Python 版本錯誤
 
-**必須使用 Python 3.11**：
+**必須使用 Python 3.12**：
 
 ```bash
 # 檢查版本
-python3.11 --version
+python3.12 --version
 
 # 使用正確版本執行
-python3.11 -m pytest tests/ -v
+python3.12 -m pytest tests/ -v
 ```
 
 #### 問題 3: Playwright 瀏覽器未安裝

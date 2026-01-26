@@ -198,7 +198,7 @@ class Test[FunctionName]Handler:
     Properties:
       CodeUri: [code_path]/
       Handler: [handler_file].lambda_handler
-      Runtime: python3.11
+      Runtime: python3.12
       Timeout: 30
       MemorySize: 256
       Environment:
@@ -229,7 +229,7 @@ class Test[FunctionName]Handler:
 
 ```bash
 cd [stack_directory]
-python3.11 -c "import [handler_module]"
+python3.12 -c "import [handler_module]"
 ```
 
 **預期結果**：
@@ -241,7 +241,7 @@ python3.11 -c "import [handler_module]"
 #### 5.2 運行測試
 
 ```bash
-python3.11 -m pytest tests/test_[function_name].py -v
+python3.12 -m pytest tests/test_[function_name].py -v
 ```
 
 **預期結果**：

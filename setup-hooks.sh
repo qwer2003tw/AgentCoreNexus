@@ -49,10 +49,10 @@ echo ""
 
 # 檢查測試依賴
 echo "🔍 檢查測試環境..."
-if command -v python3.11 &> /dev/null; then
-    echo "✅ Python 3.11 已安裝"
+if command -v python3.12 &> /dev/null; then
+    echo "✅ Python 3.12 已安裝"
 else
-    echo "⚠️  未找到 python3.11，測試可能失敗"
+    echo "⚠️  未找到 python3.12，測試可能失敗"
 fi
 
 if command -v ruff &> /dev/null; then

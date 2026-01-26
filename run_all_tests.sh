@@ -104,7 +104,7 @@ else
     
     if [ -f "run_tests.py" ]; then
         echo "執行 unittest 測試..."
-        if python3.11 run_tests.py; then
+        if python3.12 run_tests.py; then
             handle_success "ai-processor"
         else
             handle_error "ai-processor"
@@ -146,7 +146,7 @@ else
         fi
     else
         echo -e "${YELLOW}⚠️  未找到 run_all_tests.sh，使用 pytest...${NC}"
-        if python3.11 -m pytest tests/ -v; then
+        if python3.12 -m pytest tests/ -v; then
             handle_success "telegram-adapter"
         else
             handle_error "telegram-adapter"

@@ -74,13 +74,13 @@ ruff check . --fix && ruff format . && ruff check .
 
 ### Step 2: 單元測試 ⭐
 ```bash
-python3.11 -m pytest tests/ -v
+python3.12 -m pytest tests/ -v
 ```
 **要求**：所有測試通過
 
 ### Step 3: E2E 測試 ⭐
 ```bash
-python3.11 -m pytest tests/e2e/ -v  # 如適用
+python3.12 -m pytest tests/e2e/ -v  # 如適用
 ```
 
 ### Step 4: 覆蓋率檢查 ⭐
@@ -119,7 +119,7 @@ make test  # 一鍵執行所有檢查
 ruff check . --fix && ruff format . && ruff check .
 
 # 2. 測試
-python3.11 -m pytest tests/ -v
+python3.12 -m pytest tests/ -v
 
 # 3. 覆蓋率
 pytest tests/ --cov=. --cov-report=xml
@@ -191,9 +191,9 @@ diff-cover coverage.xml --compare-branch=main --fail-under=80
 
 ### Python 版本要求 ⭐
 
-**必須使用 Python 3.11**：
+**必須使用 Python 3.12**：
 ```bash
-python3.11 -m pytest tests/ -v  # ✅ 正確
+python3.12 -m pytest tests/ -v  # ✅ 正確
 pytest tests/ -v                 # ❌ 可能用錯版本
 ```
 
@@ -239,10 +239,10 @@ make test
 ### Python 版本錯誤
 ```bash
 # 檢查版本
-python3.11 --version
+python3.12 --version
 
 # 使用正確版本
-python3.11 -m pytest tests/ -v
+python3.12 -m pytest tests/ -v
 ```
 
 ---
