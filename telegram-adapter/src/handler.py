@@ -586,6 +586,7 @@ def lambda_handler(event: dict[str, Any], context: Any, metrics) -> dict[str, An
                     content=text or caption,
                     message_type=normalized["content"]["messageType"],
                     channel="telegram",
+                    role="user",
                     metadata={
                         "chat_type": "group" if is_group else "private",
                         "attachments": normalized["content"]["attachments"],

@@ -54,6 +54,7 @@ class ConversationService:
         content: str,
         message_type: str = "text",
         channel: str = "telegram",
+        role: str = "user",
         metadata: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """
@@ -66,6 +67,7 @@ class ConversationService:
             content: 訊息內容
             message_type: 訊息類型（text/image/file）
             channel: 通道類型（telegram/web/discord）
+            role: 角色（user/assistant）
             metadata: 額外資料（可選）
 
         Returns:
@@ -85,6 +87,7 @@ class ConversationService:
             "content": content,
             "message_type": message_type,
             "channel": channel,
+            "role": role,
             "global_partition": "ALL",  # ⭐ 用於 GlobalTimestampIndex GSI（管理員查詢）
         }
 

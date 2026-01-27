@@ -491,6 +491,7 @@ def process_normalized_message(normalized: dict[str, Any]) -> dict[str, Any]:
                         content=response_text,
                         message_type="text",
                         channel=channel_type,
+                        role="assistant",
                         metadata={
                             "has_memory": session_manager is not None,
                         },
