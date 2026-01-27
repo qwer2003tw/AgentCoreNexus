@@ -1,0 +1,95 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  AgentCore Nexus - Conversation Storage Infrastructure (Step 1: Add GlobalTimestampIndex)
+  
+Parameters:
+  Environment:
+    Type: String
+    Default: prod
+    Description: Deployment environment
+
+Resources:
+  ConversationHistoryTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub 'agentcore-conversation-history-${Environment}'
+      BillingMode: PAY_PER_REQUEST
+      
+      AttributeDefinitions:
+        - AttributeName: conversation_id
+          AttributeType: S
+        - AttributeName: timestamp
+          AttributeType: N
+        - AttributeName: global_partition
+          AttributeType: S
+      
+      KeySchema:
+        - AttributeName: conversation_id
+          KeyType: HASH
+        - AttributeName: timestamp
+          KeyType: RANGE
+      
+      # Step 1: 只添加 GlobalTimestampIndex
+      GlobalSecondaryIndexes:
+        - IndexName: GlobalTimestampIndex
+          KeySchema:
+            - AttributeName: global_partition
+              KeyType: HASH
+            - AttributeName: timestamp
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      
+      TimeToLiveSpecification:
+        AttributeName: delete_at
+        Enabled: true
+      
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      
+      SSESpecification:
+        SSEEnabled: true
+      
+      Tags:
+        - Key: Project
+          Value: AgentCoreNexus
+        - Key: Component
+          Value: conversation-storage
+        - Key: Environment
+          Value: !Ref Environment
+
+  ConversationMetadataTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub 'agentcore-conversation-metadata-${Environment}'
+      BillingMode: PAY_PER_REQUEST
+      
+      AttributeDefinitions:
+        - AttributeName: conversation_id
+          AttributeType: S
+      
+      KeySchema:
+        - AttributeName: conversation_id
+          KeyType: HASH
+      
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      
+      SSESpecification:
+        SSEEnabled: true
+      
+      Tags:
+        - Key: Project
+          Value: AgentCoreNexus
+        - Key: Component
+          Value: conversation-storage
+        - Key: Environment
+          Value: !Ref Environment
+
+Outputs:
+  ConversationHistoryTableName:
+    Description: Conversation history table name
+    Value: !Ref ConversationHistoryTable
+    Export:
+      Name: !Sub '${AWS::StackName}-ConversationHistoryTableName'

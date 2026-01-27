@@ -694,7 +694,8 @@ Resources:
         - arn:aws:lambda:us-west-2:190825685292:layer:agentcore-shared-services:4
       Environment:
         Variables:
-          CONVERSATION_TABLE_NAME: agentcore-conversation-history-dev
+          CONVERSATION_TABLE_NAME: agentcore-conversation-history-prod
+          METADATA_TABLE_NAME: agentcore-conversation-metadata-prod
           AUDIT_LOGS_TABLE: agentcore-admin-audit-logs-dev
           SYSTEM_CONFIG_TABLE: agentcore-admin-system-config-dev
           SUMMARIES_TABLE: agentcore-conversation-summaries-dev
@@ -705,9 +706,15 @@ Resources:
                 - dynamodb:Query
                 - dynamodb:GetItem
               Resource:
-                - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/agentcore-conversation-history-dev'
-                - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/agentcore-conversation-history-dev/index/GlobalTimestampIndex'
-                - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/agentcore-conversation-history-dev/index/ChannelTimestampIndex'
+                - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/agentcore-conversation-history-prod'
+                - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/agentcore-conversation-history-prod/index/GlobalTimestampIndex'
+                - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/agentcore-conversation-history-prod/index/ChannelTimestampIndex'
+            - Effect: Allow
+              Action:
+                - dynamodb:Scan
+                - dynamodb:Query
+              Resource:
+                - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/agentcore-conversation-metadata-prod'
             - Effect: Allow
               Action:
                 - dynamodb:PutItem
@@ -764,7 +771,7 @@ Resources:
       Environment:
         Variables:
           CONNECTIONS_TABLE: !Ref WebSocketConnectionsTable
-          HISTORY_TABLE: !Ref ConversationHistoryTable
+          HISTORY_TABLE: agentcore-conversation-history-prod
           CONVERSATIONS_TABLE: !Ref ConversationsTable
           WEBSOCKET_API_ENDPOINT: !Sub 'https://${WebSocketApi}.execute-api.${AWS::Region}.amazonaws.com/${WebSocketStage}'
       Policies:
@@ -785,8 +792,8 @@ Resources:
                 - dynamodb:Query
                 - dynamodb:DeleteItem
               Resource:
-                - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${ConversationHistoryTable}'
-                - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${ConversationHistoryTable}/index/*'
+                - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/agentcore-conversation-history-prod'
+                - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/agentcore-conversation-history-prod/index/*'
                 - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${ConversationsTable}'
                 - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${ConversationsTable}/index/*'
             - Effect: Allow

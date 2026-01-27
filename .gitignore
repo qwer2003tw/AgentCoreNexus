@@ -133,3 +133,4 @@ infrastructure/layers/*/python/urllib3/
 infrastructure/layers/*/python/dateutil/
 infrastructure/layers/*/python/six.py
 !infrastructure/layers/*/python/conversation_service.py
+scripts/backups/

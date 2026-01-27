@@ -223,7 +223,7 @@ export function ConversationDetailPage() {
         
         .header-left h2 {
           margin: 0;
-          color: #2c3e50;
+          color: #ffffff;
         }
         
         .header-right {
@@ -280,11 +280,11 @@ export function ConversationDetailPage() {
         }
         
         .metadata-card {
-          background: white;
+          background: #2d2d2d;
           padding: 1.5rem;
           border-radius: 8px;
           margin-bottom: 1.5rem;
-          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+          box-shadow: 0 2px 4px rgba(0,0,0,0.3);
         }
         
         .metadata-row {
@@ -301,11 +301,11 @@ export function ConversationDetailPage() {
         
         .metadata-item .label {
           font-weight: 600;
-          color: #666;
+          color: #a0a0a0;
         }
         
         .metadata-item .value {
-          color: #333;
+          color: #ffffff;
         }
         
         .monospace {
@@ -335,7 +335,7 @@ export function ConversationDetailPage() {
           display: flex;
           gap: 2rem;
           padding-top: 1rem;
-          border-top: 1px solid #e0e0e0;
+          border-top: 1px solid #404040;
         }
         
         .stat-item {
@@ -344,25 +344,25 @@ export function ConversationDetailPage() {
         }
         
         .stat-label {
-          color: #666;
+          color: #a0a0a0;
         }
         
         .stat-value {
           font-weight: 600;
-          color: #333;
+          color: #ffffff;
         }
         
         .messages-timeline {
-          background: white;
+          background: #2d2d2d;
           padding: 1.5rem;
           border-radius: 8px;
-          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+          box-shadow: 0 2px 4px rgba(0,0,0,0.3);
         }
         
         .messages-timeline h3 {
           margin-top: 0;
           margin-bottom: 1.5rem;
-          color: #2c3e50;
+          color: #ffffff;
         }
         
         .messages-list {
@@ -374,17 +374,17 @@ export function ConversationDetailPage() {
         .message-item {
           padding: 1rem;
           border-radius: 8px;
-          border-left: 4px solid #ddd;
+          border-left: 4px solid #404040;
         }
         
         .message-item.user {
-          background-color: #f0f7ff;
-          border-left-color: #1976d2;
+          background-color: #1e3a5f;
+          border-left-color: #3b82f6;
         }
         
         .message-item.assistant {
-          background-color: #f5f5f5;
-          border-left-color: #4caf50;
+          background-color: #3a3a3a;
+          border-left-color: #10b981;
         }
         
         .message-header {
@@ -401,13 +401,13 @@ export function ConversationDetailPage() {
         
         .message-time {
           font-size: 0.85rem;
-          color: #666;
+          color: #a0a0a0;
         }
         
         .message-content {
           white-space: pre-wrap;
           line-height: 1.6;
-          color: #333;
+          color: #ffffff;
         }
         
         .message-attachments {
@@ -432,19 +432,20 @@ export function ConversationDetailPage() {
         
         .attachment-name {
           font-size: 0.9rem;
-          color: #666;
+          color: #a0a0a0;
         }
         
         .loading, .error-page {
           text-align: center;
           padding: 3rem;
+          color: #a0a0a0;
         }
         
         .error-message {
           padding: 1rem;
-          background-color: #f8d7da;
-          color: #721c24;
-          border: 1px solid #f5c6cb;
+          background-color: #4a1f1f;
+          color: #ffb3b3;
+          border: 1px solid #6a2c2c;
           border-radius: 4px;
           margin-bottom: 1rem;
         }

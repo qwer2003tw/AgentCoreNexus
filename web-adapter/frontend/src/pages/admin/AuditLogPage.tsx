@@ -252,15 +252,15 @@ export function AuditLogPage() {
         
         .audit-log-page h2 {
           margin-bottom: 1.5rem;
-          color: #2c3e50;
+          color: #ffffff;
         }
         
         .filter-panel {
-          background: white;
+          background: #2d2d2d;
           padding: 1.5rem;
           border-radius: 8px;
           margin-bottom: 1.5rem;
-          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+          box-shadow: 0 2px 4px rgba(0,0,0,0.3);
         }
         
         .filter-row {
@@ -278,23 +278,25 @@ export function AuditLogPage() {
         
         .filter-item label {
           font-size: 0.9rem;
-          color: #666;
+          color: #a0a0a0;
           font-weight: 500;
         }
         
         .filter-item input {
           padding: 0.5rem;
-          border: 1px solid #ddd;
+          border: 1px solid #404040;
           border-radius: 4px;
           font-size: 0.9rem;
           width: 200px;
+          background: #1a1a1a;
+          color: #ffffff;
         }
         
         .logs-table {
-          background: white;
+          background: #2d2d2d;
           border-radius: 8px;
           overflow: hidden;
-          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+          box-shadow: 0 2px 4px rgba(0,0,0,0.3);
         }
         
         .logs-table table {
@@ -303,32 +305,33 @@ export function AuditLogPage() {
         }
         
         .logs-table thead {
-          background-color: #f8f9fa;
+          background-color: #3a3a3a;
         }
         
         .logs-table th {
           padding: 1rem;
           text-align: left;
           font-weight: 600;
-          color: #495057;
-          border-bottom: 2px solid #dee2e6;
+          color: #ffffff;
+          border-bottom: 2px solid #404040;
           font-size: 0.9rem;
         }
         
         .logs-table td {
           padding: 0.75rem 1rem;
-          border-bottom: 1px solid #dee2e6;
+          border-bottom: 1px solid #404040;
           font-size: 0.85rem;
+          color: #ffffff;
         }
         
         .log-row:hover {
-          background-color: #f8f9fa;
+          background-color: #3a3a3a;
         }
         
         .action-cell {
           font-family: monospace;
           font-size: 0.8rem;
-          color: #666;
+          color: #a0a0a0;
         }
         
         .resource-type {
@@ -343,7 +346,7 @@ export function AuditLogPage() {
         .resource-id {
           font-family: monospace;
           font-size: 0.75rem;
-          color: #666;
+          color: #a0a0a0;
         }
         
         .btn-expand {
@@ -351,18 +354,18 @@ export function AuditLogPage() {
           border: none;
           cursor: pointer;
           font-size: 1rem;
-          color: #666;
+          color: #a0a0a0;
           padding: 0.25rem 0.5rem;
         }
         
         .btn-expand:hover {
-          color: #333;
-          background-color: #f0f0f0;
+          color: #ffffff;
+          background-color: #3a3a3a;
           border-radius: 4px;
         }
         
         .detail-row td {
-          background-color: #f8f9fa;
+          background-color: #3a3a3a;
           padding: 1.5rem;
         }
         
@@ -379,11 +382,12 @@ export function AuditLogPage() {
         .detail-item strong {
           display: block;
           margin-bottom: 0.25rem;
-          color: #666;
+          color: #a0a0a0;
         }
         
         .detail-item pre {
-          background-color: #f0f0f0;
+          background-color: #1a1a1a;
+          color: #ffffff;
           padding: 0.5rem;
           border-radius: 4px;
           overflow-x: auto;
@@ -421,16 +425,16 @@ export function AuditLogPage() {
         .loading, .empty-state {
           text-align: center;
           padding: 3rem;
-          color: #6c757d;
-          background: white;
+          color: #a0a0a0;
+          background: #2d2d2d;
           border-radius: 8px;
         }
         
         .error-message {
           padding: 1rem;
-          background-color: #f8d7da;
-          color: #721c24;
-          border: 1px solid #f5c6cb;
+          background-color: #4a1f1f;
+          color: #ffb3b3;
+          border: 1px solid #6a2c2c;
           border-radius: 4px;
           margin-bottom: 1rem;
         }

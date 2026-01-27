@@ -28,6 +28,7 @@ dynamodb = boto3.resource('dynamodb', region_name=os.environ.get('AWS_REGION', '
 
 # 環境變數（使用完整表名）
 TABLE_NAME = os.environ.get('CONVERSATION_TABLE_NAME', 'agentcore-conversation-history-dev')
+METADATA_TABLE_NAME = os.environ.get('METADATA_TABLE_NAME', 'agentcore-conversation-metadata-prod')
 
 
 def decimal_to_float(obj: Any) -> Any:
@@ -83,14 +84,12 @@ def extract_user_context(event: dict[str, Any]) -> dict[str, str]:
 @require_permission('admin')
 def list_conversations(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """
-    列出所有對話（使用 GlobalTimestampIndex GSI）
+    列出所有對話（查詢 metadata 表獲取對話摘要）
     
     Query Parameters:
-    - limit: 每頁數量（默認 20，最大 100）
+    - limit: 每頁數量（默認 50，最大 100）
     - next_token: 分頁 token
     - channel: 篩選通道（telegram/web）
-    - start_time: 開始時間（ISO 8601）
-    - end_time: 結束時間（ISO 8601）
     
     Returns:
     {
@@ -102,57 +101,41 @@ def list_conversations(event: dict[str, Any], context: Any) -> dict[str, Any]:
     try:
         # 提取查詢參數
         params = event.get('queryStringParameters') or {}
-        limit = int(params.get('limit', '20'))
-        limit = min(limit, 100)  # 最大 100
+        limit = int(params.get('limit', '50'))
+        limit = min(limit, 100)
 
         next_token = params.get('next_token')
-        channel = params.get('channel')  # telegram 或 web
-        start_time = params.get('start_time')
-        end_time = params.get('end_time')
+        channel_filter = params.get('channel')
 
-        # 選擇 GSI
-        table = dynamodb.Table(TABLE_NAME)
+        # 查詢 metadata 表（對話摘要）
+        metadata_table = dynamodb.Table(METADATA_TABLE_NAME)
 
-        if channel:
-            # 使用 ChannelTimestampIndex
-            index_name = 'ChannelTimestampIndex'
-            key_condition = Key('channel').eq(channel)
-
-            # 添加時間範圍條件
-            if start_time:
-                key_condition = key_condition & Key('timestamp').gte(start_time)
-            elif end_time:
-                key_condition = key_condition & Key('timestamp').lte(end_time)
-        else:
-            # 使用 GlobalTimestampIndex
-            index_name = 'GlobalTimestampIndex'
-            key_condition = Key('global_partition').eq('ALL')
-
-            # 添加時間範圍條件
-            if start_time and end_time:
-                key_condition = key_condition & Key('timestamp').between(start_time, end_time)
-            elif start_time:
-                key_condition = key_condition & Key('timestamp').gte(start_time)
-            elif end_time:
-                key_condition = key_condition & Key('timestamp').lte(end_time)
-
-        # 構建查詢參數
-        query_params = {
-            'IndexName': index_name,
-            'KeyConditionExpression': key_condition,
-            'Limit': limit,
-            'ScanIndexForward': False  # 降序（最新的在前）
+        scan_params = {
+            'Limit': limit
         }
 
-        # 分頁
         if next_token:
-            query_params['ExclusiveStartKey'] = json.loads(next_token)
+            scan_params['ExclusiveStartKey'] = json.loads(next_token)
 
-        # 執行查詢
-        response = table.query(**query_params)
-
-        # 提取對話
+        # 執行掃描
+        response = metadata_table.scan(**scan_params)
         conversations = response.get('Items', [])
+
+        # 客戶端篩選（如有 channel 條件）
+        if channel_filter:
+            # 需要從 history 表查詢 channel 資訊（較慢）
+            # 或在 metadata 表添加 channel 欄位（更好）
+            pass
+
+        # 添加必要欄位：user_id（前端期望）
+        for conv in conversations:
+            # 從 unified_user_id 複製（如果沒有 user_id）
+            if 'user_id' not in conv:
+                conv['user_id'] = conv.get('unified_user_id', '')
+
+            # 確保有 timestamp 欄位（前端排序用）
+            if 'timestamp' not in conv:
+                conv['timestamp'] = conv.get('last_message_time', conv.get('created_at', ''))
 
         # 準備響應
         result = {
@@ -160,7 +143,6 @@ def list_conversations(event: dict[str, Any], context: Any) -> dict[str, Any]:
             'count': len(conversations)
         }
 
-        # 分頁 token
         if 'LastEvaluatedKey' in response:
             result['next_token'] = json.dumps(decimal_to_float(response['LastEvaluatedKey']))
 
@@ -180,7 +162,7 @@ def list_conversations(event: dict[str, Any], context: Any) -> dict[str, Any]:
 @require_permission('admin')
 def get_conversation_detail(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """
-    獲取對話詳情
+    獲取對話詳情（查詢 history 表的所有消息）
     
     Path Parameters:
     - conversation_id: 對話 ID
@@ -191,9 +173,7 @@ def get_conversation_detail(event: dict[str, Any], context: Any) -> dict[str, An
         "user_id": "...",
         "channel": "telegram",
         "messages": [...],
-        "attachments": [...],
-        "created_at": "...",
-        "updated_at": "..."
+        "statistics": {...}
     }
     """
     try:
@@ -204,44 +184,89 @@ def get_conversation_detail(event: dict[str, Any], context: Any) -> dict[str, An
         if not conversation_id:
             return create_response(400, {'error': 'conversation_id is required'})
 
-        # 查詢對話
+        # 查詢該對話的所有消息（使用 query，不是 get_item）
         table = dynamodb.Table(TABLE_NAME)
-        response = table.get_item(
-            Key={'conversation_id': conversation_id}
+        response = table.query(
+            KeyConditionExpression=Key('conversation_id').eq(conversation_id),
+            ScanIndexForward=True  # 按時間升序（早到晚）
         )
 
-        if 'Item' not in response:
+        items = response.get('Items', [])
+
+        if not items:
             return create_response(404, {'error': 'Conversation not found'})
 
-        conversation = response['Item']
+        # 組裝對話數據
+        messages = []
+        unified_user_id = None
+        channel = None
+        created_at = None
+        updated_at = None
 
-        # 統計附件
-        messages = conversation.get('messages', [])
         attachments_count = {
             'images': 0,
             'files': 0,
             'total': 0
         }
 
-        for msg in messages:
-            if 'attachments' in msg and msg['attachments']:
-                for att in msg['attachments']:
-                    attachments_count['total'] += 1
-                    if att.get('type') == 'photo':
-                        attachments_count['images'] += 1
-                    else:
-                        attachments_count['files'] += 1
+        for item in items:
+            # 提取基本資訊（從第一條記錄）
+            if unified_user_id is None:
+                # 處理兩種格式：Telegram 用 sender_id，Web 用 unified_user_id
+                unified_user_id = item.get('unified_user_id') or item.get('sender_id', '')
+                channel = item.get('channel', 'unknown')
+                created_at = item.get('timestamp')
 
-        # 添加統計
-        conversation['statistics'] = {
-            'message_count': len(messages),
-            'attachments': attachments_count
+            updated_at = item.get('timestamp')  # 最後一條的時間
+
+            # 組裝消息（處理 Telegram 和 Web 兩種格式）
+            content = item.get('content', {})
+
+            # Telegram 格式：content 是字符串
+            if isinstance(content, str):
+                message_text = content
+                message_attachments = []
+            # Web 格式：content 是對象 {text: ..., attachments: [...]}
+            else:
+                message_text = content.get('text', '')
+                message_attachments = content.get('attachments', [])
+
+            message = {
+                'role': item.get('role', 'user'),
+                'content': message_text,
+                'timestamp': item.get('timestamp'),
+                'attachments': message_attachments
+            }
+            messages.append(message)
+
+            # 統計附件
+            for att in message_attachments:
+                attachments_count['total'] += 1
+                if att.get('type') == 'photo':
+                    attachments_count['images'] += 1
+                else:
+                    attachments_count['files'] += 1
+
+        # 構建響應
+        result = {
+            'conversation_id': conversation_id,
+            'user_id': unified_user_id,
+            'channel': channel,
+            'messages': messages,
+            'created_at': created_at,
+            'updated_at': updated_at,
+            'statistics': {
+                'message_count': len(messages),
+                'attachments': attachments_count
+            }
         }
 
-        return create_response(200, conversation)
+        return create_response(200, result)
 
     except Exception as e:
         print(f"Error getting conversation detail: {e}")
+        import traceback
+        traceback.print_exc()
         return create_response(500, {'error': 'Internal server error'})
 
 

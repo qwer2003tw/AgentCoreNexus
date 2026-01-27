@@ -218,15 +218,15 @@ export function ConversationListPage() {
         
         .conversation-list-page h2 {
           margin-bottom: 1.5rem;
-          color: #2c3e50;
+          color: #ffffff;
         }
         
         .filter-panel {
-          background: white;
+          background: #2d2d2d;
           padding: 1.5rem;
           border-radius: 8px;
           margin-bottom: 1.5rem;
-          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+          box-shadow: 0 2px 4px rgba(0,0,0,0.3);
         }
         
         .filter-row {
@@ -244,23 +244,25 @@ export function ConversationListPage() {
         
         .filter-item label {
           font-size: 0.9rem;
-          color: #666;
+          color: #a0a0a0;
           font-weight: 500;
         }
         
         .filter-item select,
         .filter-item input {
           padding: 0.5rem;
-          border: 1px solid #ddd;
+          border: 1px solid #404040;
           border-radius: 4px;
           font-size: 0.9rem;
+          background: #1a1a1a;
+          color: #ffffff;
         }
         
         .conversations-table {
-          background: white;
+          background: #2d2d2d;
           border-radius: 8px;
           overflow: hidden;
-          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+          box-shadow: 0 2px 4px rgba(0,0,0,0.3);
         }
         
         .conversations-table table {
@@ -269,30 +271,31 @@ export function ConversationListPage() {
         }
         
         .conversations-table thead {
-          background-color: #f8f9fa;
+          background-color: #3a3a3a;
         }
         
         .conversations-table th {
           padding: 1rem;
           text-align: left;
           font-weight: 600;
-          color: #495057;
-          border-bottom: 2px solid #dee2e6;
+          color: #ffffff;
+          border-bottom: 2px solid #404040;
         }
         
         .conversations-table td {
           padding: 0.75rem 1rem;
-          border-bottom: 1px solid #dee2e6;
+          border-bottom: 1px solid #404040;
+          color: #ffffff;
         }
         
         .conversations-table tbody tr:hover {
-          background-color: #f8f9fa;
+          background-color: #3a3a3a;
         }
         
         .conv-id {
           font-family: monospace;
           font-size: 0.85rem;
-          color: #6c757d;
+          color: #a0a0a0;
         }
         
         .channel-badge {
@@ -370,16 +373,16 @@ export function ConversationListPage() {
         .loading, .empty-state {
           text-align: center;
           padding: 3rem;
-          color: #6c757d;
-          background: white;
+          color: #a0a0a0;
+          background: #2d2d2d;
           border-radius: 8px;
         }
         
         .error-message {
           padding: 1rem;
-          background-color: #f8d7da;
-          color: #721c24;
-          border: 1px solid #f5c6cb;
+          background-color: #4a1f1f;
+          color: #ffb3b3;
+          border: 1px solid #6a2c2c;
           border-radius: 4px;
           margin-bottom: 1rem;
         }
