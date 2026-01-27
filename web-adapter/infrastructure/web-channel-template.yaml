@@ -691,12 +691,13 @@ Resources:
       Description: Admin API for conversation management (Day 5-6)
       Timeout: 30
       Layers:
-        - arn:aws:lambda:us-west-2:190825685292:layer:agentcore-shared-services:2
+        - arn:aws:lambda:us-west-2:190825685292:layer:agentcore-shared-services:4
       Environment:
         Variables:
-          CONVERSATION_TABLE_NAME: conversation-history
-          AUDIT_LOGS_TABLE: admin-audit-logs
-          SUMMARIES_TABLE: conversation-summaries
+          CONVERSATION_TABLE_NAME: agentcore-conversation-history-dev
+          AUDIT_LOGS_TABLE: agentcore-admin-audit-logs-dev
+          SYSTEM_CONFIG_TABLE: agentcore-admin-system-config-dev
+          SUMMARIES_TABLE: agentcore-conversation-summaries-dev
       Policies:
         - Statement:
             - Effect: Allow
@@ -704,23 +705,23 @@ Resources:
                 - dynamodb:Query
                 - dynamodb:GetItem
               Resource:
-                - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/conversation-history'
-                - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/conversation-history/index/GlobalTimestampIndex'
-                - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/conversation-history/index/ChannelTimestampIndex'
+                - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/agentcore-conversation-history-dev'
+                - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/agentcore-conversation-history-dev/index/GlobalTimestampIndex'
+                - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/agentcore-conversation-history-dev/index/ChannelTimestampIndex'
             - Effect: Allow
               Action:
                 - dynamodb:PutItem
                 - dynamodb:UpdateItem
                 - dynamodb:Query
               Resource:
-                - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/admin-audit-logs'
-                - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/admin-audit-logs/index/*'
+                - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/agentcore-admin-audit-logs-dev'
+                - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/agentcore-admin-audit-logs-dev/index/*'
             - Effect: Allow
               Action:
                 - dynamodb:GetItem
                 - dynamodb:PutItem
               Resource:
-                - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/conversation-summaries'
+                - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/agentcore-conversation-summaries-dev'
       Events:
         ListConversations:
           Type: Api

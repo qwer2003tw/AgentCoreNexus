@@ -10,30 +10,24 @@ Admin API Handler - 管理員對話管理
 
 import json
 import os
-from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+
+# 導入審計和權限系統
+import sys
 from decimal import Decimal
+from typing import Any
 
 import boto3
 from boto3.dynamodb.conditions import Key
 
-# 導入審計和權限系統
-import sys
 sys.path.insert(0, '/opt/python')
-from audit_service import AuditService, AuditAction, ResourceType, AuditSensitivity
-from conversation_service import ConversationService
-
 # 導入審計裝飾器
 from audit_decorator import audit_log, require_permission
 
-
-# 初始化服務
+# 初始化 DynamoDB
 dynamodb = boto3.resource('dynamodb', region_name=os.environ.get('AWS_REGION', 'us-west-2'))
-audit_service = AuditService(dynamodb)
-conversation_service = ConversationService(dynamodb)
 
-# 環境變數
-TABLE_NAME = os.environ.get('CONVERSATION_TABLE_NAME', 'conversation-history')
+# 環境變數（使用完整表名）
+TABLE_NAME = os.environ.get('CONVERSATION_TABLE_NAME', 'agentcore-conversation-history-dev')
 
 
 def decimal_to_float(obj: Any) -> Any:
@@ -51,7 +45,7 @@ def decimal_to_float(obj: Any) -> Any:
     return obj
 
 
-def create_response(status_code: int, body: Dict[str, Any]) -> Dict[str, Any]:
+def create_response(status_code: int, body: dict[str, Any]) -> dict[str, Any]:
     """
     創建標準 API 響應
     """
@@ -67,14 +61,14 @@ def create_response(status_code: int, body: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def extract_user_context(event: Dict[str, Any]) -> Dict[str, str]:
+def extract_user_context(event: dict[str, Any]) -> dict[str, str]:
     """
     從 API Gateway event 提取用戶上下文
     
     包含：user_id, role, email
     """
     authorizer = event.get('requestContext', {}).get('authorizer', {})
-    
+
     return {
         'user_id': authorizer.get('principalId', 'unknown'),
         'role': authorizer.get('role', 'user'),
@@ -83,12 +77,11 @@ def extract_user_context(event: Dict[str, Any]) -> Dict[str, str]:
 
 
 @audit_log(
-    action=AuditAction.ADMIN_VIEW_CONVERSATIONS,
-    resource_type=ResourceType.CONVERSATION,
-    sensitivity=AuditSensitivity.HIGH
+    action='admin_view_conversations',
+    resource_type='conversation'
 )
 @require_permission('admin')
-def list_conversations(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+def list_conversations(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """
     列出所有對話（使用 GlobalTimestampIndex GSI）
     
@@ -111,20 +104,20 @@ def list_conversations(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         params = event.get('queryStringParameters') or {}
         limit = int(params.get('limit', '20'))
         limit = min(limit, 100)  # 最大 100
-        
+
         next_token = params.get('next_token')
         channel = params.get('channel')  # telegram 或 web
         start_time = params.get('start_time')
         end_time = params.get('end_time')
-        
+
         # 選擇 GSI
         table = dynamodb.Table(TABLE_NAME)
-        
+
         if channel:
             # 使用 ChannelTimestampIndex
             index_name = 'ChannelTimestampIndex'
             key_condition = Key('channel').eq(channel)
-            
+
             # 添加時間範圍條件
             if start_time:
                 key_condition = key_condition & Key('timestamp').gte(start_time)
@@ -134,7 +127,7 @@ def list_conversations(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             # 使用 GlobalTimestampIndex
             index_name = 'GlobalTimestampIndex'
             key_condition = Key('global_partition').eq('ALL')
-            
+
             # 添加時間範圍條件
             if start_time and end_time:
                 key_condition = key_condition & Key('timestamp').between(start_time, end_time)
@@ -142,7 +135,7 @@ def list_conversations(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 key_condition = key_condition & Key('timestamp').gte(start_time)
             elif end_time:
                 key_condition = key_condition & Key('timestamp').lte(end_time)
-        
+
         # 構建查詢參數
         query_params = {
             'IndexName': index_name,
@@ -150,29 +143,29 @@ def list_conversations(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             'Limit': limit,
             'ScanIndexForward': False  # 降序（最新的在前）
         }
-        
+
         # 分頁
         if next_token:
             query_params['ExclusiveStartKey'] = json.loads(next_token)
-        
+
         # 執行查詢
         response = table.query(**query_params)
-        
+
         # 提取對話
         conversations = response.get('Items', [])
-        
+
         # 準備響應
         result = {
             'conversations': conversations,
             'count': len(conversations)
         }
-        
+
         # 分頁 token
         if 'LastEvaluatedKey' in response:
             result['next_token'] = json.dumps(decimal_to_float(response['LastEvaluatedKey']))
-        
+
         return create_response(200, result)
-        
+
     except ValueError as e:
         return create_response(400, {'error': f'Invalid parameter: {str(e)}'})
     except Exception as e:
@@ -181,12 +174,11 @@ def list_conversations(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
 
 @audit_log(
-    action=AuditAction.ADMIN_VIEW_CONVERSATION_DETAIL,
-    resource_type=ResourceType.CONVERSATION,
-    sensitivity=AuditSensitivity.HIGH
+    action='admin_view_conversation_detail',
+    resource_type='conversation'
 )
 @require_permission('admin')
-def get_conversation_detail(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+def get_conversation_detail(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """
     獲取對話詳情
     
@@ -208,21 +200,21 @@ def get_conversation_detail(event: Dict[str, Any], context: Any) -> Dict[str, An
         # 提取 conversation_id
         path_params = event.get('pathParameters') or {}
         conversation_id = path_params.get('conversation_id')
-        
+
         if not conversation_id:
             return create_response(400, {'error': 'conversation_id is required'})
-        
+
         # 查詢對話
         table = dynamodb.Table(TABLE_NAME)
         response = table.get_item(
             Key={'conversation_id': conversation_id}
         )
-        
+
         if 'Item' not in response:
             return create_response(404, {'error': 'Conversation not found'})
-        
+
         conversation = response['Item']
-        
+
         # 統計附件
         messages = conversation.get('messages', [])
         attachments_count = {
@@ -230,7 +222,7 @@ def get_conversation_detail(event: Dict[str, Any], context: Any) -> Dict[str, An
             'files': 0,
             'total': 0
         }
-        
+
         for msg in messages:
             if 'attachments' in msg and msg['attachments']:
                 for att in msg['attachments']:
@@ -239,21 +231,21 @@ def get_conversation_detail(event: Dict[str, Any], context: Any) -> Dict[str, An
                         attachments_count['images'] += 1
                     else:
                         attachments_count['files'] += 1
-        
+
         # 添加統計
         conversation['statistics'] = {
             'message_count': len(messages),
             'attachments': attachments_count
         }
-        
+
         return create_response(200, conversation)
-        
+
     except Exception as e:
         print(f"Error getting conversation detail: {e}")
         return create_response(500, {'error': 'Internal server error'})
 
 
-def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """
     Admin API 主 handler
     
@@ -262,19 +254,19 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     # OPTIONS 預檢請求
     if event.get('httpMethod') == 'OPTIONS':
         return create_response(200, {})
-    
+
     # 提取路徑和方法
     path = event.get('path', '')
     method = event.get('httpMethod', '')
-    
+
     print(f"Admin API request: {method} {path}")
-    
+
     # 路由
     if path == '/admin/conversations' and method == 'GET':
         return list_conversations(event, context)
-    
+
     elif path.startswith('/admin/conversations/') and method == 'GET':
         return get_conversation_detail(event, context)
-    
+
     else:
         return create_response(404, {'error': 'Not found'})

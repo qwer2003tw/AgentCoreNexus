@@ -4,12 +4,23 @@ Audit Decorator - 審計日誌裝飾器
 """
 
 import json
+import os
+import sys
 import time
 from collections.abc import Callable
 from functools import wraps
 from typing import Any
 
-from shared.services.audit_service import create_audit_service
+# 在 Lambda 環境，audit_service 在 /opt/python（layer）
+sys.path.insert(0, '/opt/python')
+from audit_service import AuditService
+
+
+def create_audit_service():
+    """創建 AuditService 實例"""
+    audit_table = os.environ.get('AUDIT_LOGS_TABLE', 'agentcore-admin-audit-logs-dev')
+    config_table = os.environ.get('SYSTEM_CONFIG_TABLE', 'agentcore-admin-system-config-dev')
+    return AuditService(audit_table, config_table)
 
 
 def audit_log(action: str, resource_type: str, extract_resource_id: Callable | None = None):
@@ -58,7 +69,8 @@ def audit_log(action: str, resource_type: str, extract_resource_id: Callable | N
                 resource_id = extract_resource_id(event)
             else:
                 # 默認從 pathParameters.id 提取
-                resource_id = event.get("pathParameters", {}).get("id", "N/A")
+                path_params = event.get("pathParameters") or {}
+                resource_id = path_params.get("id") or path_params.get("conversation_id") or "N/A"
 
             # 提取請求資訊
             request_context = event.get("requestContext", {})
@@ -183,8 +195,14 @@ def require_permission(permission: str):
                 admin_email = "unknown"
                 admin_id = "unknown"
 
+            # Debug 日誌
+            check_result = check_permission(user_role, permission)
+            print(f"🔍 Permission Check: user_role={repr(user_role)}, required={repr(permission)}, result={check_result}")
+            print(f"🔍 USER_ROLES keys: {list(USER_ROLES.keys())}")
+            print(f"🔍 Is role in USER_ROLES? {permission in USER_ROLES}")
+            
             # 檢查權限
-            if not check_permission(user_role, permission):
+            if not check_result:
                 # 記錄未授權訪問嘗試
                 try:
                     audit_service = create_audit_service()
@@ -264,11 +282,22 @@ def check_permission(user_role: str, required_permission: str) -> bool:
 
     Args:
         user_role: 用戶角色
-        required_permission: 需要的權限
+        required_permission: 需要的權限或角色名
 
     Returns:
         是否有權限
     """
+    # 如果 required_permission 是角色名，檢查是否匹配
+    if required_permission in USER_ROLES:
+        # 檢查用戶角色是否等於或高於要求的角色
+        if user_role == required_permission:
+            return True
+        # 檢查是否是 super_admin（最高權限）
+        if user_role == 'super_admin':
+            return True
+        return False
+    
+    # 否則當作權限名檢查
     role_config = USER_ROLES.get(user_role, {})
     permissions = role_config.get("permissions", [])
 
