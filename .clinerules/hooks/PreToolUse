@@ -152,6 +152,34 @@ template.yaml 中配置 AutoPublishAlias 或 Versions，不要使用 AWS CLI 直
     jq -n --arg ctx "$context" '{"cancel": false, "contextModification": $ctx}'
     exit 0
   fi
+  
+  # ============================================
+  # 規則 8: SAM 部署前提醒檢查 ⭐⭐
+  # ============================================
+  if echo "$command" | grep -E "sam deploy|sam build.*&&.*sam deploy" > /dev/null; then
+    context="SAM_DEPLOYMENT: 📋 部署前檢查清單
+
+建議在部署前完成：
+1. ✅ 單元測試：pytest tests/ (覆蓋率 ≥ 80%)
+2. ✅ IAM 權限檢查：/check-iam-permissions.md
+3. ✅ SAM validate
+4. ⚙️ （可選）SAM local 測試
+
+常見部署後問題：
+- AccessDeniedException → 缺少 IAM 權限
+- ImportError → 缺少依賴或 Layer
+- ValidationError → template 語法錯誤
+- Internal server error → 查看 CloudWatch Logs
+
+🔍 快速診斷：
+aws logs tail /aws/lambda/FUNCTION_NAME --since 5m
+
+📖 參考：
+- .clinerules/workflows/check-iam-permissions.md
+- .clinerules/workflows/deploy-lambda.md"
+    jq -n --arg ctx "$context" '{"cancel": false, "contextModification": $ctx}'
+    exit 0
+  fi
 fi
 
 # 所有檢查通過
