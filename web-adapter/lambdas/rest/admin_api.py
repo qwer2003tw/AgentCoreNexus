@@ -245,6 +245,74 @@ def get_conversation_detail(event: dict[str, Any], context: Any) -> dict[str, An
         return create_response(500, {'error': 'Internal server error'})
 
 
+@audit_log(
+    action='admin_view_audit_logs',
+    resource_type='audit'
+)
+@require_permission('admin')
+def list_audit_logs(event: dict[str, Any], context: Any) -> dict[str, Any]:
+    """
+    列出審計日誌
+    
+    Query Parameters:
+    - limit: 每頁數量（默認 20，最大 100）
+    - next_token: 分頁 token
+    - admin_email: 篩選管理員
+    - action: 篩選操作類型
+    - start_time: 開始時間（timestamp）
+    - end_time: 結束時間（timestamp）
+    """
+    try:
+        params = event.get('queryStringParameters') or {}
+        limit = int(params.get('limit', '20'))
+        limit = min(limit, 100)
+
+        next_token = params.get('next_token')
+        admin_email = params.get('admin_email')
+        action = params.get('action')
+
+        # 查詢審計日誌表
+        audit_table = dynamodb.Table(os.environ.get('AUDIT_LOGS_TABLE', 'agentcore-admin-audit-logs-dev'))
+
+        # 使用 scan（簡單實現）或 GSI（如果有篩選）
+        query_params = {
+            'Limit': limit,
+        }
+
+        if next_token:
+            query_params['ExclusiveStartKey'] = json.loads(next_token)
+
+        # 執行掃描
+        response = audit_table.scan(**query_params)
+
+        logs = response.get('Items', [])
+
+        # 客戶端篩選（如果有條件）
+        if admin_email:
+            logs = [log for log in logs if log.get('admin_email') == admin_email]
+        if action:
+            logs = [log for log in logs if log.get('action') == action]
+
+        # 按時間降序排序
+        logs.sort(key=lambda x: x.get('timestamp', 0), reverse=True)
+
+        result = {
+            'logs': logs,
+            'count': len(logs)
+        }
+
+        if 'LastEvaluatedKey' in response:
+            result['next_token'] = json.dumps(decimal_to_float(response['LastEvaluatedKey']))
+
+        return create_response(200, result)
+
+    except ValueError as e:
+        return create_response(400, {'error': f'Invalid parameter: {str(e)}'})
+    except Exception as e:
+        print(f"Error listing audit logs: {e}")
+        return create_response(500, {'error': 'Internal server error'})
+
+
 def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """
     Admin API 主 handler
@@ -264,6 +332,9 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     # 路由
     if path == '/admin/conversations' and method == 'GET':
         return list_conversations(event, context)
+
+    elif path == '/admin/audit-logs' and method == 'GET':
+        return list_audit_logs(event, context)
 
     elif path.startswith('/admin/conversations/') and method == 'GET':
         return get_conversation_detail(event, context)

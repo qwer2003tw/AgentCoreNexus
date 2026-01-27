@@ -13,6 +13,7 @@ import { ProtectedRoute } from '@/components/Admin/ProtectedRoute'
 import { AdminLayout } from '@/components/Admin/AdminLayout'
 import ConversationListPage from '@/pages/admin/ConversationListPage'
 import ConversationDetailPage from '@/pages/admin/ConversationDetailPage'
+import AuditLogPage from '@/pages/admin/AuditLogPage'
 
 function App() {
   const { token, user, loadUser } = useAuthStore()
@@ -65,6 +66,7 @@ function App() {
             }>
               <Route index element={<ConversationListPage />} />
               <Route path="conversations/:conversation_id" element={<ConversationDetailPage />} />
+              <Route path="audit-logs" element={<AuditLogPage />} />
             </Route>
             
             <Route path="*" element={<Navigate to="/" replace />} />

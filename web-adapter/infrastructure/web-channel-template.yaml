@@ -739,6 +739,14 @@ Resources:
             Method: GET
             Auth:
               Authorizer: MyLambdaTokenAuthorizer
+        ListAuditLogs:
+          Type: Api
+          Properties:
+            RestApiId: !Ref RestApi
+            Path: /admin/audit-logs
+            Method: GET
+            Auth:
+              Authorizer: MyLambdaTokenAuthorizer
 
   # ============================================================
   # Response Router Updates (to be integrated with existing)

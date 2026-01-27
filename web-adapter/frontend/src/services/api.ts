@@ -520,6 +520,46 @@ class ApiClient {
       method: 'POST'
     })
   }
+  
+  async listAuditLogs(params?: {
+    limit?: number
+    next_token?: string
+    admin_email?: string
+    action?: string
+    start_time?: string
+    end_time?: string
+  }): Promise<{
+    logs: Array<{
+      log_id: string
+      admin_email: string
+      admin_id: string
+      admin_role: string
+      action: string
+      resource_type: string
+      resource_id: string
+      timestamp: number
+      status: string
+      error_message?: string
+      ip_address?: string
+      user_agent?: string
+      request_id?: string
+      request_duration_ms?: number
+      details?: any
+    }>
+    count: number
+    next_token?: string
+  }> {
+    const queryParams = new URLSearchParams()
+    if (params?.limit) queryParams.set('limit', params.limit.toString())
+    if (params?.next_token) queryParams.set('next_token', params.next_token)
+    if (params?.admin_email) queryParams.set('admin_email', params.admin_email)
+    if (params?.action) queryParams.set('action', params.action)
+    if (params?.start_time) queryParams.set('start_time', params.start_time)
+    if (params?.end_time) queryParams.set('end_time', params.end_time)
+    
+    const query = queryParams.toString()
+    return this.request(`/admin/audit-logs${query ? '?' + query : ''}`)
+  }
 }
 
 export const api = new ApiClient()
