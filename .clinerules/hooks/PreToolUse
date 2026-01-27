@@ -115,6 +115,47 @@ template.yaml 中配置 AutoPublishAlias 或 Versions，不要使用 AWS CLI 直
     jq -n --arg msg "$error_msg" '{"cancel": true, "errorMessage": $msg}'
     exit 0
   fi
+  
+  # ============================================
+  # 規則 7: 前端 Build 前提醒驗證配置 ⭐⭐⭐
+  # ============================================
+  if echo "$command" | grep -E "npm run build|vite build|npx vite build" > /dev/null; then
+    # 檢查是否在前端目錄
+    if echo "$PWD" | grep -q "frontend"; then
+      context="FRONTEND_DEPLOYMENT: 前端 Build 檢查清單
+
+⚠️ 重要提醒：
+1. 檢查 .env 文件配置（從 CloudFormation 獲取最新 endpoints）
+2. 清除 build 緩存：rm -rf dist/ node_modules/.vite
+3. Build 後必須驗證 bundle：
+   grep -o 'https://.*execute-api.*' dist/assets/*.js
+4. 確認包含正確的 endpoint 再部署
+
+📖 參考：.clinerules/rules/frontend-deployment.md"
+      jq -n --arg ctx "$context" '{"cancel": false, "contextModification": $ctx}'
+      exit 0
+    fi
+  fi
+  
+  # 檢測未驗證的前端上傳
+  if echo "$command" | grep -E "s3 sync.*frontend.*dist" > /dev/null; then
+    error_msg="🚫 前端部署驗證失敗
+
+❌ 禁止未驗證就上傳前端！
+
+✅ 正確流程：
+1. Build：npm run build
+2. 驗證 bundle：
+   grep 'jooap0xv8l' dist/assets/index-*.js
+3. 確認正確後才能上傳
+
+如果已驗證，請在命令前加上驗證結果。
+
+📖 參考：.clinerules/rules/frontend-deployment.md"
+    
+    jq -n --arg msg "$error_msg" '{"cancel": true, "errorMessage": $msg}'
+    exit 0
+  fi
 fi
 
 # 所有檢查通過
