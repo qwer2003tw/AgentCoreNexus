@@ -27,7 +27,7 @@ interface AuthState {
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
-  user: null,
+  user: JSON.parse(localStorage.getItem('user') || 'null'),
   token: localStorage.getItem('jwt_token'),
   isLoading: false,
   error: null,
@@ -38,8 +38,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     try {
       const response = await api.login({ email, password })
       
-      // Save token
+      // Save token and user to localStorage
       localStorage.setItem('jwt_token', response.token)
+      localStorage.setItem('user', JSON.stringify(response.user))
       
       set({
         token: response.token,
@@ -60,8 +61,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
   
   logout: () => {
-    // Clear token
+    // Clear token and user
     localStorage.removeItem('jwt_token')
+    localStorage.removeItem('user')
     
     // Disconnect WebSocket
     websocket.disconnect()
@@ -112,6 +114,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     
     try {
       const user = await api.getCurrentUser()
+      
+      // Save user to localStorage
+      localStorage.setItem('user', JSON.stringify(user))
+      
       set({ user: user as User, isLoading: false })
       
       // Connect WebSocket if not already connected

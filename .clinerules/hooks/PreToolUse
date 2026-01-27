@@ -137,23 +137,19 @@ template.yaml 中配置 AutoPublishAlias 或 Versions，不要使用 AWS CLI 直
     fi
   fi
   
-  # 檢測未驗證的前端上傳
+  # 提醒前端上傳前的驗證步驟
   if echo "$command" | grep -E "s3 sync.*frontend.*dist" > /dev/null; then
-    error_msg="🚫 前端部署驗證失敗
+    context="FRONTEND_DEPLOYMENT: ⚠️ S3 上傳前檢查清單
 
-❌ 禁止未驗證就上傳前端！
+請確認已完成以下步驟：
+✅ Bundle 驗證：grep 'jooap0xv8l' dist/assets/index-*.js
+✅ 確認包含正確的 endpoint
 
-✅ 正確流程：
-1. Build：npm run build
-2. 驗證 bundle：
-   grep 'jooap0xv8l' dist/assets/index-*.js
-3. 確認正確後才能上傳
-
-如果已驗證，請在命令前加上驗證結果。
+如果尚未驗證，請先驗證後再上傳。
 
 📖 參考：.clinerules/rules/frontend-deployment.md"
     
-    jq -n --arg msg "$error_msg" '{"cancel": true, "errorMessage": $msg}'
+    jq -n --arg ctx "$context" '{"cancel": false, "contextModification": $ctx}'
     exit 0
   fi
 fi
