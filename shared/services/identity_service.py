@@ -11,6 +11,7 @@ Author: AgentCore Team
 Created: 2026-01-25
 """
 
+import contextlib
 import random
 import time
 import uuid
@@ -106,7 +107,7 @@ class IdentityService:
                 # 碼已存在（極低機率），遞迴重試
                 return self.generate_binding_code(telegram_user_id)
             else:
-                raise Exception(f"Failed to generate binding code: {e}")
+                raise Exception(f"Failed to generate binding code: {e}") from e
 
     def verify_and_bind(
         self,
@@ -219,7 +220,7 @@ class IdentityService:
 
         except ValueError as e:
             # 增加嘗試次數
-            try:
+            with contextlib.suppress(Exception):
                 self.binding_codes_table.update_item(
                     Key={'code': code},
                     UpdateExpression='SET attempts = if_not_exists(attempts, :zero) + :one',
@@ -228,13 +229,11 @@ class IdentityService:
                         ':one': 1
                     }
                 )
-            except:
-                pass  # 忽略更新失敗
 
             raise e
 
         except ClientError as e:
-            raise Exception(f"Failed to bind identities: {e}")
+            raise Exception(f"Failed to bind identities: {e}") from e
 
     def get_bindings(self, identity_id: str) -> dict[str, Any]:
         """
@@ -297,7 +296,7 @@ class IdentityService:
             }
 
         except ClientError as e:
-            raise Exception(f"Failed to get bindings: {e}")
+            raise Exception(f"Failed to get bindings: {e}") from e
 
     def unbind(self, identity_id: str) -> bool:
         """
@@ -324,7 +323,7 @@ class IdentityService:
             if e.response['Error']['Code'] == 'ConditionalCheckFailedException':
                 return False  # Identity doesn't exist
             else:
-                raise Exception(f"Failed to unbind identity: {e}")
+                raise Exception(f"Failed to unbind identity: {e}") from e
 
     def get_unified_conversation_id(self, identity_id: str) -> str | None:
         """
