@@ -31,8 +31,8 @@
 - [ ] 附件預覽 API
 
 #### Day 7：AI 摘要和審計 API
-- [ ] AI 摘要生成 API（含附件統計）
-- [ ] 審計日誌查詢 API
+- [x] AI 摘要生成 API（含附件統計）✅ 2026-01-27
+- [x] 審計日誌查詢 API ✅ 已實現（Day 5-6）
 - [ ] 單元測試（覆蓋率 > 80%）
 
 ### Week 2：前端介面（7天）
@@ -112,11 +112,68 @@
 - ✅ 2 核心服務（AuditService + ConversationService 更新）
 - ✅ 2 輔助模組（審計裝飾器 + 權限檢查）
 
+**2026-01-27 13:08**：✅ Day 7 AI 摘要功能完成
+- 實現 `generate_summary()` API endpoint
+- 添加 Bedrock 權限到 AdminApiFunction
+- 實現 24 小時摘要緩存機制
+- 支持附件統計（圖片 + 文件）
+- 使用 Claude 3 Haiku 模型（快速 + 便宜）
+- 部署時間：~3 分鐘
+
+**部署資訊**：
+- Stack: `agentcore-web-adapter`
+- Lambda: `agentcore-web-adapter-admin-api`
+- API Endpoint: `https://jooap0xv8l.execute-api.us-west-2.amazonaws.com/prod`
+- 摘要 Endpoint: `POST /admin/conversations/{conversation_id}/summary`
+
 ---
 
 ## ⚠️ 問題與風險
 
 （目前無）
+
+---
+
+## 🧪 測試指引
+
+### API 測試（使用 curl）
+
+```bash
+# 替換 YOUR_JWT_TOKEN 和 CONVERSATION_ID
+curl -X POST "https://jooap0xv8l.execute-api.us-west-2.amazonaws.com/prod/admin/conversations/telegram:316743844/summary" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json"
+```
+
+### 前端測試
+
+1. 登入管理面板
+2. 進入對話詳情頁
+3. 點擊「生成 AI 摘要」按鈕
+4. 等待 5-10 秒
+5. 應該看到摘要內容顯示
+
+### 預期響應
+
+```json
+{
+  "conversation_id": "telegram:316743844",
+  "summary_text": "【對話摘要】\n...",
+  "attachment_stats": {
+    "images": 3,
+    "documents": 1,
+    "total": 4
+  },
+  "generated_at": 1738065600000,
+  "model_used": "anthropic.claude-3-haiku-20240307-v1:0",
+  "cached": false
+}
+```
+
+### 驗證緩存
+
+- 第一次調用：`cached: false`（生成新摘要，約 5-10 秒）
+- 24 小時內再次調用：`cached: true`（立即返回，< 1 秒）
 
 ---
 

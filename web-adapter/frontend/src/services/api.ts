@@ -513,8 +513,17 @@ class ApiClient {
   }
   
   async generateConversationSummary(conversationId: string): Promise<{
-    summary: string
-    generated_at: string
+    conversation_id: string
+    summary: string           // 兼容欄位
+    summary_text: string      // 主要欄位
+    attachment_stats: {
+      images: number
+      documents: number
+      total: number
+    }
+    generated_at: number
+    model_used: string
+    cached: boolean
   }> {
     return this.request(`/admin/conversations/${conversationId}/summary`, {
       method: 'POST'

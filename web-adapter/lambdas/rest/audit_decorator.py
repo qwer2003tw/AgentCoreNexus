@@ -200,7 +200,7 @@ def require_permission(permission: str):
             print(f"🔍 Permission Check: user_role={repr(user_role)}, required={repr(permission)}, result={check_result}")
             print(f"🔍 USER_ROLES keys: {list(USER_ROLES.keys())}")
             print(f"🔍 Is role in USER_ROLES? {permission in USER_ROLES}")
-            
+
             # 檢查權限
             if not check_result:
                 # 記錄未授權訪問嘗試
@@ -296,7 +296,7 @@ def check_permission(user_role: str, required_permission: str) -> bool:
         if user_role == 'super_admin':
             return True
         return False
-    
+
     # 否則當作權限名檢查
     role_config = USER_ROLES.get(user_role, {})
     permissions = role_config.get("permissions", [])

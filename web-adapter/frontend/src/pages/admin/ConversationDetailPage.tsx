@@ -1,7 +1,7 @@
 /**
  * ConversationDetailPage - 對話詳情頁面
  * 
- * 顯示完整的對話內容、附件、統計資訊
+ * 顯示完整的對話內容、附件、統計資訊、AI 摘要
  */
 
 import { useState, useEffect } from 'react'
@@ -37,16 +37,36 @@ interface ConversationDetail {
   }
 }
 
+interface ConversationSummary {
+  conversation_id: string
+  summary?: string
+  summary_text?: string
+  attachment_stats: {
+    images: number
+    documents: number
+    total: number
+  }
+  generated_at: number
+  model_used: string
+  cached: boolean
+}
+
 export function ConversationDetailPage() {
   const { conversation_id } = useParams<{ conversation_id: string }>()
   const [conversation, setConversation] = useState<ConversationDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [generatingSummary, setGeneratingSummary] = useState(false)
+  
+  // AI 摘要相關 state
+  const [summary, setSummary] = useState<ConversationSummary | null>(null)
+  const [summaryLoading, setSummaryLoading] = useState(false)
+  const [summaryGenerating, setSummaryGenerating] = useState(false)
+  const [summaryError, setSummaryError] = useState<string | null>(null)
   
   useEffect(() => {
     if (conversation_id) {
       loadConversation()
+      loadSummaryIfExists()  // ⭐ 自動載入摘要
     }
   }, [conversation_id])
   
@@ -65,27 +85,76 @@ export function ConversationDetailPage() {
     }
   }
   
-  const handleGenerateSummary = async () => {
+  const loadSummaryIfExists = async () => {
     if (!conversation_id) return
     
-    setGeneratingSummary(true)
+    setSummaryLoading(true)
+    setSummaryError(null)
+    
     try {
+      // 嘗試載入摘要（如果有緩存會立即返回）
       const data = await api.generateConversationSummary(conversation_id)
-      alert(`摘要已生成：\n\n${data.summary}`)
+      
+      // 如果是緩存，直接顯示
+      if (data.cached) {
+        setSummary(data)
+      } else {
+        // 新生成的摘要（不太可能，但處理一下）
+        setSummary(data)
+      }
     } catch (err: any) {
-      alert('生成摘要失敗：' + (err.error || 'Unknown error'))
+      // 沒有摘要（正常情況，不是錯誤）
+      if (err.statusCode === 404) {
+        setSummary(null)
+      } else {
+        console.error('Error loading summary:', err)
+        setSummary(null)
+      }
     } finally {
-      setGeneratingSummary(false)
+      setSummaryLoading(false)
     }
   }
   
-  const formatTimestamp = (timestamp?: string) => {
+  const handleGenerateSummary = async () => {
+    if (!conversation_id) return
+    
+    setSummaryGenerating(true)
+    setSummaryError(null)
+    
+    try {
+      const data = await api.generateConversationSummary(conversation_id)
+      setSummary(data)
+    } catch (err: any) {
+      setSummaryError(err.error || 'Unknown error')
+      console.error('Error generating summary:', err)
+    } finally {
+      setSummaryGenerating(false)
+    }
+  }
+  
+  const formatTimestamp = (timestamp?: string | number) => {
     if (!timestamp) return '-'
     try {
-      return new Date(timestamp).toLocaleString('zh-TW')
+      const date = typeof timestamp === 'number' 
+        ? new Date(timestamp) 
+        : new Date(timestamp)
+      return date.toLocaleString('zh-TW')
     } catch {
-      return timestamp
+      return String(timestamp)
     }
+  }
+  
+  const getTimeAgo = (timestamp: number) => {
+    const now = Date.now()
+    const diff = now - timestamp
+    const hours = Math.floor(diff / 3600000)
+    
+    if (hours < 1) return '不到 1 小時前'
+    if (hours === 1) return '1 小時前'
+    if (hours < 24) return `${hours} 小時前`
+    
+    const days = Math.floor(hours / 24)
+    return `${days} 天前`
   }
   
   if (loading) {
@@ -119,13 +188,6 @@ export function ConversationDetailPage() {
           <h2>對話詳情</h2>
         </div>
         <div className="header-right">
-          <button 
-            onClick={handleGenerateSummary}
-            disabled={generatingSummary}
-            className="btn-primary"
-          >
-            {generatingSummary ? '生成中...' : '🤖 生成 AI 摘要'}
-          </button>
           <button className="btn-secondary">⬇️ 匯出</button>
         </div>
       </div>
@@ -162,6 +224,79 @@ export function ConversationDetailPage() {
                 {conversation.statistics.attachments.files} 個文件
               </span>
             </div>
+          </div>
+        )}
+      </div>
+      
+      {/* ⭐ AI 摘要卡片 */}
+      <div className="summary-card">
+        <div className="summary-header">
+          <h3>📊 AI 對話摘要</h3>
+          {summary && !summaryGenerating && (
+            <button 
+              onClick={handleGenerateSummary}
+              className="btn-secondary btn-small"
+            >
+              🔄 重新生成
+            </button>
+          )}
+        </div>
+        
+        {summaryLoading && (
+          <div className="summary-state">
+            <div className="spinner"></div>
+            <p>載入摘要中...</p>
+          </div>
+        )}
+        
+        {!summaryLoading && !summary && !summaryGenerating && (
+          <div className="summary-empty">
+            <p className="empty-text">暫無 AI 摘要，點擊下方按鈕生成</p>
+            <button 
+              onClick={handleGenerateSummary}
+              className="btn-primary"
+            >
+              🤖 生成 AI 摘要
+            </button>
+          </div>
+        )}
+        
+        {summaryGenerating && (
+          <div className="summary-state">
+            <div className="spinner"></div>
+            <p className="generating-title">🔄 AI 正在分析對話...</p>
+            <p className="generating-subtitle">預計需要 5-10 秒</p>
+          </div>
+        )}
+        
+        {!summaryLoading && !summaryGenerating && summary && (
+          <div className="summary-content">
+            <div className="summary-text">
+              {summary.summary || summary.summary_text || '摘要內容載入失敗'}
+            </div>
+            <div className="summary-meta">
+              <span className="summary-meta-item">
+                {summary.cached ? (
+                  <>💾 使用緩存（{getTimeAgo(summary.generated_at)}）</>
+                ) : (
+                  <>✨ 新生成</>
+                )}
+              </span>
+              <span className="summary-meta-item">
+                📅 {formatTimestamp(summary.generated_at)}
+              </span>
+              {summary.model_used && (
+                <span className="summary-meta-item">
+                  🤖 {summary.model_used.includes('haiku') ? 'Claude 3 Haiku' : 'Claude'}
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+        
+        {summaryError && (
+          <div className="summary-error">
+            ❌ {summaryError}
           </div>
         )}
       </div>
@@ -279,6 +414,11 @@ export function ConversationDetailPage() {
           background-color: #5a6268;
         }
         
+        .btn-small {
+          padding: 0.5rem 1rem;
+          font-size: 0.85rem;
+        }
+        
         .metadata-card {
           background: #2d2d2d;
           padding: 1.5rem;
@@ -352,6 +492,122 @@ export function ConversationDetailPage() {
           color: #ffffff;
         }
         
+        /* ⭐ AI 摘要卡片樣式 */
+        .summary-card {
+          background: #2d2d2d;
+          padding: 1.5rem;
+          border-radius: 8px;
+          margin-bottom: 1.5rem;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .summary-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 1rem;
+        }
+        
+        .summary-header h3 {
+          margin: 0;
+          color: #ffffff;
+          font-size: 1.1rem;
+        }
+        
+        .summary-state {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          padding: 2rem;
+          text-align: center;
+          color: #a0a0a0;
+        }
+        
+        .summary-empty {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          padding: 2rem;
+          text-align: center;
+        }
+        
+        .empty-text {
+          color: #a0a0a0;
+          margin-bottom: 1rem;
+        }
+        
+        .summary-content {
+          animation: fadeIn 0.3s ease-in;
+        }
+        
+        .summary-text {
+          white-space: pre-wrap;
+          line-height: 1.8;
+          color: #ffffff;
+          padding: 1rem;
+          background: rgba(255, 255, 255, 0.03);
+          border-radius: 6px;
+          margin-bottom: 1rem;
+        }
+        
+        .summary-meta {
+          display: flex;
+          gap: 1.5rem;
+          flex-wrap: wrap;
+          font-size: 0.85rem;
+          padding-top: 0.75rem;
+          border-top: 1px solid #404040;
+        }
+        
+        .summary-meta-item {
+          color: #a0a0a0;
+          display: flex;
+          align-items: center;
+          gap: 0.25rem;
+        }
+        
+        .summary-error {
+          padding: 1rem;
+          background-color: #4a1f1f;
+          color: #ffb3b3;
+          border: 1px solid #6a2c2c;
+          border-radius: 4px;
+          text-align: center;
+        }
+        
+        .generating-title {
+          font-size: 1rem;
+          color: #ffffff;
+          margin-bottom: 0.5rem;
+        }
+        
+        .generating-subtitle {
+          font-size: 0.85rem;
+          color: #a0a0a0;
+        }
+        
+        /* Spinner 動畫 */
+        .spinner {
+          width: 40px;
+          height: 40px;
+          border: 4px solid #404040;
+          border-top-color: #1976d2;
+          border-radius: 50%;
+          animation: spin 1s linear infinite;
+          margin-bottom: 1rem;
+        }
+        
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+        
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(-10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        
         .messages-timeline {
           background: #2d2d2d;
           padding: 1.5rem;
@@ -422,7 +678,7 @@ export function ConversationDetailPage() {
           align-items: center;
           gap: 0.5rem;
           padding: 0.5rem;
-          background-color: rgba(255,255,255,0.5);
+          background-color: rgba(255,255,255,0.05);
           border-radius: 4px;
         }
         
@@ -465,6 +721,11 @@ export function ConversationDetailPage() {
           .metadata-row {
             flex-direction: column;
             gap: 0.75rem;
+          }
+          
+          .summary-meta {
+            flex-direction: column;
+            gap: 0.5rem;
           }
         }
       `}</style>

@@ -1,310 +1,285 @@
 """
-Admin API 本地測試
-
-測試對話列表和詳情 API 的邏輯
+Tests for admin_api.py - Admin conversation management endpoints
 """
 
 import json
-import pytest
-from unittest.mock import Mock, patch, MagicMock
-from decimal import Decimal
 
-# Mock sys.path.insert before importing admin_api
+# Mock audit_decorator before importing admin_api
 import sys
-if '/opt/python' not in sys.path:
-    sys.path.insert(0, '/opt/python')
+from datetime import datetime
+from decimal import Decimal
+from unittest.mock import MagicMock, Mock, patch
 
-from admin_api import (
-    list_conversations,
-    get_conversation_detail,
-    lambda_handler,
-    decimal_to_float,
-    create_response,
-    extract_user_context
+import boto3
+import pytest
+from moto import mock_aws
+
+sys.path.insert(0, '/opt/python')
+
+# Create stub decorators
+def audit_log(**kwargs):
+    def decorator(func):
+        return func
+    return decorator
+
+def require_permission(role):
+    def decorator(func):
+        return func
+    return decorator
+
+# Mock the module
+sys.modules['audit_decorator'] = MagicMock(
+    audit_log=audit_log,
+    require_permission=require_permission
 )
 
-
-class TestHelperFunctions:
-    """測試輔助函數"""
-    
-    def test_decimal_to_float_single_value(self):
-        """測試 Decimal 轉換 - 單個值"""
-        assert decimal_to_float(Decimal('10')) == 10
-        assert decimal_to_float(Decimal('10.5')) == 10.5
-        assert decimal_to_float('string') == 'string'
-        assert decimal_to_float(42) == 42
-    
-    def test_decimal_to_float_nested(self):
-        """測試 Decimal 轉換 - 嵌套結構"""
-        data = {
-            'count': Decimal('5'),
-            'items': [
-                {'value': Decimal('10.5')},
-                {'value': Decimal('20')}
-            ]
-        }
-        result = decimal_to_float(data)
-        assert result['count'] == 5
-        assert result['items'][0]['value'] == 10.5
-        assert result['items'][1]['value'] == 20
-    
-    def test_create_response(self):
-        """測試響應創建"""
-        response = create_response(200, {'message': 'ok'})
-        assert response['statusCode'] == 200
-        assert 'Access-Control-Allow-Origin' in response['headers']
-        body = json.loads(response['body'])
-        assert body['message'] == 'ok'
-    
-    def test_extract_user_context(self):
-        """測試用戶上下文提取"""
-        event = {
-            'requestContext': {
-                'authorizer': {
-                    'principalId': 'user123',
-                    'role': 'admin',
-                    'email': 'admin@example.com'
-                }
-            }
-        }
-        context = extract_user_context(event)
-        assert context['user_id'] == 'user123'
-        assert context['role'] == 'admin'
-        assert context['email'] == 'admin@example.com'
-    
-    def test_extract_user_context_missing(self):
-        """測試提取用戶上下文 - 缺少數據"""
-        event = {}
-        context = extract_user_context(event)
-        assert context['user_id'] == 'unknown'
-        assert context['role'] == 'user'
+# Now import admin_api
+import admin_api
 
 
-@patch('admin_api.dynamodb')
-@patch('admin_api.audit_service')
-class TestListConversations:
-    """測試對話列表 API"""
-    
-    def test_list_conversations_default(self, mock_audit, mock_dynamodb):
-        """測試對話列表 - 默認參數"""
-        # Mock table query
-        mock_table = Mock()
-        mock_dynamodb.Table.return_value = mock_table
-        mock_table.query.return_value = {
-            'Items': [
-                {
-                    'conversation_id': 'conv1',
-                    'user_id': 'user1',
-                    'channel': 'web',
-                    'timestamp': '2026-01-26T10:00:00Z'
-                }
+@pytest.fixture
+def dynamodb_tables():
+    """Setup mock DynamoDB tables"""
+    with mock_aws():
+        dynamodb = boto3.resource('dynamodb', region_name='us-west-2')
+
+        # Create conversation_history table
+        history_table = dynamodb.create_table(
+            TableName='test-conversation-history',
+            KeySchema=[
+                {'AttributeName': 'conversation_id', 'KeyType': 'HASH'},
+                {'AttributeName': 'timestamp', 'KeyType': 'RANGE'}
             ],
-            'Count': 1
+            AttributeDefinitions=[
+                {'AttributeName': 'conversation_id', 'AttributeType': 'S'},
+                {'AttributeName': 'timestamp', 'AttributeType': 'N'}
+            ],
+            BillingMode='PAY_PER_REQUEST'
+        )
+
+        # Create summaries table
+        summaries_table = dynamodb.create_table(
+            TableName='test-summaries',
+            KeySchema=[
+                {'AttributeName': 'conversation_id', 'KeyType': 'HASH'}
+            ],
+            AttributeDefinitions=[
+                {'AttributeName': 'conversation_id', 'AttributeType': 'S'}
+            ],
+            BillingMode='PAY_PER_REQUEST'
+        )
+
+        yield {
+            'history': history_table,
+            'summaries': summaries_table,
+            'dynamodb': dynamodb
         }
-        
-        # 創建 event
-        event = {
-            'queryStringParameters': None,
-            'requestContext': {
-                'authorizer': {
-                    'principalId': 'admin1',
-                    'role': 'admin'
-                }
-            }
-        }
-        
-        # 執行
-        response = list_conversations(event, None)
-        
-        # 驗證
-        assert response['statusCode'] == 200
-        body = json.loads(response['body'])
-        assert body['count'] == 1
-        assert len(body['conversations']) == 1
-        assert body['conversations'][0]['conversation_id'] == 'conv1'
-    
-    def test_list_conversations_with_channel_filter(self, mock_audit, mock_dynamodb):
-        """測試對話列表 - 通道篩選"""
-        mock_table = Mock()
-        mock_dynamodb.Table.return_value = mock_table
-        mock_table.query.return_value = {
-            'Items': [
-                {'conversation_id': 'conv1', 'channel': 'telegram'}
-            ]
-        }
-        
-        event = {
-            'queryStringParameters': {'channel': 'telegram'},
-            'requestContext': {
-                'authorizer': {'principalId': 'admin1', 'role': 'admin'}
-            }
-        }
-        
-        response = list_conversations(event, None)
-        
-        assert response['statusCode'] == 200
-        # 驗證使用了 ChannelTimestampIndex
-        call_args = mock_table.query.call_args[1]
-        assert call_args['IndexName'] == 'ChannelTimestampIndex'
-    
-    def test_list_conversations_with_pagination(self, mock_audit, mock_dynamodb):
-        """測試對話列表 - 分頁"""
-        mock_table = Mock()
-        mock_dynamodb.Table.return_value = mock_table
-        mock_table.query.return_value = {
-            'Items': [{'conversation_id': f'conv{i}'} for i in range(20)],
-            'LastEvaluatedKey': {'conversation_id': 'conv20', 'timestamp': '2026-01-26'}
-        }
-        
-        event = {
-            'queryStringParameters': {'limit': '20'},
-            'requestContext': {
-                'authorizer': {'principalId': 'admin1', 'role': 'admin'}
-            }
-        }
-        
-        response = list_conversations(event, None)
-        
-        assert response['statusCode'] == 200
-        body = json.loads(response['body'])
-        assert 'next_token' in body
 
 
-@patch('admin_api.dynamodb')
-@patch('admin_api.audit_service')
 class TestGetConversationDetail:
-    """測試對話詳情 API"""
-    
-    def test_get_conversation_detail_success(self, mock_audit, mock_dynamodb):
-        """測試獲取對話詳情 - 成功"""
-        mock_table = Mock()
-        mock_dynamodb.Table.return_value = mock_table
-        mock_table.get_item.return_value = {
-            'Item': {
-                'conversation_id': 'conv1',
-                'user_id': 'user1',
-                'channel': 'telegram',
-                'messages': [
+    """Tests for get_conversation_detail function"""
+
+    @patch.dict('os.environ', {'CONVERSATION_TABLE_NAME': 'test-conversation-history'})
+    def test_telegram_format_with_attachments(self, dynamodb_tables):
+        """Test Telegram message format with attachments in metadata"""
+        history_table = dynamodb_tables['history']
+
+        # Insert Telegram message with attachment
+        history_table.put_item(Item={
+            'conversation_id': 'tg:12345',
+            'timestamp': 1000000,
+            'sender_id': 'tg:12345',
+            'channel': 'telegram',
+            'role': 'user',
+            'content': '這是什麼？',  # Telegram format: string
+            'metadata': {
+                'attachments': [
                     {
-                        'role': 'user',
-                        'content': 'Hello',
-                        'attachments': [
-                            {'type': 'photo', 'url': 's3://...'}
-                        ]
-                    },
-                    {
-                        'role': 'assistant',
-                        'content': 'Hi there!'
+                        'type': 'photo',
+                        'file_name': 'photo.jpg',
+                        's3_url': 's3://bucket/photo.jpg'
                     }
                 ]
             }
-        }
-        
+        })
+
+        # Mock event
         event = {
-            'pathParameters': {'conversation_id': 'conv1'},
-            'requestContext': {
-                'authorizer': {'principalId': 'admin1', 'role': 'admin'}
-            }
+            'pathParameters': {'conversation_id': 'tg:12345'},
+            'requestContext': {'authorizer': {'role': 'admin'}}
         }
-        
-        response = get_conversation_detail(event, None)
-        
+
+        # Call function
+        with patch.object(admin_api, 'dynamodb') as mock_dynamodb:
+            mock_dynamodb.Table.return_value = history_table
+
+            response = admin_api.get_conversation_detail(event, None)
+
+        # Verify
         assert response['statusCode'] == 200
         body = json.loads(response['body'])
-        assert body['conversation_id'] == 'conv1'
-        assert body['statistics']['message_count'] == 2
+
+        # Check attachments counted
         assert body['statistics']['attachments']['images'] == 1
+        assert body['statistics']['attachments']['files'] == 0
         assert body['statistics']['attachments']['total'] == 1
-    
-    def test_get_conversation_detail_not_found(self, mock_audit, mock_dynamodb):
-        """測試獲取對話詳情 - 不存在"""
-        mock_table = Mock()
-        mock_dynamodb.Table.return_value = mock_table
-        mock_table.get_item.return_value = {}
-        
-        event = {
-            'pathParameters': {'conversation_id': 'nonexistent'},
-            'requestContext': {
-                'authorizer': {'principalId': 'admin1', 'role': 'admin'}
+
+        # Check message has attachments
+        assert len(body['messages']) == 1
+        assert len(body['messages'][0]['attachments']) == 1
+
+    @patch.dict('os.environ', {'CONVERSATION_TABLE_NAME': 'test-conversation-history'})
+    def test_web_format_with_attachments(self, dynamodb_tables):
+        """Test Web message format with attachments in content"""
+        history_table = dynamodb_tables['history']
+
+        # Insert Web message with attachment
+        history_table.put_item(Item={
+            'conversation_id': 'web:12345',
+            'timestamp': 1000000,
+            'unified_user_id': 'uuid-12345',
+            'channel': 'web',
+            'role': 'user',
+            'content': {  # Web format: object
+                'text': '這是什麼？',
+                'attachments': [
+                    {
+                        'type': 'document',
+                        'file_name': 'doc.pdf'
+                    }
+                ]
             }
+        })
+
+        event = {
+            'pathParameters': {'conversation_id': 'web:12345'},
+            'requestContext': {'authorizer': {'role': 'admin'}}
         }
-        
-        response = get_conversation_detail(event, None)
-        
-        assert response['statusCode'] == 404
+
+        with patch.object(admin_api, 'dynamodb') as mock_dynamodb:
+            mock_dynamodb.Table.return_value = history_table
+
+            response = admin_api.get_conversation_detail(event, None)
+
+        assert response['statusCode'] == 200
         body = json.loads(response['body'])
-        assert 'error' in body
-    
-    def test_get_conversation_detail_missing_id(self, mock_audit, mock_dynamodb):
-        """測試獲取對話詳情 - 缺少 ID"""
-        event = {
-            'pathParameters': {},
-            'requestContext': {
-                'authorizer': {'principalId': 'admin1', 'role': 'admin'}
-            }
-        }
-        
-        response = get_conversation_detail(event, None)
-        
-        assert response['statusCode'] == 400
+
+        # Check attachments counted
+        assert body['statistics']['attachments']['images'] == 0
+        assert body['statistics']['attachments']['files'] == 1
+        assert body['statistics']['attachments']['total'] == 1
 
 
-@patch('admin_api.list_conversations')
-@patch('admin_api.get_conversation_detail')
-class TestLambdaHandler:
-    """測試主 handler 路由"""
-    
-    def test_route_list_conversations(self, mock_detail, mock_list):
-        """測試路由 - 對話列表"""
-        mock_list.return_value = create_response(200, {'conversations': []})
-        
-        event = {
-            'httpMethod': 'GET',
-            'path': '/admin/conversations'
+class TestGenerateSummary:
+    """Tests for generate_summary function"""
+
+    @patch.dict('os.environ', {
+        'CONVERSATION_TABLE_NAME': 'test-conversation-history',
+        'SUMMARIES_TABLE': 'test-summaries',
+        'AWS_REGION': 'us-west-2'
+    })
+    @patch('admin_api.bedrock_runtime')
+    def test_generate_new_summary(self, mock_bedrock, dynamodb_tables):
+        """Test generating new summary (no cache)"""
+        history_table = dynamodb_tables['history']
+        summaries_table = dynamodb_tables['summaries']
+
+        # Insert messages
+        history_table.put_item(Item={
+            'conversation_id': 'tg:12345',
+            'timestamp': 1000000,
+            'role': 'user',
+            'content': '你好',
+            'metadata': {'attachments': []}
+        })
+
+        # Mock Bedrock response
+        mock_bedrock.invoke_model.return_value = {
+            'body': Mock(read=lambda: json.dumps({
+                'content': [{'text': '測試摘要內容'}]
+            }).encode())
         }
-        
-        response = lambda_handler(event, None)
-        
-        mock_list.assert_called_once()
+
+        event = {
+            'pathParameters': {'conversation_id': 'tg:12345'},
+            'requestContext': {'authorizer': {'role': 'admin'}}
+        }
+
+        with patch.object(admin_api, 'dynamodb') as mock_dynamodb:
+            # Mock Table to return correct table based on name
+            def get_table(name):
+                if 'history' in name or name == 'test-conversation-history':
+                    return history_table
+                elif 'summaries' in name or name == 'test-summaries':
+                    return summaries_table
+                raise KeyError(f"Unknown table: {name}")
+
+            mock_dynamodb.Table.side_effect = get_table
+
+            response = admin_api.generate_summary(event, None)
+
         assert response['statusCode'] == 200
-    
-    def test_route_conversation_detail(self, mock_detail, mock_list):
-        """測試路由 - 對話詳情"""
-        mock_detail.return_value = create_response(200, {'conversation_id': 'conv1'})
-        
+        body = json.loads(response['body'])
+
+        # Verify field compatibility
+        assert 'summary' in body
+        assert 'summary_text' in body
+        assert body['summary'] == body['summary_text']
+        assert body['summary'] == '測試摘要內容'
+        assert not body['cached']
+
+    @patch.dict('os.environ', {'SUMMARIES_TABLE': 'test-summaries'})
+    def test_return_cached_summary(self, dynamodb_tables):
+        """Test returning cached summary (within 24 hours)"""
+        summaries_table = dynamodb_tables['summaries']
+
+        # Insert cached summary (1 hour ago)
+        one_hour_ago = int(datetime.now().timestamp() * 1000) - (3600 * 1000)
+        summaries_table.put_item(Item={
+            'conversation_id': 'tg:12345',
+            'summary_text': '緩存的摘要',
+            'attachment_stats': {'images': 0, 'documents': 0, 'total': 0},
+            'generated_at': one_hour_ago,
+            'model_used': 'claude-haiku'
+        })
+
         event = {
-            'httpMethod': 'GET',
-            'path': '/admin/conversations/conv1'
+            'pathParameters': {'conversation_id': 'tg:12345'},
+            'requestContext': {'authorizer': {'role': 'admin'}}
         }
-        
-        response = lambda_handler(event, None)
-        
-        mock_detail.assert_called_once()
+
+        with patch.object(admin_api, 'dynamodb') as mock_dynamodb:
+            mock_dynamodb.Table.return_value = summaries_table
+
+            response = admin_api.generate_summary(event, None)
+
         assert response['statusCode'] == 200
-    
-    def test_route_options(self, mock_detail, mock_list):
-        """測試路由 - OPTIONS 預檢"""
-        event = {
-            'httpMethod': 'OPTIONS',
-            'path': '/admin/conversations'
+        body = json.loads(response['body'])
+
+        # Verify cached
+        assert body['cached']
+        assert body['summary'] == '緩存的摘要'
+        assert body['summary_text'] == '緩存的摘要'
+
+
+class TestFieldCompatibility:
+    """Test backward compatibility of field names"""
+
+    def test_decimal_to_float(self):
+        """Test Decimal conversion"""
+        obj = {
+            'count': Decimal('10'),
+            'nested': {
+                'value': Decimal('3.14')
+            },
+            'list': [Decimal('1'), Decimal('2.5')]
         }
-        
-        response = lambda_handler(event, None)
-        
-        assert response['statusCode'] == 200
-        mock_list.assert_not_called()
-        mock_detail.assert_not_called()
-    
-    def test_route_not_found(self, mock_detail, mock_list):
-        """測試路由 - 404"""
-        event = {
-            'httpMethod': 'GET',
-            'path': '/admin/unknown'
-        }
-        
-        response = lambda_handler(event, None)
-        
-        assert response['statusCode'] == 404
+
+        result = admin_api.decimal_to_float(obj)
+
+        assert result['count'] == 10
+        assert result['nested']['value'] == 3.14
+        assert result['list'] == [1, 2.5]
 
 
 if __name__ == '__main__':

@@ -4,8 +4,9 @@
 設置審計日誌保留期限的默認值
 """
 
-import boto3
 import time
+
+import boto3
 
 # 配置
 REGION = "us-west-2"
