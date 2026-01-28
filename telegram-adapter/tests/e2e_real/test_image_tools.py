@@ -12,7 +12,7 @@ import pytest
 async def test_image_basic_analysis(bot_client, log_fetcher, test_config, clean_session):
     """
     測試 1：上傳圖片測試基本分析
-    
+
     流程：
     1. 上傳圖片並詢問
     2. 驗證 Agent 調用 analyze_image_tool
@@ -27,20 +27,19 @@ async def test_image_basic_analysis(bot_client, log_fetcher, test_config, clean_
 
     # 如果測試圖片不存在，跳過測試
     import os
+
     if not os.path.exists(fixture_path):
         pytest.skip(f"測試圖片不存在：{fixture_path}")
 
-    sent_msg = await bot_client.send_photo(
-        photo_path=fixture_path,
-        caption="這是什麼？"
-    )
+    sent_msg = await bot_client.send_photo(photo_path=fixture_path, caption="這是什麼？")
 
     print(f"  ✅ 圖片已上傳（message_id: {sent_msg.message_id}）")
 
     # 2. 等待 AI 處理（給 Lambda 時間處理）
     print(f"  ⏳ 等待 AI 處理（{test_config['e2e_timeout']} 秒）...")
     import asyncio
-    await asyncio.sleep(test_config['e2e_timeout'])
+
+    await asyncio.sleep(test_config["e2e_timeout"])
 
     print("  ✅ 處理時間已完成")
     print("  ℹ️  注意：Bot 使用 webhook 模式，請手動在 Telegram 檢查回應")
@@ -48,9 +47,9 @@ async def test_image_basic_analysis(bot_client, log_fetcher, test_config, clean_
     # 4. 驗證 tool 被調用（查看 Lambda 日誌）
     print("  🔍 檢查 Lambda 日誌...")
     tool_called = log_fetcher.check_tool_called(
-        lambda_name=test_config['processor_lambda'],
+        lambda_name=test_config["processor_lambda"],
         tool_name="Image Analysis Tool",
-        since_seconds=120
+        since_seconds=120,
     )
 
     assert tool_called, "❌ analyze_image_tool 沒有被調用"
@@ -58,8 +57,7 @@ async def test_image_basic_analysis(bot_client, log_fetcher, test_config, clean_
 
     # 5. 檢查是否有錯誤
     has_error = log_fetcher.check_error_in_logs(
-        lambda_name=test_config['processor_lambda'],
-        since_seconds=120
+        lambda_name=test_config["processor_lambda"], since_seconds=120
     )
 
     assert not has_error, "❌ Lambda 日誌中有錯誤"
@@ -75,7 +73,7 @@ async def test_image_basic_analysis(bot_client, log_fetcher, test_config, clean_
 async def test_image_memory_followup(bot_client, log_fetcher, test_config, clean_session):
     """
     測試 2：同對話追問圖片細節（驗證 Memory）
-    
+
     流程：
     1. 上傳圖片並分析
     2. 等待處理
@@ -83,7 +81,7 @@ async def test_image_memory_followup(bot_client, log_fetcher, test_config, clean
     4. 等待處理
     5. 驗證 tool 被調用兩次
     6. 驗證 Memory session 正常
-    
+
     注意：使用 webhook 模式，無法自動獲取回應，
           請手動在 Telegram 檢查回應內容
     """
@@ -96,15 +94,13 @@ async def test_image_memory_followup(bot_client, log_fetcher, test_config, clean
     if not os.path.exists(fixture_path):
         pytest.skip(f"測試圖片不存在：{fixture_path}")
 
-    await bot_client.send_photo(
-        photo_path=fixture_path,
-        caption="這碗泡麵是什麼牌子？"
-    )
+    await bot_client.send_photo(photo_path=fixture_path, caption="這碗泡麵是什麼牌子？")
 
     # 2. 等待第一次處理
     print("  ⏳ 等待第一次處理...")
     import asyncio
-    await asyncio.sleep(test_config['e2e_timeout'])
+
+    await asyncio.sleep(test_config["e2e_timeout"])
     print("  ✅ 第一次處理完成")
 
     # 3. 追問細節
@@ -113,15 +109,15 @@ async def test_image_memory_followup(bot_client, log_fetcher, test_config, clean
 
     # 4. 等待追問處理
     print("  ⏳ 等待追問處理...")
-    await asyncio.sleep(test_config['e2e_timeout'])
+    await asyncio.sleep(test_config["e2e_timeout"])
     print("  ✅ 追問處理完成")
 
     # 5. 驗證 tool 被調用（應該有兩次調用）
     print("  🔍 檢查 Lambda 日誌...")
     tool_called = log_fetcher.check_tool_called(
-        lambda_name=test_config['processor_lambda'],
+        lambda_name=test_config["processor_lambda"],
         tool_name="Image Analysis Tool",
-        since_seconds=180
+        since_seconds=180,
     )
 
     assert tool_called, "❌ analyze_image_tool 沒有被調用"
@@ -129,9 +125,7 @@ async def test_image_memory_followup(bot_client, log_fetcher, test_config, clean
 
     # 6. 驗證 Memory session
     memory_ok = log_fetcher.check_memory_recorded(
-        lambda_name=test_config['processor_lambda'],
-        keyword="Memory session",
-        since_seconds=180
+        lambda_name=test_config["processor_lambda"], keyword="Memory session", since_seconds=180
     )
 
     assert memory_ok, "❌ Memory session 未找到"
@@ -147,7 +141,7 @@ async def test_image_memory_followup(bot_client, log_fetcher, test_config, clean
 async def test_image_no_caption(bot_client, log_fetcher, test_config, clean_session):
     """
     測試 3：上傳圖片但沒有文字說明
-    
+
     驗證 Agent 會主動調用 tool 進行基本分析
     """
     print("\n📷 測試 3：無說明圖片分析")
@@ -164,14 +158,15 @@ async def test_image_no_caption(bot_client, log_fetcher, test_config, clean_sess
     # 等待處理
     print("  ⏳ 等待 AI 主動分析...")
     import asyncio
-    await asyncio.sleep(test_config['e2e_timeout'])
+
+    await asyncio.sleep(test_config["e2e_timeout"])
 
     # 驗證 tool 被調用
     print("  🔍 檢查 Lambda 日誌...")
     tool_called = log_fetcher.check_tool_called(
-        lambda_name=test_config['processor_lambda'],
+        lambda_name=test_config["processor_lambda"],
         tool_name="Image Analysis Tool",
-        since_seconds=120
+        since_seconds=120,
     )
 
     assert tool_called, "❌ analyze_image_tool 沒有被調用"
@@ -180,4 +175,4 @@ async def test_image_no_caption(bot_client, log_fetcher, test_config, clean_sess
     print("  🎉 測試 3 通過！")
 
 
-import os
+import os  # noqa: E402

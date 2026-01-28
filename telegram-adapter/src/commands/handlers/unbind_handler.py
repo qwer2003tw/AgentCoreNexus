@@ -15,21 +15,21 @@ from utils.logger import get_logger
 logger = get_logger(__name__)
 
 # 動態導入 IdentityService（從 Lambda Layer）
-sys.path.insert(0, '/opt/python')
-from identity_service import IdentityService
+sys.path.insert(0, "/opt/python")
+from identity_service import IdentityService  # noqa: E402
 
 
 class UnbindCommandHandler(CommandHandler):
     """
     /unbind 命令處理器
-    
+
     功能：解除身份綁定（需要二次確認）
     權限：所有用戶可用（不需要管理員）
-    
+
     使用方式：
         用戶: /unbind
         Bot: 顯示確認訊息和已綁定身份
-        
+
         用戶: /unbind confirm
         Bot: 執行解綁並確認
     """
@@ -41,8 +41,8 @@ class UnbindCommandHandler(CommandHandler):
     def _get_identity_service(self):
         """取得 IdentityService 單例"""
         if self._identity_service is None:
-            binding_codes_table = os.getenv('BINDING_CODES_TABLE')
-            identity_map_table = os.getenv('IDENTITY_MAP_TABLE')
+            binding_codes_table = os.getenv("BINDING_CODES_TABLE")
+            identity_map_table = os.getenv("IDENTITY_MAP_TABLE")
 
             if not binding_codes_table or not identity_map_table:
                 logger.error("Identity binding tables not configured")
@@ -50,7 +50,7 @@ class UnbindCommandHandler(CommandHandler):
 
             self._identity_service = IdentityService(
                 binding_codes_table_name=binding_codes_table,
-                identity_map_table_name=identity_map_table
+                identity_map_table_name=identity_map_table,
             )
             logger.info("IdentityService initialized")
 
@@ -81,12 +81,12 @@ class UnbindCommandHandler(CommandHandler):
         logger.info(
             "Unbind command received",
             extra={
-                'chat_id': chat_id,
-                'user_id': user_id,
-                'username': username,
-                'command': command_text,
-                'event_type': 'unbind_command'
-            }
+                "chat_id": chat_id,
+                "user_id": user_id,
+                "username": username,
+                "command": command_text,
+                "event_type": "unbind_command",
+            },
         )
 
         # 獲取 IdentityService
@@ -121,31 +121,30 @@ class UnbindCommandHandler(CommandHandler):
                 return telegram_client.send_message(chat_id, message_text, parse_mode=None)
 
             # 格式化已綁定的身份列表
-            bound_identities = bindings.get('bound_identities', [])
+            bound_identities = bindings.get("bound_identities", [])
 
             lines = ["⚠️ 確認解除身份綁定\n", "您目前綁定的身份："]
 
             for identity in bound_identities:
-                platform = identity.get('platform', 'unknown')
-                identity_user_id = identity.get('user_id', 'unknown')
+                platform = identity.get("platform", "unknown")
+                identity_user_id = identity.get("user_id", "unknown")
 
-                platform_icon = {
-                    'web': '🖥️',
-                    'telegram': '📱',
-                    'discord': '💬',
-                    'slack': '💼'
-                }.get(platform, '❓')
+                platform_icon = {"web": "🖥️", "telegram": "📱", "discord": "💬", "slack": "💼"}.get(
+                    platform, "❓"
+                )
 
                 lines.append(f"  • {platform_icon} {platform.capitalize()}: {identity_user_id}")
 
-            lines.extend([
-                "\n解除綁定後：",
-                "✓ 對話歷史保留（不會刪除）",
-                "✗ 各通道恢復獨立對話",
-                "✗ 無法跨通道同步新訊息\n",
-                "確認解除請輸入：",
-                "/unbind confirm"
-            ])
+            lines.extend(
+                [
+                    "\n解除綁定後：",
+                    "✓ 對話歷史保留（不會刪除）",
+                    "✗ 各通道恢復獨立對話",
+                    "✗ 無法跨通道同步新訊息\n",
+                    "確認解除請輸入：",
+                    "/unbind confirm",
+                ]
+            )
 
             message_text = "\n".join(lines)
             return telegram_client.send_message(chat_id, message_text, parse_mode=None)
@@ -153,8 +152,8 @@ class UnbindCommandHandler(CommandHandler):
         except Exception as e:
             logger.error(
                 f"Failed to show unbind confirmation: {str(e)}",
-                extra={'user_id': user_id, 'event_type': 'unbind_confirm_error'},
-                exc_info=True
+                extra={"user_id": user_id, "event_type": "unbind_confirm_error"},
+                exc_info=True,
             )
 
             error_msg = "❌ 查詢綁定狀態失敗\n\n請稍後再試"
@@ -185,10 +184,7 @@ class UnbindCommandHandler(CommandHandler):
 
                 logger.info(
                     "Identity unbound successfully",
-                    extra={
-                        'user_id': user_id,
-                        'event_type': 'unbind_success'
-                    }
+                    extra={"user_id": user_id, "event_type": "unbind_success"},
                 )
 
                 return telegram_client.send_message(chat_id, message_text, parse_mode=None)
@@ -200,8 +196,8 @@ class UnbindCommandHandler(CommandHandler):
         except Exception as e:
             logger.error(
                 f"Failed to unbind identity: {str(e)}",
-                extra={'user_id': user_id, 'event_type': 'unbind_error'},
-                exc_info=True
+                extra={"user_id": user_id, "event_type": "unbind_error"},
+                exc_info=True,
             )
 
             error_msg = "❌ 解除綁定失敗\n\n請稍後再試或聯繫管理員"

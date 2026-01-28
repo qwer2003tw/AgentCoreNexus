@@ -51,7 +51,11 @@ class TestLambdaHandler:
     @patch("src.handler.send_to_queue")
     @patch("src.handler.check_allowed_with_session")
     def test_valid_user_message(
-        self, mock_check_allowed_with_session, mock_send_to_queue, valid_telegram_event, mock_context
+        self,
+        mock_check_allowed_with_session,
+        mock_send_to_queue,
+        valid_telegram_event,
+        mock_context,
     ):
         """測試有效用戶訊息處理"""
         # 設定 mock 返回值（三元組）
@@ -72,7 +76,9 @@ class TestLambdaHandler:
         mock_send_to_queue.assert_called_once()
 
     @patch("src.handler.check_allowed_with_session")
-    def test_unauthorized_user(self, mock_check_allowed_with_session, valid_telegram_event, mock_context):
+    def test_unauthorized_user(
+        self, mock_check_allowed_with_session, valid_telegram_event, mock_context
+    ):
         """測試未授權用戶訪問"""
         # 設定 mock 返回值（三元組，allowed=False）
         mock_check_allowed_with_session.return_value = (False, "test_user", "123456789")
@@ -115,7 +121,11 @@ class TestLambdaHandler:
     @patch("src.handler.send_to_queue")
     @patch("src.handler.check_allowed_with_session")
     def test_sqs_send_failure(
-        self, mock_check_allowed_with_session, mock_send_to_queue, valid_telegram_event, mock_context
+        self,
+        mock_check_allowed_with_session,
+        mock_send_to_queue,
+        valid_telegram_event,
+        mock_context,
     ):
         """測試 SQS 發送失敗"""
         # 設定 mock 返回值
@@ -131,7 +141,9 @@ class TestLambdaHandler:
         assert body["status"] == "sqs_failed"
 
     @patch("src.handler.check_allowed_with_session")
-    def test_check_allowed_exception(self, mock_check_allowed_with_session, valid_telegram_event, mock_context):
+    def test_check_allowed_exception(
+        self, mock_check_allowed_with_session, valid_telegram_event, mock_context
+    ):
         """測試 check_allowed_with_session 拋出異常"""
         # 設定 mock 拋出異常
         mock_check_allowed_with_session.side_effect = Exception("Database error")
@@ -148,7 +160,11 @@ class TestLambdaHandler:
     @patch("src.handler.send_to_queue")
     @patch("src.handler.check_allowed_with_session")
     def test_valid_secret_token(
-        self, mock_check_allowed_with_session, mock_send_to_queue, valid_telegram_event, mock_context
+        self,
+        mock_check_allowed_with_session,
+        mock_send_to_queue,
+        valid_telegram_event,
+        mock_context,
     ):
         """測試有效的 secret token"""
         # 設定 event 包含正確的 token
@@ -170,7 +186,9 @@ class TestLambdaHandler:
 
     @patch.dict(os.environ, {"TELEGRAM_SECRET_TOKEN": "test_secret_token_abc123"})
     @patch("src.handler.check_allowed_with_session")
-    def test_invalid_secret_token(self, mock_check_allowed_with_session, valid_telegram_event, mock_context):
+    def test_invalid_secret_token(
+        self, mock_check_allowed_with_session, valid_telegram_event, mock_context
+    ):
         """測試無效的 secret token"""
         # 設定 event 包含錯誤的 token
         valid_telegram_event["headers"] = {"X-Telegram-Bot-Api-Secret-Token": "wrong_token"}
@@ -188,7 +206,9 @@ class TestLambdaHandler:
 
     @patch.dict(os.environ, {"TELEGRAM_SECRET_TOKEN": "test_secret_token_abc123"})
     @patch("src.handler.check_allowed_with_session")
-    def test_missing_secret_token(self, mock_check_allowed_with_session, valid_telegram_event, mock_context):
+    def test_missing_secret_token(
+        self, mock_check_allowed_with_session, valid_telegram_event, mock_context
+    ):
         """測試缺少 secret token"""
         # event 不包含 token header
         valid_telegram_event["headers"] = {}
@@ -208,7 +228,11 @@ class TestLambdaHandler:
     @patch("src.handler.send_to_queue")
     @patch("src.handler.check_allowed_with_session")
     def test_lowercase_secret_token_header(
-        self, mock_check_allowed_with_session, mock_send_to_queue, valid_telegram_event, mock_context
+        self,
+        mock_check_allowed_with_session,
+        mock_send_to_queue,
+        valid_telegram_event,
+        mock_context,
     ):
         """測試小寫的 secret token header"""
         # 設定 event 包含小寫 header key 的正確 token
@@ -232,7 +256,11 @@ class TestLambdaHandler:
     @patch("src.handler.send_to_queue")
     @patch("src.handler.check_allowed_with_session")
     def test_no_secret_token_configured(
-        self, mock_check_allowed_with_session, mock_send_to_queue, valid_telegram_event, mock_context
+        self,
+        mock_check_allowed_with_session,
+        mock_send_to_queue,
+        valid_telegram_event,
+        mock_context,
     ):
         """測試未設定 secret token 時（向後相容）"""
         # 沒有設定 token header
@@ -293,7 +321,9 @@ class TestLambdaHandler:
 
     @patch("src.handler.check_allowed_with_session")
     @patch("src.commands.handlers.debug_handler.telegram_client.send_debug_info")
-    def test_debug_command_alone(self, mock_send_debug, mock_check_allowed_with_session, mock_context):
+    def test_debug_command_alone(
+        self, mock_send_debug, mock_check_allowed_with_session, mock_context
+    ):
         """測試單獨的 /debug 指令"""
         event = {
             "headers": {},
@@ -327,7 +357,9 @@ class TestLambdaHandler:
 
     @patch("src.handler.check_allowed_with_session")
     @patch("src.commands.handlers.debug_handler.telegram_client.send_debug_info")
-    def test_debug_command_with_number(self, mock_send_debug, mock_check_allowed_with_session, mock_context):
+    def test_debug_command_with_number(
+        self, mock_send_debug, mock_check_allowed_with_session, mock_context
+    ):
         """測試 /debug 123 指令"""
         event = {
             "headers": {},
@@ -426,7 +458,9 @@ class TestLambdaHandler:
 
     @patch("src.handler.check_allowed_with_session")
     @patch("src.commands.handlers.debug_handler.telegram_client.send_debug_info")
-    def test_debug_command_with_spaces(self, mock_send_debug, mock_check_allowed_with_session, mock_context):
+    def test_debug_command_with_spaces(
+        self, mock_send_debug, mock_check_allowed_with_session, mock_context
+    ):
         """測試 /debug test 指令（帶空格）"""
         # 創建帶空格的 debug 指令
         event = {
@@ -505,7 +539,9 @@ class TestLambdaHandler:
 
     @patch("src.handler.send_to_queue")
     @patch("src.handler.check_allowed_with_session")
-    def test_non_debug_command(self, mock_check_allowed_with_session, mock_send_to_queue, mock_context):
+    def test_non_debug_command(
+        self, mock_check_allowed_with_session, mock_send_to_queue, mock_context
+    ):
         """測試非 debug 指令的正常處理"""
         event = {
             "headers": {},

@@ -101,7 +101,8 @@ class E2EBotClient:
         while time.time() - start_time < timeout:
             # 獲取更新
             updates = await self.bot.get_updates(
-                offset=self.last_update_id + 1 if self.last_update_id else None, timeout=poll_interval
+                offset=self.last_update_id + 1 if self.last_update_id else None,
+                timeout=poll_interval,
             )
 
             for update in updates:

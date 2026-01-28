@@ -13,4 +13,4 @@ sys.path.insert(0, str(src_path))
 # Mock identity_service（避免 Layer boto3 版本衝突）
 from unittest.mock import MagicMock
 
-sys.modules['identity_service'] = MagicMock()
+sys.modules["identity_service"] = MagicMock()

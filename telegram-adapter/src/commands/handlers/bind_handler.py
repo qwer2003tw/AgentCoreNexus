@@ -15,17 +15,17 @@ from utils.logger import get_logger
 logger = get_logger(__name__)
 
 # 動態導入 IdentityService（從 Lambda Layer）
-sys.path.insert(0, '/opt/python')
-from identity_service import IdentityService
+sys.path.insert(0, "/opt/python")
+from identity_service import IdentityService  # noqa: E402
 
 
 class BindCommandHandler(CommandHandler):
     """
     /bind 命令處理器
-    
+
     功能：為 Telegram 用戶生成綁定碼
     權限：所有用戶可用（不需要管理員）
-    
+
     使用方式：
         用戶: /bind
         Bot: 顯示 6 位數字綁定碼和使用說明
@@ -38,8 +38,8 @@ class BindCommandHandler(CommandHandler):
     def _get_identity_service(self):
         """取得 IdentityService 單例"""
         if self._identity_service is None:
-            binding_codes_table = os.getenv('BINDING_CODES_TABLE')
-            identity_map_table = os.getenv('IDENTITY_MAP_TABLE')
+            binding_codes_table = os.getenv("BINDING_CODES_TABLE")
+            identity_map_table = os.getenv("IDENTITY_MAP_TABLE")
 
             if not binding_codes_table or not identity_map_table:
                 logger.error("Identity binding tables not configured")
@@ -47,7 +47,7 @@ class BindCommandHandler(CommandHandler):
 
             self._identity_service = IdentityService(
                 binding_codes_table_name=binding_codes_table,
-                identity_map_table_name=identity_map_table
+                identity_map_table_name=identity_map_table,
             )
             logger.info("IdentityService initialized")
 
@@ -76,11 +76,11 @@ class BindCommandHandler(CommandHandler):
         logger.info(
             "Bind command received",
             extra={
-                'chat_id': chat_id,
-                'user_id': user_id,
-                'username': username,
-                'event_type': 'bind_command'
-            }
+                "chat_id": chat_id,
+                "user_id": user_id,
+                "username": username,
+                "event_type": "bind_command",
+            },
         )
 
         # 獲取 IdentityService
@@ -92,8 +92,8 @@ class BindCommandHandler(CommandHandler):
         try:
             # 生成綁定碼
             result = identity_service.generate_binding_code(user_id)
-            code = result['code']
-            expires_in = result['expires_in_minutes']
+            code = result["code"]
+            expires_in = result["expires_in_minutes"]
 
             # 格式化回應訊息
             message_text = f"""🔗 身份綁定碼
@@ -114,11 +114,11 @@ class BindCommandHandler(CommandHandler):
                 logger.info(
                     f"Binding code generated and sent: {code}",
                     extra={
-                        'user_id': user_id,
-                        'code': code,
-                        'expires_in_minutes': expires_in,
-                        'event_type': 'bind_code_generated'
-                    }
+                        "user_id": user_id,
+                        "code": code,
+                        "expires_in_minutes": expires_in,
+                        "event_type": "bind_code_generated",
+                    },
                 )
 
             return success
@@ -126,8 +126,8 @@ class BindCommandHandler(CommandHandler):
         except Exception as e:
             logger.error(
                 f"Failed to generate binding code: {str(e)}",
-                extra={'user_id': user_id, 'event_type': 'bind_error'},
-                exc_info=True
+                extra={"user_id": user_id, "event_type": "bind_error"},
+                exc_info=True,
             )
 
             error_msg = "❌ 生成綁定碼失敗\n\n請稍後再試或聯繫管理員"

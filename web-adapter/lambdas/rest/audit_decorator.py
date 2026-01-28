@@ -12,14 +12,14 @@ from functools import wraps
 from typing import Any
 
 # 在 Lambda 環境，audit_service 在 /opt/python（layer）
-sys.path.insert(0, '/opt/python')
+sys.path.insert(0, "/opt/python")
 from audit_service import AuditService
 
 
 def create_audit_service():
     """創建 AuditService 實例"""
-    audit_table = os.environ.get('AUDIT_LOGS_TABLE', 'agentcore-admin-audit-logs-dev')
-    config_table = os.environ.get('SYSTEM_CONFIG_TABLE', 'agentcore-admin-system-config-dev')
+    audit_table = os.environ.get("AUDIT_LOGS_TABLE", "agentcore-admin-audit-logs-dev")
+    config_table = os.environ.get("SYSTEM_CONFIG_TABLE", "agentcore-admin-system-config-dev")
     return AuditService(audit_table, config_table)
 
 
@@ -197,7 +197,9 @@ def require_permission(permission: str):
 
             # Debug 日誌
             check_result = check_permission(user_role, permission)
-            print(f"🔍 Permission Check: user_role={repr(user_role)}, required={repr(permission)}, result={check_result}")
+            print(
+                f"🔍 Permission Check: user_role={repr(user_role)}, required={repr(permission)}, result={check_result}"
+            )
             print(f"🔍 USER_ROLES keys: {list(USER_ROLES.keys())}")
             print(f"🔍 Is role in USER_ROLES? {permission in USER_ROLES}")
 
@@ -293,9 +295,7 @@ def check_permission(user_role: str, required_permission: str) -> bool:
         if user_role == required_permission:
             return True
         # 檢查是否是 super_admin（最高權限）
-        if user_role == 'super_admin':
-            return True
-        return False
+        return user_role == "super_admin"
 
     # 否則當作權限名檢查
     role_config = USER_ROLES.get(user_role, {})
@@ -311,8 +311,4 @@ def check_permission(user_role: str, required_permission: str) -> bool:
 
     # 檢查繼承的權限
     inherits = role_config.get("inherits", [])
-    for parent_role in inherits:
-        if check_permission(parent_role, required_permission):
-            return True
-
-    return False
+    return any(check_permission(parent_role, required_permission) for parent_role in inherits)

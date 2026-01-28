@@ -16,17 +16,17 @@ from utils.logger import get_logger
 logger = get_logger(__name__)
 
 # 動態導入 IdentityService（從 Lambda Layer）
-sys.path.insert(0, '/opt/python')
-from identity_service import IdentityService
+sys.path.insert(0, "/opt/python")
+from identity_service import IdentityService  # noqa: E402
 
 
 class MyBindingsCommandHandler(CommandHandler):
     """
     /mybindings 命令處理器
-    
+
     功能：查看當前綁定的身份列表
     權限：所有用戶可用（不需要管理員）
-    
+
     使用方式：
         用戶: /mybindings
         Bot: 顯示已綁定的身份列表
@@ -39,8 +39,8 @@ class MyBindingsCommandHandler(CommandHandler):
     def _get_identity_service(self):
         """取得 IdentityService 單例"""
         if self._identity_service is None:
-            binding_codes_table = os.getenv('BINDING_CODES_TABLE')
-            identity_map_table = os.getenv('IDENTITY_MAP_TABLE')
+            binding_codes_table = os.getenv("BINDING_CODES_TABLE")
+            identity_map_table = os.getenv("IDENTITY_MAP_TABLE")
 
             if not binding_codes_table or not identity_map_table:
                 logger.error("Identity binding tables not configured")
@@ -48,7 +48,7 @@ class MyBindingsCommandHandler(CommandHandler):
 
             self._identity_service = IdentityService(
                 binding_codes_table_name=binding_codes_table,
-                identity_map_table_name=identity_map_table
+                identity_map_table_name=identity_map_table,
             )
             logger.info("IdentityService initialized")
 
@@ -77,11 +77,11 @@ class MyBindingsCommandHandler(CommandHandler):
         logger.info(
             "MyBindings command received",
             extra={
-                'chat_id': chat_id,
-                'user_id': user_id,
-                'username': username,
-                'event_type': 'mybindings_command'
-            }
+                "chat_id": chat_id,
+                "user_id": user_id,
+                "username": username,
+                "event_type": "mybindings_command",
+            },
         )
 
         # 獲取 IdentityService
@@ -107,8 +107,8 @@ class MyBindingsCommandHandler(CommandHandler):
                 return telegram_client.send_message(chat_id, message_text, parse_mode=None)
 
             # 有綁定，格式化顯示
-            unified_id = bindings.get('unified_conversation_id', 'N/A')
-            bound_identities = bindings.get('bound_identities', [])
+            unified_id = bindings.get("unified_conversation_id", "N/A")
+            bound_identities = bindings.get("bound_identities", [])
 
             lines = [
                 "🔗 我的身份綁定\n",
@@ -120,27 +120,27 @@ class MyBindingsCommandHandler(CommandHandler):
                 lines.append("已綁定的身份：")
 
                 for identity in bound_identities:
-                    platform = identity.get('platform', 'unknown')
-                    identity_user_id = identity.get('user_id', 'unknown')
-                    bound_at = identity.get('bound_at')
+                    platform = identity.get("platform", "unknown")
+                    identity_user_id = identity.get("user_id", "unknown")
+                    bound_at = identity.get("bound_at")
 
                     # 平台圖標
                     platform_icon = {
-                        'web': '🖥️',
-                        'telegram': '📱',
-                        'discord': '💬',
-                        'slack': '💼'
-                    }.get(platform, '❓')
+                        "web": "🖥️",
+                        "telegram": "📱",
+                        "discord": "💬",
+                        "slack": "💼",
+                    }.get(platform, "❓")
 
                     # 格式化綁定時間
                     if bound_at:
                         try:
                             dt = datetime.fromtimestamp(bound_at)
-                            time_str = dt.strftime('%Y-%m-%d %H:%M')
+                            time_str = dt.strftime("%Y-%m-%d %H:%M")
                         except:
-                            time_str = 'Unknown'
+                            time_str = "Unknown"
                     else:
-                        time_str = 'Unknown'
+                        time_str = "Unknown"
 
                     lines.append(f"  • {platform_icon} {platform.capitalize()}: {identity_user_id}")
                     lines.append(f"    綁定時間: {time_str}")
@@ -156,11 +156,11 @@ class MyBindingsCommandHandler(CommandHandler):
                 logger.info(
                     "Bindings info sent",
                     extra={
-                        'user_id': user_id,
-                        'unified_id': unified_id,
-                        'bound_count': len(bound_identities),
-                        'event_type': 'mybindings_success'
-                    }
+                        "user_id": user_id,
+                        "unified_id": unified_id,
+                        "bound_count": len(bound_identities),
+                        "event_type": "mybindings_success",
+                    },
                 )
 
             return success
@@ -168,8 +168,8 @@ class MyBindingsCommandHandler(CommandHandler):
         except Exception as e:
             logger.error(
                 f"Failed to get bindings: {str(e)}",
-                extra={'user_id': user_id, 'event_type': 'mybindings_error'},
-                exc_info=True
+                extra={"user_id": user_id, "event_type": "mybindings_error"},
+                exc_info=True,
             )
 
             error_msg = "❌ 查詢綁定狀態失敗\n\n請稍後再試或聯繫管理員"

@@ -14,7 +14,7 @@ import pytest
 async def test_file_basic_analysis(bot_client, log_fetcher, test_config, clean_session):
     """
     測試 3：上傳檔案測試分析
-    
+
     流程：
     1. 上傳 CSV/TXT 檔案
     2. 驗證 Agent 調用 analyze_file_tool
@@ -29,16 +29,14 @@ async def test_file_basic_analysis(bot_client, log_fetcher, test_config, clean_s
     if not os.path.exists(fixture_path):
         pytest.skip(f"測試檔案不存在：{fixture_path}")
 
-    sent_msg = await bot_client.send_document(
-        doc_path=fixture_path, caption="統計這份數據"
-    )
+    sent_msg = await bot_client.send_document(doc_path=fixture_path, caption="統計這份數據")
 
     print(f"  ✅ 檔案已上傳（message_id: {sent_msg.message_id}）")
 
     # 2. 等待 AI 回應
     print(f"  ⏳ 等待 AI 分析（最多 {test_config['e2e_timeout']} 秒）...")
     reply = await bot_client.wait_for_reply(
-        timeout=test_config['e2e_timeout'], poll_interval=test_config['poll_interval']
+        timeout=test_config["e2e_timeout"], poll_interval=test_config["poll_interval"]
     )
 
     # 3. 驗證回應
@@ -50,7 +48,7 @@ async def test_file_basic_analysis(bot_client, log_fetcher, test_config, clean_s
     # 4. 驗證 tool 被調用
     print("  🔍 檢查 Lambda 日誌...")
     tool_called = log_fetcher.check_tool_called(
-        lambda_name=test_config['processor_lambda'],
+        lambda_name=test_config["processor_lambda"],
         tool_name="File Analysis Tool",
         since_seconds=120,
     )
@@ -72,7 +70,7 @@ async def test_file_basic_analysis(bot_client, log_fetcher, test_config, clean_s
 async def test_file_memory_followup(bot_client, test_config, clean_session):
     """
     測試 4：同對話追問檔案內容
-    
+
     流程：
     1. 上傳檔案並獲得摘要
     2. 追問特定部分
@@ -92,7 +90,7 @@ async def test_file_memory_followup(bot_client, test_config, clean_session):
 
     # 2. 等待第一次回應
     print("  ⏳ 等待摘要...")
-    first_reply = await bot_client.wait_for_reply(timeout=test_config['e2e_timeout'])
+    first_reply = await bot_client.wait_for_reply(timeout=test_config["e2e_timeout"])
 
     assert first_reply is not None, "❌ 沒有收到摘要"
     print(f"  ✅ 摘要：{first_reply[:100]}...")
@@ -103,7 +101,7 @@ async def test_file_memory_followup(bot_client, test_config, clean_session):
 
     # 4. 等待追問回應
     print("  ⏳ 等待追問回應...")
-    followup_reply = await bot_client.wait_for_reply(timeout=test_config['e2e_timeout'])
+    followup_reply = await bot_client.wait_for_reply(timeout=test_config["e2e_timeout"])
 
     assert followup_reply is not None, "❌ 追問沒有回應"
     print(f"  ✅ 追問回應：{followup_reply[:100]}...")
@@ -121,7 +119,7 @@ async def test_file_memory_followup(bot_client, test_config, clean_session):
 async def test_multiple_files(bot_client, test_config, clean_session):
     """
     測試：上傳多個檔案
-    
+
     驗證 Agent 可以處理多個附件
     """
     print("\n📚 測試：多檔案處理")
@@ -138,7 +136,7 @@ async def test_multiple_files(bot_client, test_config, clean_session):
     await bot_client.send_document(doc_path=fixture1, caption="這是什麼數據？")
 
     # 等待回應
-    reply1 = await bot_client.wait_for_reply(timeout=test_config['e2e_timeout'])
+    reply1 = await bot_client.wait_for_reply(timeout=test_config["e2e_timeout"])
     assert reply1 is not None
     print("  ✅ 第一個檔案分析完成")
 
@@ -147,7 +145,7 @@ async def test_multiple_files(bot_client, test_config, clean_session):
         print("  → 上傳第二個檔案...")
         await bot_client.send_document(doc_path=fixture2)
 
-        reply2 = await bot_client.wait_for_reply(timeout=test_config['e2e_timeout'])
+        reply2 = await bot_client.wait_for_reply(timeout=test_config["e2e_timeout"])
         assert reply2 is not None
         print("  ✅ 第二個檔案分析完成")
 

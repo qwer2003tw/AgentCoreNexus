@@ -21,9 +21,7 @@ class CloudWatchLogFetcher:
         self.logs_client = boto3.client("logs", region_name=region)
         self.region = region
 
-    def check_tool_called(
-        self, lambda_name: str, tool_name: str, since_seconds: int = 90
-    ) -> bool:
+    def check_tool_called(self, lambda_name: str, tool_name: str, since_seconds: int = 90) -> bool:
         """
         檢查特定 tool 是否被調用
 
@@ -52,7 +50,9 @@ class CloudWatchLogFetcher:
             print(f"⚠️ 查詢日誌失敗：{e}")
             return False
 
-    def check_memory_recorded(self, lambda_name: str, keyword: str, since_seconds: int = 90) -> bool:
+    def check_memory_recorded(
+        self, lambda_name: str, keyword: str, since_seconds: int = 90
+    ) -> bool:
         """
         檢查 Memory 是否記錄了特定內容
 

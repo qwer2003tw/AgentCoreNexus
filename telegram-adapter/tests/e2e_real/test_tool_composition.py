@@ -14,12 +14,12 @@ import pytest
 async def test_image_and_search(bot_client, log_fetcher, test_config, clean_session):
     """
     測試 5：測試工具組合使用
-    
+
     流程：
     1. 上傳產品圖片 + 要求搜尋價格
     2. 驗證 Agent 組合使用多個 tools
     3. 驗證回應整合了多個 tools 的結果
-    
+
     預期 Agent 行為：
     - 調用 analyze_image_tool 識別產品
     - 調用 browse_website 或搜尋工具查詢價格
@@ -38,8 +38,7 @@ async def test_image_and_search(bot_client, log_fetcher, test_config, clean_sess
             pytest.skip("測試圖片不存在")
 
     await bot_client.send_photo(
-        photo_path=fixture_path,
-        caption="這是什麼產品？幫我搜尋網路上的資訊"
+        photo_path=fixture_path, caption="這是什麼產品？幫我搜尋網路上的資訊"
     )
 
     # 2. 等待回應（組合工具可能需要更長時間）
@@ -54,9 +53,9 @@ async def test_image_and_search(bot_client, log_fetcher, test_config, clean_sess
     # 3. 驗證 image tool 被調用
     print("  🔍 檢查 tool 調用記錄...")
     image_tool_called = log_fetcher.check_tool_called(
-        lambda_name=test_config['processor_lambda'],
+        lambda_name=test_config["processor_lambda"],
         tool_name="Image Analysis Tool",
-        since_seconds=150
+        since_seconds=150,
     )
 
     assert image_tool_called, "❌ analyze_image_tool 沒有被調用"
@@ -64,9 +63,7 @@ async def test_image_and_search(bot_client, log_fetcher, test_config, clean_sess
 
     # 4. 檢查是否調用了其他 tools（可選驗證）
     browse_called = log_fetcher.check_tool_called(
-        lambda_name=test_config['processor_lambda'],
-        tool_name="browse_website",
-        since_seconds=150
+        lambda_name=test_config["processor_lambda"], tool_name="browse_website", since_seconds=150
     )
 
     if browse_called:
@@ -82,7 +79,7 @@ async def test_image_and_search(bot_client, log_fetcher, test_config, clean_sess
 async def test_image_and_file_together(bot_client, test_config, clean_session):
     """
     測試：同時處理圖片和檔案
-    
+
     驗證 Agent 可以處理混合附件
     """
     print("\n🖼️📄 測試：圖片 + 檔案混合")
@@ -98,7 +95,7 @@ async def test_image_and_file_together(bot_client, test_config, clean_session):
     await bot_client.send_photo(photo_path=image_path, caption="這是什麼？")
 
     # 等待回應
-    reply1 = await bot_client.wait_for_reply(timeout=test_config['e2e_timeout'])
+    reply1 = await bot_client.wait_for_reply(timeout=test_config["e2e_timeout"])
     assert reply1 is not None
     print("  ✅ 圖片分析完成")
 
@@ -107,7 +104,7 @@ async def test_image_and_file_together(bot_client, test_config, clean_session):
         print("  → 上傳檔案...")
         await bot_client.send_document(doc_path=file_path, caption="這個數據呢？")
 
-        reply2 = await bot_client.wait_for_reply(timeout=test_config['e2e_timeout'])
+        reply2 = await bot_client.wait_for_reply(timeout=test_config["e2e_timeout"])
         assert reply2 is not None
         print("  ✅ 檔案分析完成")
 
@@ -115,7 +112,7 @@ async def test_image_and_file_together(bot_client, test_config, clean_session):
         print("  💬 測試 Memory：剛才的圖片和數據有關聯嗎？")
         await bot_client.send_text("剛才的圖片和數據有關聯嗎？")
 
-        reply3 = await bot_client.wait_for_reply(timeout=test_config['e2e_timeout'])
+        reply3 = await bot_client.wait_for_reply(timeout=test_config["e2e_timeout"])
         assert reply3 is not None
         print(f"  ✅ Memory 回應：{reply3[:100]}...")
 

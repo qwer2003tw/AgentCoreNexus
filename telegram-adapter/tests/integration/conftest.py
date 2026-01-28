@@ -103,9 +103,7 @@ def lambda_context():
 
 
 @pytest.fixture(scope="function")
-def full_mock_env(
-    mock_env, mock_secrets, mock_eventbridge, mock_telegram_api, mock_allowlist
-):
+def full_mock_env(mock_env, mock_secrets, mock_eventbridge, mock_telegram_api, mock_allowlist):
     """
     完整的測試環境
     包含所有必要的 mocks
