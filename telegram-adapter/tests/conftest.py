@@ -9,3 +9,8 @@ from pathlib import Path
 # 將 src 目錄加入 Python 路徑
 src_path = Path(__file__).parent.parent / "src"
 sys.path.insert(0, str(src_path))
+
+# Mock identity_service（避免 Layer boto3 版本衝突）
+from unittest.mock import MagicMock
+
+sys.modules['identity_service'] = MagicMock()
