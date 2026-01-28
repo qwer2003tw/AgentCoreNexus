@@ -102,22 +102,21 @@ test.describe('Admin Authentication & Authorization', () => {
     await page.goto('/admin')
     await waitForAdminPanel(page)
     
-    // 登出
-    await page.click('button:has-text("登出")')
-    await page.waitForTimeout(500)
-    
-    // 確認登出
-    page.on('dialog', dialog => dialog.accept())
+    // 登出 - 使用 once 避免重複處理對話框
+    page.once('dialog', dialog => dialog.accept())
     await page.click('button:has-text("登出")')
     
     // 等待導向登入頁
-    await page.waitForSelector('input[type="email"]', { timeout: 5000 })
+    await page.waitForURL('**/login', { timeout: 10000 })
+    
+    // 確認在登入頁面
+    await expect(page.locator('input[type="email"]')).toBeVisible()
     
     // 嘗試訪問 admin（應該被導向登入頁）
     await page.goto('/admin')
-    await page.waitForTimeout(1000)
     
-    // 預期：在登入頁面
+    // 預期：仍在登入頁面或被重定向回登入頁
+    await page.waitForURL('**/login', { timeout: 10000 })
     await expect(page.locator('input[type="email"]')).toBeVisible()
   })
   

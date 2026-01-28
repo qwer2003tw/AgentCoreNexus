@@ -96,10 +96,10 @@ export const test = base.extend<{ authenticatedPage: Page }>({
       
       console.log(`📍 Worker ${testInfo.parallelIndex}: Conversation ready`)
       
-      // Step 10: Wait for WebSocket connection (now should be fast after IAM fix)
+      // Step 10: Wait for WebSocket connection (increased timeout for concurrent environment)
       await page.waitForFunction(
         () => document.querySelector('.connection-status')?.textContent?.includes('已連接'),
-        { timeout: 5000 }
+        { timeout: 15000 }
       ).catch(() => {
         console.log(`⚠️ Worker ${testInfo.parallelIndex}: WebSocket not connected`)
       })
@@ -163,10 +163,10 @@ export async function sendMessage(page: Page, message: string) {
   await page.waitForTimeout(500)
 }
 
-export async function waitForAIReply(page: Page, timeout = 15000) {
+export async function waitForAIReply(page: Page, timeout = 45000) {
   const initialMessageCount = await page.locator('.flex.gap-3').count()
   
-  // Wait for new message to appear
+  // Wait for new message to appear (covers p95: 25.7s with 75% margin)
   await page.waitForFunction(
     (count) => {
       const messages = document.querySelectorAll('.flex.gap-3')

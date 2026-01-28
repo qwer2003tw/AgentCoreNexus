@@ -7,14 +7,17 @@ test.describe('Chat Core Functionality', () => {
   })
   
   test('user can send message and receive AI reply', async ({ authenticatedPage: page }) => {
+    // Increase timeout based on actual p95: 25.7s (45s default + margin)
+    test.setTimeout(120000)
+    
     // Create new conversation
     await createNewConversation(page)
     
     // Send message
     await sendMessage(page, '1+1等於多少？')
     
-    // Wait for AI reply
-    await waitForAIReply(page, 15000)
+    // Wait for AI reply (45s default covers p95)
+    await waitForAIReply(page, 60000)
     
     // Verify reply exists
     const messages = await page.locator('.flex.gap-3').allTextContents()
@@ -63,6 +66,9 @@ test.describe('Chat Core Functionality', () => {
   })
   
   test('conversation title gets updated', async ({ authenticatedPage: page }) => {
+    // Increase timeout for AI processing + title update
+    test.setTimeout(120000)
+    
     // Create new conversation
     await createNewConversation(page)
     await page.waitForTimeout(500)
@@ -71,7 +77,7 @@ test.describe('Chat Core Functionality', () => {
     await sendMessage(page, '今天是星期幾？')
     
     // Wait for AI reply (ensures title update has completed)
-    await waitForAIReply(page, 20000)
+    await waitForAIReply(page, 60000)
     
     // Wait a bit for title update to propagate
     await page.waitForTimeout(2000)
@@ -90,6 +96,9 @@ test.describe('Chat Core Functionality', () => {
   })
   
   test('multiple rapid messages are handled correctly', async ({ authenticatedPage: page }) => {
+    // Increase timeout for multiple AI processing (3 × p95)
+    test.setTimeout(180000)
+    
     // Create new conversation
     await createNewConversation(page)
     
@@ -100,8 +109,8 @@ test.describe('Chat Core Functionality', () => {
     await page.waitForTimeout(100)
     await sendMessage(page, '第三條消息')
     
-    // Wait for all replies
-    await page.waitForTimeout(25000)
+    // Wait for all replies (3 AI responses may take up to 90s based on p95)
+    await page.waitForTimeout(90000)
     
     // Verify all messages are present
     const messageCount = await getMessageCount(page)
@@ -122,6 +131,9 @@ test.describe('Chat Core Functionality', () => {
   })
   
   test('attachments display correctly in conversation history without crashing', async ({ authenticatedPage: page }) => {
+    // Increase timeout for attachment + AI processing
+    test.setTimeout(120000)
+    
     await createNewConversation(page)
     
     // Track JavaScript errors
@@ -138,7 +150,7 @@ test.describe('Chat Core Functionality', () => {
     await page.click('button[aria-label=\"發送訊息\"]')
     
     // Wait for AI to process
-    await waitForAIReply(page, 30000)
+    await waitForAIReply(page, 60000)
     
     // Reload page to trigger loading from history
     await page.reload()
@@ -154,6 +166,9 @@ test.describe('Chat Core Functionality', () => {
   })
   
   test('WebSocket reconnection works', async ({ authenticatedPage: page }) => {
+    // Increase timeout for reconnection + AI processing
+    test.setTimeout(120000)
+    
     // Create conversation and send message
     await createNewConversation(page)
     await sendMessage(page, '測試重連')
@@ -161,13 +176,13 @@ test.describe('Chat Core Functionality', () => {
     // Simulate disconnect by reloading page
     await page.reload()
     
-    // Wait for page to load and reconnect
+    // Wait for page to load and reconnect (increased timeout for concurrent environment)
     await page.waitForSelector('textarea', { timeout: 10000 })
-    await page.waitForTimeout(2000)
+    await page.waitForTimeout(3000)
     
     // Verify can send message after reconnection
     await sendMessage(page, '重連後的消息')
-    await waitForAIReply(page, 15000)
+    await waitForAIReply(page, 60000)
     
     // Verify reply received
     const messageCount = await getMessageCount(page)

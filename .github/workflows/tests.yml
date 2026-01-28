@@ -128,10 +128,11 @@ jobs:
       # ✅ Configure test environment with real AWS endpoints
       - name: Configure test environment
         run: |
-          cd web-adapter/frontend
-          echo "VITE_API_ENDPOINT=${{ secrets.TEST_API_ENDPOINT }}" > .env.local
-          echo "VITE_WS_ENDPOINT=${{ secrets.TEST_WS_ENDPOINT }}" >> .env.local
-          echo "✅ Test environment configured"
+          cd web-adapter/tests
+          echo "FRONTEND_URL=${{ secrets.FRONTEND_URL }}" > .env.aws
+          echo "VITE_API_ENDPOINT=${{ secrets.TEST_API_ENDPOINT }}" >> .env.aws
+          echo "VITE_WS_ENDPOINT=${{ secrets.TEST_WS_ENDPOINT }}" >> .env.aws
+          echo "✅ Test environment configured with AWS endpoints"
       
       - name: Install frontend dependencies
         run: |
@@ -168,11 +169,12 @@ jobs:
           npx playwright install-deps
       
       # ✅ Pass test account credentials for 4 workers
-      - name: Run E2E tests
+      - name: Run E2E tests against real AWS
         run: |
           cd web-adapter/tests
           npm test
         env:
+          E2E_ENV: aws  # ⭐ 關鍵：告訴 Playwright 使用 AWS 環境
           TEST_USER_1_EMAIL: ${{ secrets.TEST_USER_1_EMAIL }}
           TEST_USER_1_PASSWORD: ${{ secrets.TEST_USER_1_PASSWORD }}
           TEST_USER_2_EMAIL: ${{ secrets.TEST_USER_2_EMAIL }}
