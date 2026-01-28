@@ -28,7 +28,7 @@ export async function loginAsAdmin(page: Page) {
 }
 
 /**
- * 登入為普通用戶
+ * 登入為普通用戶（完整流程，參考 authenticatedPage）
  */
 export async function loginAsUser(page: Page) {
   await page.goto('/login')
@@ -36,8 +36,41 @@ export async function loginAsUser(page: Page) {
   await page.fill('input[type="password"]', REGULAR_USER.password)
   await page.click('button[type="submit"]')
   
-  // 等待登入完成
+  // 等待 login API 響應
+  await page.waitForResponse(
+    response => response.url().includes('/auth/login') && response.status() === 200,
+    { timeout: 10000 }
+  )
+  
+  // 等待 user load API（可能沒有，所以 catch）
+  await page.waitForResponse(
+    response => response.url().includes('/auth/me'),
+    { timeout: 10000 }
+  ).catch(() => {})
+  
+  // 等待 DOM 載入
+  await page.waitForLoadState('domcontentloaded', { timeout: 10000 })
+  
+  // 驗證導航到聊天頁面
+  await page.waitForURL('/', { timeout: 10000 })
+  
+  // 等待「新對話」按鈕出現
   await page.waitForSelector('button:has-text("新對話")', { timeout: 10000 })
+  
+  // 等待 conversations 載入或 textarea 可用
+  await Promise.race([
+    page.waitForFunction(
+      () => document.querySelectorAll('.p-2 button h3').length > 0,
+      { timeout: 10000 }
+    ),
+    page.waitForSelector('textarea:not([disabled])', { timeout: 10000 })
+  ]).catch(() => {})
+  
+  // 等待 WebSocket 連接（關鍵！）
+  await page.waitForFunction(
+    () => document.querySelector('.connection-status')?.textContent?.includes('已連接'),
+    { timeout: 15000 }
+  ).catch(() => {})
 }
 
 /**

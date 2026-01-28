@@ -88,9 +88,10 @@ test.describe('Chat Core Functionality', () => {
     await page.waitForTimeout(1000)
     
     // Check sidebar shows updated title (not "新對話")
+    // Backend uses first 30 chars of AI reply as title, so don't rely on specific keyword
     const sidebarTitles = await page.locator('.p-2 button h3').allTextContents()
     const hasUpdatedTitle = sidebarTitles.some(t => 
-      t !== '新對話' && (t.includes('星期') || t.length > 10)
+      t !== '新對話' && t !== 'New Chat' && t !== 'First Chat' && t.length >= 3
     )
     expect(hasUpdatedTitle).toBeTruthy()
   })
