@@ -20,9 +20,10 @@ from decimal import Decimal
 import boto3
 
 # 初始化
-dynamodb = boto3.resource('dynamodb', region_name='us-west-2')
-history_table = dynamodb.Table('agentcore-conversation-history-prod')
-metadata_table = dynamodb.Table('agentcore-conversation-metadata-prod')
+dynamodb = boto3.resource("dynamodb", region_name="us-west-2")
+history_table = dynamodb.Table("agentcore-conversation-history-prod")
+metadata_table = dynamodb.Table("agentcore-conversation-metadata-prod")
+
 
 def decimal_default(obj):
     """JSON 序列化 Decimal"""
@@ -30,10 +31,11 @@ def decimal_default(obj):
         return int(obj) if obj % 1 == 0 else float(obj)
     raise TypeError
 
+
 def backup_tables():
     """備份兩個表的完整數據"""
-    timestamp = datetime.now().strftime('%Y%m%d-%H%M%S')
-    backup_dir = f'backups/{timestamp}'
+    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    backup_dir = f"backups/{timestamp}"
     os.makedirs(backup_dir, exist_ok=True)
 
     print(f"📦 備份數據到 {backup_dir}/...")
@@ -41,38 +43,40 @@ def backup_tables():
     # 備份 history 表
     print("  備份 history 表...")
     response = history_table.scan()
-    items = response.get('Items', [])
-    while 'LastEvaluatedKey' in response:
-        response = history_table.scan(ExclusiveStartKey=response['LastEvaluatedKey'])
-        items.extend(response.get('Items', []))
+    items = response.get("Items", [])
+    while "LastEvaluatedKey" in response:
+        response = history_table.scan(ExclusiveStartKey=response["LastEvaluatedKey"])
+        items.extend(response.get("Items", []))
 
-    with open(f'{backup_dir}/history-backup.json', 'w', encoding='utf-8') as f:
+    with open(f"{backup_dir}/history-backup.json", "w", encoding="utf-8") as f:
         json.dump(items, f, ensure_ascii=False, indent=2, default=decimal_default)
     print(f"    ✅ {len(items)} 條記錄")
 
     # 備份 metadata 表
     print("  備份 metadata 表...")
     response = metadata_table.scan()
-    items = response.get('Items', [])
-    while 'LastEvaluatedKey' in response:
-        response = metadata_table.scan(ExclusiveStartKey=response['LastEvaluatedKey'])
-        items.extend(response.get('Items', []))
+    items = response.get("Items", [])
+    while "LastEvaluatedKey" in response:
+        response = metadata_table.scan(ExclusiveStartKey=response["LastEvaluatedKey"])
+        items.extend(response.get("Items", []))
 
-    with open(f'{backup_dir}/metadata-backup.json', 'w', encoding='utf-8') as f:
+    with open(f"{backup_dir}/metadata-backup.json", "w", encoding="utf-8") as f:
         json.dump(items, f, ensure_ascii=False, indent=2, default=decimal_default)
     print(f"    ✅ {len(items)} 條記錄")
 
     print(f"✅ 備份完成：{backup_dir}/\n")
     return backup_dir
 
+
 def convert_id(old_id: str) -> str:
     """轉換 ID 格式"""
-    if old_id.startswith('tg:group:'):
-        return old_id.replace('tg:group:', 'telegram:group:', 1)
-    elif old_id.startswith('tg:'):
-        return old_id.replace('tg:', 'telegram:', 1)
+    if old_id.startswith("tg:group:"):
+        return old_id.replace("tg:group:", "telegram:group:", 1)
+    elif old_id.startswith("tg:"):
+        return old_id.replace("tg:", "telegram:", 1)
     else:
         return old_id
+
 
 def scan_tables():
     """掃描表，找出需要遷移的記錄"""
@@ -80,32 +84,33 @@ def scan_tables():
 
     # 掃描 history 表
     response = history_table.scan()
-    history_items = response.get('Items', [])
-    while 'LastEvaluatedKey' in response:
-        response = history_table.scan(ExclusiveStartKey=response['LastEvaluatedKey'])
-        history_items.extend(response.get('Items', []))
+    history_items = response.get("Items", [])
+    while "LastEvaluatedKey" in response:
+        response = history_table.scan(ExclusiveStartKey=response["LastEvaluatedKey"])
+        history_items.extend(response.get("Items", []))
 
     # 掃描 metadata 表
     response = metadata_table.scan()
-    metadata_items = response.get('Items', [])
-    while 'LastEvaluatedKey' in response:
-        response = metadata_table.scan(ExclusiveStartKey=response['LastEvaluatedKey'])
-        metadata_items.extend(response.get('Items', []))
+    metadata_items = response.get("Items", [])
+    while "LastEvaluatedKey" in response:
+        response = metadata_table.scan(ExclusiveStartKey=response["LastEvaluatedKey"])
+        metadata_items.extend(response.get("Items", []))
 
     # 按 conversation_id 分組
     history_by_conv = defaultdict(list)
     for item in history_items:
-        conv_id = item.get('conversation_id')
-        if conv_id and conv_id.startswith('tg:'):
+        conv_id = item.get("conversation_id")
+        if conv_id and conv_id.startswith("tg:"):
             history_by_conv[conv_id].append(item)
 
     metadata_by_conv = {}
     for item in metadata_items:
-        conv_id = item.get('conversation_id')
-        if conv_id and conv_id.startswith('tg:'):
+        conv_id = item.get("conversation_id")
+        if conv_id and conv_id.startswith("tg:"):
             metadata_by_conv[conv_id] = item
 
     return history_by_conv, metadata_by_conv
+
 
 def dry_run():
     """Dry run 模式：報告會做什麼，不實際執行"""
@@ -132,7 +137,7 @@ def dry_run():
         print()
 
         total_history += history_count
-        total_metadata += (1 if has_metadata else 0)
+        total_metadata += 1 if has_metadata else 0
 
     print("=" * 60)
     print("📊 總計：")
@@ -142,6 +147,7 @@ def dry_run():
     print("=" * 60 + "\n")
 
     return history_by_conv, metadata_by_conv
+
 
 def migrate_conversation(old_id: str, history_items: list, metadata_item: dict = None):
     """遷移單個對話（原子操作）"""
@@ -155,41 +161,38 @@ def migrate_conversation(old_id: str, history_items: list, metadata_item: dict =
         # Step 1: 創建新 history 記錄
         for item in history_items:
             new_item = dict(item)
-            new_item['conversation_id'] = new_id
+            new_item["conversation_id"] = new_id
             history_table.put_item(Item=new_item)
         print(f"  ✅ 創建 {len(history_items)} 條新 history 記錄")
 
         # Step 2: 創建新 metadata 記錄（如果有）
         if metadata_item:
             new_metadata = dict(metadata_item)
-            new_metadata['conversation_id'] = new_id
+            new_metadata["conversation_id"] = new_id
             metadata_table.put_item(Item=new_metadata)
             print("  ✅ 創建新 metadata 記錄")
 
         # Step 3: 驗證新記錄
         verify_response = history_table.query(
-            KeyConditionExpression=boto3.dynamodb.conditions.Key('conversation_id').eq(new_id),
-            Select='COUNT'
+            KeyConditionExpression=boto3.dynamodb.conditions.Key("conversation_id").eq(new_id),
+            Select="COUNT",
         )
-        if verify_response['Count'] != len(history_items):
-            raise Exception(f"驗證失敗：預期 {len(history_items)} 條，實際 {verify_response['Count']} 條")
+        if verify_response["Count"] != len(history_items):
+            raise Exception(
+                f"驗證失敗：預期 {len(history_items)} 條，實際 {verify_response['Count']} 條"
+            )
         print("  ✅ 驗證新記錄成功")
 
         # Step 4: 刪除舊 history 記錄
         for item in history_items:
             history_table.delete_item(
-                Key={
-                    'conversation_id': old_id,
-                    'timestamp': item['timestamp']
-                }
+                Key={"conversation_id": old_id, "timestamp": item["timestamp"]}
             )
         print(f"  ✅ 刪除 {len(history_items)} 條舊 history 記錄")
 
         # Step 5: 刪除舊 metadata 記錄（如果有）
         if metadata_item:
-            metadata_table.delete_item(
-                Key={'conversation_id': old_id}
-            )
+            metadata_table.delete_item(Key={"conversation_id": old_id})
             print("  ✅ 刪除舊 metadata 記錄")
 
         print("  🎉 遷移成功！")
@@ -199,6 +202,7 @@ def migrate_conversation(old_id: str, history_items: list, metadata_item: dict =
         print(f"  ❌ 遷移失敗：{str(e)}")
         print("  ⚠️  可能需要手動清理")
         return False
+
 
 def execute_migration(history_by_conv, metadata_by_conv):
     """執行實際遷移"""
@@ -228,13 +232,14 @@ def execute_migration(history_by_conv, metadata_by_conv):
 
     return success, failed
 
+
 def main():
     print("🚀 Conversation ID 統一遷移工具")
     print("將 tg: 格式統一為 telegram: 格式")
     print()
 
     # 檢查命令行參數
-    execute_mode = '--execute' in sys.argv
+    execute_mode = "--execute" in sys.argv
 
     # Step 1: 備份
     backup_dir = backup_tables()
@@ -268,5 +273,6 @@ def main():
         print(f"⚠️  有 {failed} 個對話遷移失敗")
         print(f"   請查看日誌並使用備份恢復：{backup_dir}/")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()

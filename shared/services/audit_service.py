@@ -298,11 +298,17 @@ class AuditService:
         try:
             # 根據篩選條件選擇查詢方式
             if admin_email:
-                return self._query_by_admin(admin_email, start_time, end_time, limit, last_evaluated_key)
+                return self._query_by_admin(
+                    admin_email, start_time, end_time, limit, last_evaluated_key
+                )
             elif resource_id:
-                return self._query_by_resource(resource_id, start_time, end_time, limit, last_evaluated_key)
+                return self._query_by_resource(
+                    resource_id, start_time, end_time, limit, last_evaluated_key
+                )
             elif action:
-                return self._query_by_action(action, start_time, end_time, limit, last_evaluated_key)
+                return self._query_by_action(
+                    action, start_time, end_time, limit, last_evaluated_key
+                )
             else:
                 return self._scan_logs(start_time, end_time, limit, last_evaluated_key)
 

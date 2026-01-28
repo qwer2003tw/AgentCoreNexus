@@ -8,12 +8,12 @@
 3. 保持其他屬性不變
 """
 
-
 import boto3
 
 # 初始化 DynamoDB
-dynamodb = boto3.resource('dynamodb', region_name='us-west-2')
-table = dynamodb.Table('agentcore-conversation-history-prod')
+dynamodb = boto3.resource("dynamodb", region_name="us-west-2")
+table = dynamodb.Table("agentcore-conversation-history-prod")
+
 
 def backfill_global_partition():
     """回填 global_partition 屬性"""
@@ -22,12 +22,12 @@ def backfill_global_partition():
 
     # Scan 所有記錄
     response = table.scan()
-    items = response.get('Items', [])
+    items = response.get("Items", [])
 
     # 處理分頁
-    while 'LastEvaluatedKey' in response:
-        response = table.scan(ExclusiveStartKey=response['LastEvaluatedKey'])
-        items.extend(response.get('Items', []))
+    while "LastEvaluatedKey" in response:
+        response = table.scan(ExclusiveStartKey=response["LastEvaluatedKey"])
+        items.extend(response.get("Items", []))
 
     print(f"📊 找到 {len(items)} 條記錄")
 
@@ -37,25 +37,20 @@ def backfill_global_partition():
     errors = 0
 
     for item in items:
-        conversation_id = item.get('conversation_id')
-        timestamp = item.get('timestamp')
+        conversation_id = item.get("conversation_id")
+        timestamp = item.get("timestamp")
 
         # 檢查是否已有 global_partition
-        if 'global_partition' in item:
+        if "global_partition" in item:
             skipped += 1
             continue
 
         try:
             # 更新記錄，添加 global_partition
             table.update_item(
-                Key={
-                    'conversation_id': conversation_id,
-                    'timestamp': timestamp
-                },
-                UpdateExpression='SET global_partition = :gp',
-                ExpressionAttributeValues={
-                    ':gp': 'ALL'
-                }
+                Key={"conversation_id": conversation_id, "timestamp": timestamp},
+                UpdateExpression="SET global_partition = :gp",
+                ExpressionAttributeValues={":gp": "ALL"},
             )
             updated += 1
 
@@ -73,7 +68,8 @@ def backfill_global_partition():
 
     return updated, skipped, errors
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     print("🚀 開始回填 global_partition 屬性...")
     print("表名: agentcore-conversation-history-prod")
     print("屬性: global_partition = 'ALL'")

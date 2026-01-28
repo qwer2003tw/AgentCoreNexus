@@ -7,12 +7,12 @@
 - 其他 → role = 'user'
 """
 
-
 import boto3
 
 # 初始化 DynamoDB
-dynamodb = boto3.resource('dynamodb', region_name='us-west-2')
-history_table = dynamodb.Table('agentcore-conversation-history-prod')
+dynamodb = boto3.resource("dynamodb", region_name="us-west-2")
+history_table = dynamodb.Table("agentcore-conversation-history-prod")
+
 
 def backfill_role():
     """回填 role 欄位"""
@@ -21,12 +21,12 @@ def backfill_role():
 
     # Scan 所有記錄
     response = history_table.scan()
-    items = response.get('Items', [])
+    items = response.get("Items", [])
 
     # 處理分頁
-    while 'LastEvaluatedKey' in response:
-        response = history_table.scan(ExclusiveStartKey=response['LastEvaluatedKey'])
-        items.extend(response.get('Items', []))
+    while "LastEvaluatedKey" in response:
+        response = history_table.scan(ExclusiveStartKey=response["LastEvaluatedKey"])
+        items.extend(response.get("Items", []))
 
     print(f"📊 找到 {len(items)} 條記錄")
 
@@ -36,31 +36,28 @@ def backfill_role():
     errors = 0
 
     for item in items:
-        conversation_id = item.get('conversation_id')
-        timestamp = item.get('timestamp')
+        conversation_id = item.get("conversation_id")
+        timestamp = item.get("timestamp")
 
         # 檢查是否已有 role
-        if 'role' in item:
+        if "role" in item:
             skipped += 1
             continue
 
         # 根據 sender_id 判斷 role
-        sender_id = item.get('sender_id', '')
-        if sender_id == 'ai':
-            role = 'assistant'
+        sender_id = item.get("sender_id", "")
+        if sender_id == "ai":
+            role = "assistant"
         else:
-            role = 'user'
+            role = "user"
 
         try:
             # 更新記錄，添加 role
             history_table.update_item(
-                Key={
-                    'conversation_id': conversation_id,
-                    'timestamp': timestamp
-                },
-                UpdateExpression='SET #role = :role',
-                ExpressionAttributeNames={'#role': 'role'},
-                ExpressionAttributeValues={':role': role}
+                Key={"conversation_id": conversation_id, "timestamp": timestamp},
+                UpdateExpression="SET #role = :role",
+                ExpressionAttributeNames={"#role": "role"},
+                ExpressionAttributeValues={":role": role},
             )
             updated += 1
 
@@ -78,19 +75,21 @@ def backfill_role():
 
     # 統計結果
     print("\n📊 角色分布：")
-    response = history_table.scan(ProjectionExpression='#role', ExpressionAttributeNames={'#role': 'role'})
-    items = response.get('Items', [])
-    while 'LastEvaluatedKey' in response:
+    response = history_table.scan(
+        ProjectionExpression="#role", ExpressionAttributeNames={"#role": "role"}
+    )
+    items = response.get("Items", [])
+    while "LastEvaluatedKey" in response:
         response = history_table.scan(
-            ProjectionExpression='#role',
-            ExpressionAttributeNames={'#role': 'role'},
-            ExclusiveStartKey=response['LastEvaluatedKey']
+            ProjectionExpression="#role",
+            ExpressionAttributeNames={"#role": "role"},
+            ExclusiveStartKey=response["LastEvaluatedKey"],
         )
-        items.extend(response.get('Items', []))
+        items.extend(response.get("Items", []))
 
     role_counts = {}
     for item in items:
-        role = item.get('role', 'unknown')
+        role = item.get("role", "unknown")
         role_counts[role] = role_counts.get(role, 0) + 1
 
     for role, count in sorted(role_counts.items()):
@@ -98,7 +97,8 @@ def backfill_role():
 
     return updated, skipped, errors
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     print("🚀 開始回填 role 欄位...")
     print("表名: agentcore-conversation-history-prod")
     print()

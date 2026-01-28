@@ -30,10 +30,7 @@ class IdentityService:
     BINDING_CODE_MAX_ATTEMPTS = 5
 
     def __init__(
-        self,
-        binding_codes_table_name: str,
-        identity_map_table_name: str,
-        dynamodb_resource=None
+        self, binding_codes_table_name: str, identity_map_table_name: str, dynamodb_resource=None
     ):
         """
         Initialize Identity Service.
@@ -49,7 +46,7 @@ class IdentityService:
         if dynamodb_resource:
             self.dynamodb = dynamodb_resource
         else:
-            self.dynamodb = boto3.resource('dynamodb')
+            self.dynamodb = boto3.resource("dynamodb")
 
         self.binding_codes_table = self.dynamodb.Table(binding_codes_table_name)
         self.identity_map_table = self.dynamodb.Table(identity_map_table_name)
@@ -74,7 +71,7 @@ class IdentityService:
             Exception: If code generation fails
         """
         # 生成 6 位隨機數字碼
-        code = ''.join([str(random.randint(0, 9)) for _ in range(self.BINDING_CODE_LENGTH)])
+        code = "".join([str(random.randint(0, 9)) for _ in range(self.BINDING_CODE_LENGTH)])
 
         current_time = int(time.time())
         expires_at = current_time + (self.BINDING_CODE_EXPIRY_MINUTES * 60)
@@ -84,36 +81,33 @@ class IdentityService:
             # 儲存綁定碼到 DynamoDB
             self.binding_codes_table.put_item(
                 Item={
-                    'code': code,
-                    'telegram_user_id': telegram_user_id,
-                    'created_at': current_time,
-                    'expires_at': expires_at,
-                    'used': False,
-                    'attempts': 0,
-                    'ttl': ttl
+                    "code": code,
+                    "telegram_user_id": telegram_user_id,
+                    "created_at": current_time,
+                    "expires_at": expires_at,
+                    "used": False,
+                    "attempts": 0,
+                    "ttl": ttl,
                 },
                 # 條件：碼不存在（防止覆蓋）
-                ConditionExpression='attribute_not_exists(code)'
+                ConditionExpression="attribute_not_exists(code)",
             )
 
             return {
-                'code': code,
-                'expires_at': expires_at,
-                'expires_in_minutes': self.BINDING_CODE_EXPIRY_MINUTES
+                "code": code,
+                "expires_at": expires_at,
+                "expires_in_minutes": self.BINDING_CODE_EXPIRY_MINUTES,
             }
 
         except ClientError as e:
-            if e.response['Error']['Code'] == 'ConditionalCheckFailedException':
+            if e.response["Error"]["Code"] == "ConditionalCheckFailedException":
                 # 碼已存在（極低機率），遞迴重試
                 return self.generate_binding_code(telegram_user_id)
             else:
                 raise Exception(f"Failed to generate binding code: {e}") from e
 
     def verify_and_bind(
-        self,
-        code: str,
-        web_user_id: str,
-        web_email: str | None = None
+        self, code: str, web_user_id: str, web_email: str | None = None
     ) -> dict[str, Any]:
         """
         Verify a binding code and bind Web user to Telegram user.
@@ -140,24 +134,24 @@ class IdentityService:
 
         try:
             # 1. 查詢綁定碼
-            response = self.binding_codes_table.get_item(Key={'code': code})
+            response = self.binding_codes_table.get_item(Key={"code": code})
 
-            if 'Item' not in response:
+            if "Item" not in response:
                 raise ValueError("Invalid binding code")
 
-            code_data = response['Item']
+            code_data = response["Item"]
 
             # 2. 驗證碼狀態
-            if code_data.get('used', False):
+            if code_data.get("used", False):
                 raise ValueError("Binding code already used")
 
-            if current_time > code_data['expires_at']:
+            if current_time > code_data["expires_at"]:
                 raise ValueError("Binding code expired")
 
-            if code_data.get('attempts', 0) >= self.BINDING_CODE_MAX_ATTEMPTS:
+            if code_data.get("attempts", 0) >= self.BINDING_CODE_MAX_ATTEMPTS:
                 raise ValueError("Too many attempts for this code")
 
-            telegram_user_id = code_data['telegram_user_id']
+            telegram_user_id = code_data["telegram_user_id"]
 
             # 3. 檢查是否已有綁定
             telegram_identity_id = f"tg:{telegram_user_id}"
@@ -168,10 +162,12 @@ class IdentityService:
 
             # 如果其中一個已有 unified_conversation_id，使用現有的
             unified_conversation_id = None
-            if existing_telegram_binding and existing_telegram_binding.get('unified_conversation_id'):
-                unified_conversation_id = existing_telegram_binding['unified_conversation_id']
-            elif existing_web_binding and existing_web_binding.get('unified_conversation_id'):
-                unified_conversation_id = existing_web_binding['unified_conversation_id']
+            if existing_telegram_binding and existing_telegram_binding.get(
+                "unified_conversation_id"
+            ):
+                unified_conversation_id = existing_telegram_binding["unified_conversation_id"]
+            elif existing_web_binding and existing_web_binding.get("unified_conversation_id"):
+                unified_conversation_id = existing_web_binding["unified_conversation_id"]
 
             # 否則生成新的 unified_conversation_id
             if not unified_conversation_id:
@@ -182,52 +178,49 @@ class IdentityService:
                 identity_id=telegram_identity_id,
                 unified_conversation_id=unified_conversation_id,
                 metadata={
-                    'platform': 'telegram',
-                    'user_id': telegram_user_id,
-                    'bound_at': current_time
-                }
+                    "platform": "telegram",
+                    "user_id": telegram_user_id,
+                    "bound_at": current_time,
+                },
             )
 
             self._create_or_update_binding(
                 identity_id=web_identity_id,
                 unified_conversation_id=unified_conversation_id,
                 metadata={
-                    'platform': 'web',
-                    'user_id': web_user_id,
-                    'email': web_email,
-                    'bound_at': current_time
-                }
+                    "platform": "web",
+                    "user_id": web_user_id,
+                    "email": web_email,
+                    "bound_at": current_time,
+                },
             )
 
             # 5. 標記綁定碼為已使用
             self.binding_codes_table.update_item(
-                Key={'code': code},
-                UpdateExpression='SET used = :used, used_at = :used_at, used_by = :used_by',
+                Key={"code": code},
+                UpdateExpression="SET used = :used, used_at = :used_at, used_by = :used_by",
                 ExpressionAttributeValues={
-                    ':used': True,
-                    ':used_at': current_time,
-                    ':used_by': web_user_id
-                }
+                    ":used": True,
+                    ":used_at": current_time,
+                    ":used_by": web_user_id,
+                },
             )
 
             return {
-                'success': True,
-                'unified_conversation_id': unified_conversation_id,
-                'telegram_user_id': telegram_identity_id,
-                'web_user_id': web_identity_id,
-                'message': 'Binding successful'
+                "success": True,
+                "unified_conversation_id": unified_conversation_id,
+                "telegram_user_id": telegram_identity_id,
+                "web_user_id": web_identity_id,
+                "message": "Binding successful",
             }
 
         except ValueError as e:
             # 增加嘗試次數
             with contextlib.suppress(Exception):
                 self.binding_codes_table.update_item(
-                    Key={'code': code},
-                    UpdateExpression='SET attempts = if_not_exists(attempts, :zero) + :one',
-                    ExpressionAttributeValues={
-                        ':zero': 0,
-                        ':one': 1
-                    }
+                    Key={"code": code},
+                    UpdateExpression="SET attempts = if_not_exists(attempts, :zero) + :one",
+                    ExpressionAttributeValues={":zero": 0, ":one": 1},
                 )
 
             raise e
@@ -259,40 +252,40 @@ class IdentityService:
         if not binding:
             return None
 
-        unified_id = binding.get('unified_conversation_id')
+        unified_id = binding.get("unified_conversation_id")
         if not unified_id:
             return {
-                'identity_id': identity_id,
-                'unified_conversation_id': None,
-                'bound_identities': [],
-                'metadata': binding.get('metadata', {})
+                "identity_id": identity_id,
+                "unified_conversation_id": None,
+                "bound_identities": [],
+                "metadata": binding.get("metadata", {}),
             }
 
         # 查詢所有使用相同 unified_conversation_id 的身份
         try:
             response = self.identity_map_table.query(
-                IndexName='UnifiedConversationIndex',
-                KeyConditionExpression='unified_conversation_id = :unified_id',
-                ExpressionAttributeValues={
-                    ':unified_id': unified_id
-                }
+                IndexName="UnifiedConversationIndex",
+                KeyConditionExpression="unified_conversation_id = :unified_id",
+                ExpressionAttributeValues={":unified_id": unified_id},
             )
 
             bound_identities = []
-            for item in response.get('Items', []):
-                if item['identity_id'] != identity_id:  # 排除自己
-                    bound_identities.append({
-                        'identity_id': item['identity_id'],
-                        'platform': item.get('metadata', {}).get('platform'),
-                        'user_id': item.get('metadata', {}).get('user_id'),
-                        'bound_at': item.get('metadata', {}).get('bound_at')
-                    })
+            for item in response.get("Items", []):
+                if item["identity_id"] != identity_id:  # 排除自己
+                    bound_identities.append(
+                        {
+                            "identity_id": item["identity_id"],
+                            "platform": item.get("metadata", {}).get("platform"),
+                            "user_id": item.get("metadata", {}).get("user_id"),
+                            "bound_at": item.get("metadata", {}).get("bound_at"),
+                        }
+                    )
 
             return {
-                'identity_id': identity_id,
-                'unified_conversation_id': unified_id,
-                'bound_identities': bound_identities,
-                'metadata': binding.get('metadata', {})
+                "identity_id": identity_id,
+                "unified_conversation_id": unified_id,
+                "bound_identities": bound_identities,
+                "metadata": binding.get("metadata", {}),
             }
 
         except ClientError as e:
@@ -313,14 +306,14 @@ class IdentityService:
         """
         try:
             self.identity_map_table.update_item(
-                Key={'identity_id': identity_id},
-                UpdateExpression='REMOVE unified_conversation_id',
-                ConditionExpression='attribute_exists(identity_id)'
+                Key={"identity_id": identity_id},
+                UpdateExpression="REMOVE unified_conversation_id",
+                ConditionExpression="attribute_exists(identity_id)",
             )
             return True
 
         except ClientError as e:
-            if e.response['Error']['Code'] == 'ConditionalCheckFailedException':
+            if e.response["Error"]["Code"] == "ConditionalCheckFailedException":
                 return False  # Identity doesn't exist
             else:
                 raise Exception(f"Failed to unbind identity: {e}") from e
@@ -336,33 +329,30 @@ class IdentityService:
             str: Unified conversation ID (e.g., "unified:xxx") or None
         """
         binding = self._get_binding(identity_id)
-        return binding.get('unified_conversation_id') if binding else None
+        return binding.get("unified_conversation_id") if binding else None
 
     # ==================== Helper Methods ====================
 
     def _get_binding(self, identity_id: str) -> dict[str, Any] | None:
         """Get binding data for an identity."""
         try:
-            response = self.identity_map_table.get_item(Key={'identity_id': identity_id})
-            return response.get('Item')
+            response = self.identity_map_table.get_item(Key={"identity_id": identity_id})
+            return response.get("Item")
         except ClientError:
             return None
 
     def _create_or_update_binding(
-        self,
-        identity_id: str,
-        unified_conversation_id: str,
-        metadata: dict[str, Any]
+        self, identity_id: str, unified_conversation_id: str, metadata: dict[str, Any]
     ):
         """Create or update an identity binding."""
         current_time = int(time.time())
 
         self.identity_map_table.put_item(
             Item={
-                'identity_id': identity_id,
-                'unified_conversation_id': unified_conversation_id,
-                'metadata': metadata,
-                'updated_at': current_time,
-                'created_at': current_time  # 只在創建時設置
+                "identity_id": identity_id,
+                "unified_conversation_id": unified_conversation_id,
+                "metadata": metadata,
+                "updated_at": current_time,
+                "created_at": current_time,  # 只在創建時設置
             }
         )
