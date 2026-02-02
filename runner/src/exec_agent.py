@@ -140,7 +140,7 @@ class ExecAgent:
             return ExecResponse(type="error", data=str(e))
 
 
-def parse_request(data: str | bytes | dict) -> ExecRequest:
+def parse_request(data) -> ExecRequest:
     """Parse exec request from JSON."""
     if isinstance(data, (str, bytes)):
         data = json.loads(data)

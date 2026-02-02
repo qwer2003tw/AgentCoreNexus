@@ -43,7 +43,7 @@ class Sandbox:
     def _session_path(self, session_id: str) -> Path:
         # Sanitize to prevent directory traversal
         safe_id = "".join(c for c in session_id if c.isalnum() or c in "-_")
-        if not safe_id:
+        if not safe_id or safe_id != session_id:
             raise SandboxError(f"Invalid session_id: {session_id}")
         return Path(self.config.workspace_root) / safe_id
 
@@ -84,7 +84,7 @@ class Sandbox:
         path = self._session_path(session_id)
         return str(path) if path.exists() else None
 
-    def list_sessions(self) -> list[str]:
+    def list_sessions(self) -> list:
         root = Path(self.config.workspace_root)
         if not root.exists():
             return []

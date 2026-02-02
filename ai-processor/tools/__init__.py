@@ -5,6 +5,7 @@
 
 from .browser import browse_website_backup, browse_website_official
 from .calculator import calculate
+from .exec import EXEC_TOOL, handle_exec_tool
 from .file_analysis import analyze_file_tool
 from .file_reader import read_file
 from .image_analysis import analyze_image_tool
@@ -20,6 +21,8 @@ __all__ = [
     "read_file",
     "analyze_image_tool",
     "analyze_file_tool",
+    "EXEC_TOOL",
+    "handle_exec_tool",
 ]
 
 # 工具列表
@@ -33,3 +36,6 @@ AVAILABLE_TOOLS = [
     analyze_image_tool,
     analyze_file_tool,
 ]
+
+# Exec tool (OpenClaw-style) - requires Runner service
+EXEC_TOOLS = [EXEC_TOOL]
