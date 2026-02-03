@@ -1,0 +1,115 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CodeBuild project for AgentCoreNexus Runner image build
+
+Parameters:
+  GitHubRepo:
+    Type: String
+    Default: 'https://github.com/qwer2003tw/AgentCoreNexus.git'
+  
+  GitHubBranch:
+    Type: String
+    Default: 'refactor/openclaw-style'
+  
+  ECRRepoName:
+    Type: String
+    Default: 'agentcore-runner'
+
+Resources:
+  CodeBuildServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: agentcore-runner-codebuild-role
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: codebuild.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: CodeBuildPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              # CloudWatch Logs
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/*'
+              # ECR
+              - Effect: Allow
+                Action:
+                  - ecr:GetAuthorizationToken
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - ecr:BatchCheckLayerAvailability
+                  - ecr:GetDownloadUrlForLayer
+                  - ecr:BatchGetImage
+                  - ecr:PutImage
+                  - ecr:InitiateLayerUpload
+                  - ecr:UploadLayerPart
+                  - ecr:CompleteLayerUpload
+                Resource: !Sub 'arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/${ECRRepoName}'
+
+  CodeBuildProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: agentcore-runner-build
+      Description: Build and push AgentCoreNexus Runner image
+      ServiceRole: !GetAtt CodeBuildServiceRole.Arn
+      Artifacts:
+        Type: NO_ARTIFACTS
+      Environment:
+        Type: ARM_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/amazonlinux2-aarch64-standard:3.0
+        PrivilegedMode: true  # Required for Docker
+        EnvironmentVariables:
+          - Name: AWS_ACCOUNT_ID
+            Value: !Ref AWS::AccountId
+          - Name: AWS_REGION
+            Value: !Ref AWS::Region
+          - Name: ECR_REPO
+            Value: !Ref ECRRepoName
+          - Name: IMAGE_TAG
+            Value: latest
+      Source:
+        Type: GITHUB
+        Location: !Ref GitHubRepo
+        GitCloneDepth: 1
+        BuildSpec: |
+          version: 0.2
+          phases:
+            pre_build:
+              commands:
+                - echo Logging in to Amazon ECR...
+                - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+            build:
+              commands:
+                - echo Build started on `date`
+                - echo Building the Docker image...
+                - cd runner
+                - docker build -t $ECR_REPO:$IMAGE_TAG -f docker/Dockerfile .
+                - docker tag $ECR_REPO:$IMAGE_TAG $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPO:$IMAGE_TAG
+            post_build:
+              commands:
+                - echo Build completed on `date`
+                - echo Pushing the Docker image...
+                - docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPO:$IMAGE_TAG
+                - echo Image pushed successfully
+      SourceVersion: !Ref GitHubBranch
+      TimeoutInMinutes: 15
+      Tags:
+        - Key: Project
+          Value: AgentCoreNexus
+
+Outputs:
+  CodeBuildProjectName:
+    Value: !Ref CodeBuildProject
+    Description: CodeBuild project name - use with 'aws codebuild start-build --project-name'
+  
+  CodeBuildProjectArn:
+    Value: !GetAtt CodeBuildProject.Arn
