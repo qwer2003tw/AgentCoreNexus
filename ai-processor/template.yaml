@@ -90,6 +90,9 @@ Resources:
           # Conversation History (optional - will be set if conversation-storage stack exists)
           CONVERSATION_HISTORY_TABLE: agentcore-conversation-history-prod
           CONVERSATION_METADATA_TABLE: agentcore-conversation-metadata-prod
+          # Runner Integration
+          RUNNER_ENDPOINT: http://internal-agentcore-runner-dev-1066109296.us-west-2.elb.amazonaws.com
+          EXEC_HMAC_SECRET: '{{resolve:secretsmanager:agentcore-runner/exec-hmac-secret:SecretString}}'
       Policies:
         - Statement:
             # EventBridge
@@ -165,6 +168,13 @@ Resources:
               Resource:
                 - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/agentcore-conversation-history-*'
                 - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/agentcore-conversation-metadata-*'
+            
+            # Secrets Manager (Runner HMAC secret)
+            - Effect: Allow
+              Action:
+                - secretsmanager:GetSecretValue
+              Resource:
+                - !Sub 'arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:agentcore-runner/exec-hmac-secret*'
       Tags:
         Project: AgentCoreNexus
         Component: ai-processor
